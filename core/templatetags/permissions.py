@@ -17,8 +17,8 @@ register = template.Library()
 @register.filter
 def has_module_permission(user, module_action: str):
     """Check if user has permission for module/action"""
-    # Anonymous users have no permissions
-    if not user.is_authenticated:
+    # Anonymous/None users have no permissions
+    if user is None or not user.is_authenticated:
         return False
     if '.' in module_action:
         module, action = module_action.split('.', 1)
