@@ -18,8 +18,7 @@ RUN apt-get update && apt-get install -y \
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt && \
-    pip install gunicorn daphne
+    pip install -r requirements.txt
 
 # Copy project files
 COPY . .
@@ -33,5 +32,5 @@ RUN python manage.py collectstatic --noinput || true
 # Expose port
 EXPOSE 8000
 
-# Run gunicorn
+# Run gunicorn with proper workers
 CMD ["gunicorn", "farmwise.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120"]

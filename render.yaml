@@ -3,7 +3,7 @@ services:
     name: farmwise
     runtime: python
     buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
-    startCommand: "gunicorn farmwise.wsgi:application --bind 0.0.0.0:8000"
+    startCommand: "gunicorn farmwise.wsgi:application --bind 0.0.0.0:8000 --workers 4"
     plan: free
     envVars:
       - key: DEBUG
