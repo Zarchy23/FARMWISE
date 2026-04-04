@@ -1,0 +1,810 @@
+[
+{
+  "model": "sessions.session",
+  "pk": "aub168rosut9hdcf7jcc13da6eb9181n",
+  "fields": {
+    "session_data": "e30:1w8ujf:ocxaBTFAemvvrafrRQeSBOi22pLwZVOWjq21pt3STck",
+    "expire_date": "2026-04-05T06:43:59.036Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "z7ke54f0kqv6j7f245j4e2339rakp92j",
+  "fields": {
+    "session_data": ".eJxVjMsOwiAQAP9lz4YAwrLt0Xu_gSywtVUDSR8n47-bJj3odWYyb4i8b1PcV1niXKAHA5dfljg_pR6iPLjem8qtbsuc1JGo065qaEVet7P9G0y8TtADGeFAkp331OXRcchoTNbEuuDoMZAWzxYxBdKBUKy9JkaXXPFUOoHPF9jzN4k:1w8vUY:1jQVC0kqF0pWyj6EnmqMgAPhK1T_k7qLkNhs13qzVjM",
+    "expire_date": "2026-04-05T07:32:26.267Z"
+  }
+},
+{
+  "model": "sites.site",
+  "fields": {
+    "domain": "example.com",
+    "name": "example.com"
+  }
+},
+{
+  "model": "core.user",
+  "fields": {
+    "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$TUVpRG1pN25DYUhVek5iZWlJdVBVaw$463ojGrSvSh3WdzQ0tLpF1xGfGm8Wq0VbUBuxUpUEtc",
+    "last_login": "2026-04-04T07:23:36.457Z",
+    "is_superuser": true,
+    "username": "munashe",
+    "first_name": "",
+    "last_name": "",
+    "email": "tungwararamunashe@gmail.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-04-03T13:05:17.861Z",
+    "user_type": "admin",
+    "phone_number": "",
+    "profile_picture": "",
+    "preferred_language": "en",
+    "accepts_sms": true,
+    "accepts_email": true,
+    "farm_name": "",
+    "location_lat": null,
+    "location_lng": null,
+    "is_verified": false,
+    "id_number": "",
+    "email_verified": false,
+    "phone_verified": false,
+    "last_active": "2026-04-03T19:30:30.015Z",
+    "created_at": "2026-04-03T13:05:17.862Z",
+    "updated_at": "2026-04-03T19:30:30.015Z",
+    "cooperative_member": null,
+    "permissions": {},
+    "is_active_member": true,
+    "groups": [],
+    "user_permissions": [],
+    "assigned_farms": []
+  }
+},
+{
+  "model": "core.user",
+  "fields": {
+    "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$YVJLcnR4REhWMmttU1Z2Znd3T2NpeA$eVqRf/6x4Men7iI8HrDIeStS9GAPThQP2h5gfm7N7CE",
+    "last_login": "2026-04-04T07:22:44.820Z",
+    "is_superuser": false,
+    "username": "admin@mail.com",
+    "first_name": "",
+    "last_name": "",
+    "email": "tungwararamunashe@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-04-04T06:43:58.498Z",
+    "user_type": "cooperative_admin",
+    "phone_number": "0788994921",
+    "profile_picture": "",
+    "preferred_language": "en",
+    "accepts_sms": true,
+    "accepts_email": true,
+    "farm_name": "",
+    "location_lat": null,
+    "location_lng": null,
+    "is_verified": false,
+    "id_number": "",
+    "email_verified": false,
+    "phone_verified": false,
+    "last_active": "2026-04-04T06:43:58.814Z",
+    "created_at": "2026-04-04T06:43:58.814Z",
+    "updated_at": "2026-04-04T06:43:58.814Z",
+    "cooperative_member": null,
+    "permissions": {},
+    "is_active_member": true,
+    "groups": [],
+    "user_permissions": [],
+    "assigned_farms": []
+  }
+},
+{
+  "model": "core.farm",
+  "pk": 1,
+  "fields": {
+    "owner": [
+      "munashe"
+    ],
+    "cooperative": null,
+    "name": "fjkff",
+    "location": {
+      "lat": -17.864465977524123,
+      "lng": 31.035449977498505
+    },
+    "address": "9th Avenue, Mbare, Harare, Zimbabwe",
+    "total_area_hectares": "12.00",
+    "farm_type": "mixed",
+    "registration_number": "FARM-5DBD2A09",
+    "status": "active",
+    "is_verified": false,
+    "bank_account": {},
+    "created_at": "2026-04-03T14:03:36.803Z",
+    "updated_at": "2026-04-03T14:03:36.803Z"
+  }
+},
+{
+  "model": "core.farm",
+  "pk": 2,
+  "fields": {
+    "owner": [
+      "munashe"
+    ],
+    "cooperative": null,
+    "name": "fjkff",
+    "location": {
+      "lat": -17.864465977524123,
+      "lng": 31.035449977498505
+    },
+    "address": "9th Avenue, Mbare, Harare, Zimbabwe",
+    "total_area_hectares": "12.00",
+    "farm_type": "mixed",
+    "registration_number": "FARM-38008704",
+    "status": "active",
+    "is_verified": false,
+    "bank_account": {},
+    "created_at": "2026-04-03T18:24:09.177Z",
+    "updated_at": "2026-04-03T18:24:09.177Z"
+  }
+},
+{
+  "model": "core.field",
+  "pk": 1,
+  "fields": {
+    "farm": 2,
+    "name": "north",
+    "area_hectares": "5.00",
+    "boundary": null,
+    "soil_type": "sandy",
+    "slope": "flat",
+    "drainage": "good",
+    "elevation_meters": null,
+    "ph_level": null,
+    "irrigation_available": true,
+    "irrigation_type": "",
+    "notes": "fhdd",
+    "is_active": true,
+    "created_at": "2026-04-03T18:41:07.296Z",
+    "updated_at": "2026-04-03T18:41:07.296Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 1,
+  "fields": {
+    "name": "Maize",
+    "scientific_name": "Zea mays",
+    "category": "cereal",
+    "growing_days": 120,
+    "water_requirement_mm": 500,
+    "optimal_temp_min": "20.00",
+    "optimal_temp_max": "30.00",
+    "planting_distance_cm": 75,
+    "seed_rate_kg_per_ha": "15.00",
+    "expected_yield_kg_per_ha": "5000.00",
+    "image": "",
+    "description": "Major grain crop, versatile for food and animal feed",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.851Z",
+    "updated_at": "2026-04-03T18:44:38.851Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 2,
+  "fields": {
+    "name": "Wheat",
+    "scientific_name": "Triticum aestivum",
+    "category": "cereal",
+    "growing_days": 140,
+    "water_requirement_mm": 450,
+    "optimal_temp_min": "15.00",
+    "optimal_temp_max": "25.00",
+    "planting_distance_cm": 20,
+    "seed_rate_kg_per_ha": "80.00",
+    "expected_yield_kg_per_ha": "4000.00",
+    "image": "",
+    "description": "Winter cereal crop, staple grain worldwide",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.857Z",
+    "updated_at": "2026-04-03T18:44:38.857Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 3,
+  "fields": {
+    "name": "Rice",
+    "scientific_name": "Oryza sativa",
+    "category": "cereal",
+    "growing_days": 130,
+    "water_requirement_mm": 1200,
+    "optimal_temp_min": "25.00",
+    "optimal_temp_max": "35.00",
+    "planting_distance_cm": 20,
+    "seed_rate_kg_per_ha": "40.00",
+    "expected_yield_kg_per_ha": "6000.00",
+    "image": "",
+    "description": "Primary staple crop, requires flooded paddies",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.862Z",
+    "updated_at": "2026-04-03T18:44:38.862Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 4,
+  "fields": {
+    "name": "Soybean",
+    "scientific_name": "Glycine max",
+    "category": "legume",
+    "growing_days": 110,
+    "water_requirement_mm": 450,
+    "optimal_temp_min": "20.00",
+    "optimal_temp_max": "30.00",
+    "planting_distance_cm": 45,
+    "seed_rate_kg_per_ha": "50.00",
+    "expected_yield_kg_per_ha": "2000.00",
+    "image": "",
+    "description": "Protein-rich legume, rotational crop for soil improvement",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.866Z",
+    "updated_at": "2026-04-03T18:44:38.866Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 5,
+  "fields": {
+    "name": "Beans",
+    "scientific_name": "Phaseolus vulgaris",
+    "category": "legume",
+    "growing_days": 90,
+    "water_requirement_mm": 400,
+    "optimal_temp_min": "18.00",
+    "optimal_temp_max": "28.00",
+    "planting_distance_cm": 30,
+    "seed_rate_kg_per_ha": "60.00",
+    "expected_yield_kg_per_ha": "1500.00",
+    "image": "",
+    "description": "Common bean, nutritious legume",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.871Z",
+    "updated_at": "2026-04-03T18:44:38.871Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 6,
+  "fields": {
+    "name": "Groundnut",
+    "scientific_name": "Arachis hypogaea",
+    "category": "legume",
+    "growing_days": 120,
+    "water_requirement_mm": 450,
+    "optimal_temp_min": "20.00",
+    "optimal_temp_max": "30.00",
+    "planting_distance_cm": 30,
+    "seed_rate_kg_per_ha": "80.00",
+    "expected_yield_kg_per_ha": "1800.00",
+    "image": "",
+    "description": "Oil and protein crop, nitrogen-fixing legume",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.876Z",
+    "updated_at": "2026-04-03T18:44:38.876Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 7,
+  "fields": {
+    "name": "Tomato",
+    "scientific_name": "Solanum lycopersicum",
+    "category": "vegetable",
+    "growing_days": 75,
+    "water_requirement_mm": 400,
+    "optimal_temp_min": "22.00",
+    "optimal_temp_max": "28.00",
+    "planting_distance_cm": 60,
+    "seed_rate_kg_per_ha": "0.30",
+    "expected_yield_kg_per_ha": "25000.00",
+    "image": "",
+    "description": "High-value vegetable crop, market demand",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.882Z",
+    "updated_at": "2026-04-03T18:44:38.882Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 8,
+  "fields": {
+    "name": "Cabbage",
+    "scientific_name": "Brassica oleracea",
+    "category": "vegetable",
+    "growing_days": 90,
+    "water_requirement_mm": 450,
+    "optimal_temp_min": "15.00",
+    "optimal_temp_max": "25.00",
+    "planting_distance_cm": 45,
+    "seed_rate_kg_per_ha": "0.30",
+    "expected_yield_kg_per_ha": "30000.00",
+    "image": "",
+    "description": "Leafy vegetable, long storage life",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.890Z",
+    "updated_at": "2026-04-03T18:44:38.890Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 9,
+  "fields": {
+    "name": "Onion",
+    "scientific_name": "Allium cepa",
+    "category": "vegetable",
+    "growing_days": 120,
+    "water_requirement_mm": 350,
+    "optimal_temp_min": "15.00",
+    "optimal_temp_max": "25.00",
+    "planting_distance_cm": 15,
+    "seed_rate_kg_per_ha": "4.00",
+    "expected_yield_kg_per_ha": "20000.00",
+    "image": "",
+    "description": "Bulb crop, long shelf life, year-round demand",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.896Z",
+    "updated_at": "2026-04-03T18:44:38.896Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 10,
+  "fields": {
+    "name": "Lettuce",
+    "scientific_name": "Lactuca sativa",
+    "category": "vegetable",
+    "growing_days": 60,
+    "water_requirement_mm": 350,
+    "optimal_temp_min": "15.00",
+    "optimal_temp_max": "20.00",
+    "planting_distance_cm": 25,
+    "seed_rate_kg_per_ha": "5.00",
+    "expected_yield_kg_per_ha": "15000.00",
+    "image": "",
+    "description": "Leafy green, cool season crop",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.900Z",
+    "updated_at": "2026-04-03T18:44:38.900Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 11,
+  "fields": {
+    "name": "Pepper",
+    "scientific_name": "Capsicum annuum",
+    "category": "vegetable",
+    "growing_days": 90,
+    "water_requirement_mm": 550,
+    "optimal_temp_min": "22.00",
+    "optimal_temp_max": "28.00",
+    "planting_distance_cm": 50,
+    "seed_rate_kg_per_ha": "0.20",
+    "expected_yield_kg_per_ha": "15000.00",
+    "image": "",
+    "description": "Spice and vegetable crop, high market value",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.906Z",
+    "updated_at": "2026-04-03T18:44:38.906Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 12,
+  "fields": {
+    "name": "Potato",
+    "scientific_name": "Solanum tuberosum",
+    "category": "tuber",
+    "growing_days": 90,
+    "water_requirement_mm": 500,
+    "optimal_temp_min": "15.00",
+    "optimal_temp_max": "20.00",
+    "planting_distance_cm": 30,
+    "seed_rate_kg_per_ha": "1500.00",
+    "expected_yield_kg_per_ha": "20000.00",
+    "image": "",
+    "description": "Staple tuber crop, short growing cycle",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.912Z",
+    "updated_at": "2026-04-03T18:44:38.912Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 13,
+  "fields": {
+    "name": "Cassava",
+    "scientific_name": "Manihot esculenta",
+    "category": "tuber",
+    "growing_days": 300,
+    "water_requirement_mm": 800,
+    "optimal_temp_min": "20.00",
+    "optimal_temp_max": "30.00",
+    "planting_distance_cm": 100,
+    "seed_rate_kg_per_ha": "10.00",
+    "expected_yield_kg_per_ha": "12000.00",
+    "image": "",
+    "description": "Root crop, drought tolerant, staple carbohydrate",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.917Z",
+    "updated_at": "2026-04-03T18:44:38.917Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 14,
+  "fields": {
+    "name": "Sweet Potato",
+    "scientific_name": "Ipomoea batatas",
+    "category": "tuber",
+    "growing_days": 120,
+    "water_requirement_mm": 700,
+    "optimal_temp_min": "20.00",
+    "optimal_temp_max": "30.00",
+    "planting_distance_cm": 30,
+    "seed_rate_kg_per_ha": "8.00",
+    "expected_yield_kg_per_ha": "15000.00",
+    "image": "",
+    "description": "Nutritious tuber, drought tolerant",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.922Z",
+    "updated_at": "2026-04-03T18:44:38.922Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 15,
+  "fields": {
+    "name": "Mango",
+    "scientific_name": "Mangifera indica",
+    "category": "fruit",
+    "growing_days": 0,
+    "water_requirement_mm": 900,
+    "optimal_temp_min": "24.00",
+    "optimal_temp_max": "30.00",
+    "planting_distance_cm": 800,
+    "seed_rate_kg_per_ha": null,
+    "expected_yield_kg_per_ha": "3000.00",
+    "image": "",
+    "description": "Perennial fruit tree, high commercial value",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.955Z",
+    "updated_at": "2026-04-03T18:44:38.955Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 16,
+  "fields": {
+    "name": "Banana",
+    "scientific_name": "Musa spp.",
+    "category": "fruit",
+    "growing_days": 270,
+    "water_requirement_mm": 1200,
+    "optimal_temp_min": "22.00",
+    "optimal_temp_max": "32.00",
+    "planting_distance_cm": 300,
+    "seed_rate_kg_per_ha": null,
+    "expected_yield_kg_per_ha": "8000.00",
+    "image": "",
+    "description": "High-yielding fruit, year-round supply",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.962Z",
+    "updated_at": "2026-04-03T18:44:38.962Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 17,
+  "fields": {
+    "name": "Citrus",
+    "scientific_name": "Citrus spp.",
+    "category": "fruit",
+    "growing_days": 0,
+    "water_requirement_mm": 800,
+    "optimal_temp_min": "15.00",
+    "optimal_temp_max": "25.00",
+    "planting_distance_cm": 600,
+    "seed_rate_kg_per_ha": null,
+    "expected_yield_kg_per_ha": "2000.00",
+    "image": "",
+    "description": "Perennial citrus trees, nutritious fruit",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.965Z",
+    "updated_at": "2026-04-03T18:44:38.965Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 18,
+  "fields": {
+    "name": "Cotton",
+    "scientific_name": "Gossypium hirsutum",
+    "category": "cash",
+    "growing_days": 180,
+    "water_requirement_mm": 700,
+    "optimal_temp_min": "20.00",
+    "optimal_temp_max": "30.00",
+    "planting_distance_cm": 90,
+    "seed_rate_kg_per_ha": "15.00",
+    "expected_yield_kg_per_ha": "1500.00",
+    "image": "",
+    "description": "Major cash crop, fiber production",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.968Z",
+    "updated_at": "2026-04-03T18:44:38.968Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 19,
+  "fields": {
+    "name": "Coffee",
+    "scientific_name": "Coffea arabica",
+    "category": "cash",
+    "growing_days": 0,
+    "water_requirement_mm": 1500,
+    "optimal_temp_min": "18.00",
+    "optimal_temp_max": "24.00",
+    "planting_distance_cm": 300,
+    "seed_rate_kg_per_ha": null,
+    "expected_yield_kg_per_ha": "1000.00",
+    "image": "",
+    "description": "Perennial cash crop, specialty beverage",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.971Z",
+    "updated_at": "2026-04-03T18:44:38.971Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 20,
+  "fields": {
+    "name": "Tea",
+    "scientific_name": "Camellia sinensis",
+    "category": "cash",
+    "growing_days": 0,
+    "water_requirement_mm": 2000,
+    "optimal_temp_min": "15.00",
+    "optimal_temp_max": "25.00",
+    "planting_distance_cm": 150,
+    "seed_rate_kg_per_ha": null,
+    "expected_yield_kg_per_ha": "2000.00",
+    "image": "",
+    "description": "Perennial plantation crop, global demand",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.974Z",
+    "updated_at": "2026-04-03T18:44:38.974Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 21,
+  "fields": {
+    "name": "Sugarcane",
+    "scientific_name": "Saccharum officinarum",
+    "category": "cash",
+    "growing_days": 360,
+    "water_requirement_mm": 1500,
+    "optimal_temp_min": "21.00",
+    "optimal_temp_max": "30.00",
+    "planting_distance_cm": 100,
+    "seed_rate_kg_per_ha": "60.00",
+    "expected_yield_kg_per_ha": "50000.00",
+    "image": "",
+    "description": "Industrial crop, sugar and biofuel production",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.978Z",
+    "updated_at": "2026-04-03T18:44:38.978Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 22,
+  "fields": {
+    "name": "Alfalfa",
+    "scientific_name": "Medicago sativa",
+    "category": "fodder",
+    "growing_days": 0,
+    "water_requirement_mm": 600,
+    "optimal_temp_min": "15.00",
+    "optimal_temp_max": "25.00",
+    "planting_distance_cm": 15,
+    "seed_rate_kg_per_ha": "15.00",
+    "expected_yield_kg_per_ha": "8000.00",
+    "image": "",
+    "description": "Perennial forage, livestock feed",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.981Z",
+    "updated_at": "2026-04-03T18:44:38.981Z"
+  }
+},
+{
+  "model": "core.croptype",
+  "pk": 23,
+  "fields": {
+    "name": "Maize Fodder",
+    "scientific_name": "Zea mays",
+    "category": "fodder",
+    "growing_days": 60,
+    "water_requirement_mm": 400,
+    "optimal_temp_min": "20.00",
+    "optimal_temp_max": "30.00",
+    "planting_distance_cm": 30,
+    "seed_rate_kg_per_ha": "30.00",
+    "expected_yield_kg_per_ha": "30000.00",
+    "image": "",
+    "description": "Green fodder for livestock, nutritious feed",
+    "is_active": true,
+    "created_at": "2026-04-03T18:44:38.984Z",
+    "updated_at": "2026-04-03T18:44:38.984Z"
+  }
+},
+{
+  "model": "core.cropseason",
+  "pk": 1,
+  "fields": {
+    "field": 1,
+    "crop_type": 14,
+    "variety": "local",
+    "season": "off",
+    "planting_date": "2026-04-10",
+    "expected_harvest_date": "2026-08-08",
+    "actual_harvest_date": null,
+    "status": "planned",
+    "estimated_yield_kg": null,
+    "actual_yield_kg": null,
+    "estimated_revenue": null,
+    "actual_revenue": null,
+    "notes": "evtgb",
+    "created_by": [
+      "munashe"
+    ],
+    "created_at": "2026-04-03T18:46:59.161Z",
+    "updated_at": "2026-04-03T18:46:59.161Z"
+  }
+},
+{
+  "model": "core.cropseason",
+  "pk": 2,
+  "fields": {
+    "field": 1,
+    "crop_type": 1,
+    "variety": "gg",
+    "season": "main",
+    "planting_date": "2026-04-12",
+    "expected_harvest_date": "2026-08-10",
+    "actual_harvest_date": null,
+    "status": "planned",
+    "estimated_yield_kg": null,
+    "actual_yield_kg": null,
+    "estimated_revenue": null,
+    "actual_revenue": null,
+    "notes": "fgdgg",
+    "created_by": [
+      "munashe"
+    ],
+    "created_at": "2026-04-03T18:49:43.619Z",
+    "updated_at": "2026-04-03T18:49:43.619Z"
+  }
+},
+{
+  "model": "core.cropseason",
+  "pk": 3,
+  "fields": {
+    "field": 1,
+    "crop_type": 4,
+    "variety": "fg",
+    "season": "main",
+    "planting_date": "2026-03-30",
+    "expected_harvest_date": "2026-07-18",
+    "actual_harvest_date": null,
+    "status": "planned",
+    "estimated_yield_kg": null,
+    "actual_yield_kg": null,
+    "estimated_revenue": null,
+    "actual_revenue": null,
+    "notes": "ggd",
+    "created_by": [
+      "munashe"
+    ],
+    "created_at": "2026-04-03T18:50:17.189Z",
+    "updated_at": "2026-04-03T18:50:17.189Z"
+  }
+},
+{
+  "model": "core.inputapplication",
+  "pk": 1,
+  "fields": {
+    "crop_season": 1,
+    "input_type": "seed",
+    "product_name": "rff",
+    "quantity": "1256.00",
+    "unit": "kg",
+    "cost_per_unit": "10.00",
+    "application_date": "2026-04-03",
+    "application_method": "brd",
+    "applied_by": [
+      "munashe"
+    ],
+    "notes": "dgggggggggggggg",
+    "created_at": "2026-04-03T18:48:30.881Z"
+  }
+},
+{
+  "model": "core.notification",
+  "pk": 1,
+  "fields": {
+    "user": [
+      "munashe"
+    ],
+    "notification_type": "success",
+    "title": "Welcome to FarmWise!",
+    "message": "Welcome ! Start by creating your first farm.",
+    "link": "/farms/create/",
+    "is_read": false,
+    "sent_via_sms": false,
+    "sent_via_email": false,
+    "created_at": "2026-04-03T13:05:17.867Z"
+  }
+},
+{
+  "model": "core.notification",
+  "pk": 2,
+  "fields": {
+    "user": [
+      "munashe"
+    ],
+    "notification_type": "success",
+    "title": "Farm Created",
+    "message": "Your farm \"fjkff\" has been created successfully!",
+    "link": "/farms/1/",
+    "is_read": false,
+    "sent_via_sms": false,
+    "sent_via_email": false,
+    "created_at": "2026-04-03T14:03:36.812Z"
+  }
+},
+{
+  "model": "core.notification",
+  "pk": 3,
+  "fields": {
+    "user": [
+      "munashe"
+    ],
+    "notification_type": "success",
+    "title": "Farm Created",
+    "message": "Your farm \"fjkff\" has been created successfully!",
+    "link": "/farms/2/",
+    "is_read": false,
+    "sent_via_sms": false,
+    "sent_via_email": false,
+    "created_at": "2026-04-03T18:24:09.185Z"
+  }
+},
+{
+  "model": "core.notification",
+  "pk": 4,
+  "fields": {
+    "user": [
+      "admin@mail.com"
+    ],
+    "notification_type": "success",
+    "title": "Welcome to FarmWise!",
+    "message": "Welcome ! Start by creating your first farm.",
+    "link": "/farms/create/",
+    "is_read": false,
+    "sent_via_sms": false,
+    "sent_via_email": false,
+    "created_at": "2026-04-04T06:43:58.851Z"
+  }
+}
+]

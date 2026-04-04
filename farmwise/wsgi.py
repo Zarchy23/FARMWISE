@@ -24,6 +24,21 @@ if os.environ.get('DATABASE_URL') and os.environ.get('RENDER'):
     except Exception as e:
         print(f"Migration warning: {e}")
 
+    # Load initial data fixture once (skip if already loaded)
+    marker = '/tmp/.farmwise_data_loaded'
+    fixture = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data.json')
+    if not os.path.exists(marker) and os.path.exists(fixture):
+        try:
+            subprocess.run(
+                ['python', 'manage.py', 'loaddata', fixture],
+                check=True,
+                timeout=120,
+            )
+            open(marker, 'w').close()
+            print("Data fixture loaded successfully.")
+        except Exception as e:
+            print(f"Loaddata warning: {e}")
+
 from django.core.wsgi import get_wsgi_application
 
 application = get_wsgi_application()
