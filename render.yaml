@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: farmwise
+    runtime: python
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    startCommand: "gunicorn farmwise.wsgi:application --bind 0.0.0.0:8000"
+    plan: free
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+databases:
+  - name: farmwise_db
+    databaseName: farmwise
+    plan: free
