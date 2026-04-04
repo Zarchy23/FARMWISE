@@ -20,7 +20,7 @@ django-cleanup
 django-debug-toolbar
 django-extensions
 python-decouple
-request
+requests
 openai
 django-celery-results
 channels
