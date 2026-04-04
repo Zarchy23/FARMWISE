@@ -637,10 +637,4 @@ FILE_UPLOAD_HANDLERS = [
 ]
 
 # Cache Settings for Templates
-if not DEBUG:
-    TEMPLATES[0]['OPTIONS']['loaders'] = [
-        ('django.template.loaders.cached.Loader', [
-            'django.template.loaders.filesystem.Loader',
-            'django.template.loaders.app_directories.Loader',
-        ]),
-    ]
+# Note: Cannot use custom loaders when APP_DIRS=True in TEMPLATES
