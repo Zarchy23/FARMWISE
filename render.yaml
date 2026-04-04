@@ -2,18 +2,14 @@ services:
   - type: web
     name: farmwise
     runtime: python
-    pythonVersion: 3.11
-    buildCommand: "bash build.sh"
-    startCommand: "bash start.sh"
-    healthCheckPath: /
-    plan: free
+    buildCommand: "pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput --clear"
+    startCommand: "python -m gunicorn farmwise.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    plans: free
     envVars:
       - key: DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
         value: "*"
-      - key: SECRET_KEY
-        sync: false
 
 databases:
   - name: farmwise_db
