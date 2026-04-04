@@ -3,14 +3,17 @@ services:
     name: farmwise
     runtime: python
     pythonVersion: 3.11
-    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && python manage.py collectstatic --noinput --clear"
-    startCommand: "gunicorn farmwise.wsgi:application --bind 0.0.0.0:8000 --workers 4 --worker-class sync"
+    buildCommand: "bash build.sh"
+    startCommand: "bash start.sh"
+    healthCheckPath: /
     plan: free
     envVars:
       - key: DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
         value: "*"
+      - key: SECRET_KEY
+        sync: false
 
 databases:
   - name: farmwise_db
