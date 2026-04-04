@@ -33,3 +33,9 @@ drf-yasg
 django-storages
 boto3
 certifi
+dj-database-url
+django-redis
+hiredis
+argon2-cffi
+djangorestframework-simplejwt
+django-sendgrid-v5
