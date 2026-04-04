@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Contact Seller{% endblock %}
+{% block page_title %}Contact Seller{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <div class="text-center mb-6">
+            <i class="ri-user-voice-line text-5xl text-green-600 mb-3"></i>
+            <h1 class="text-2xl font-bold">Contact Seller</h1>
+            <p class="text-gray-500">Get in touch with the seller about this product</p>
+        </div>
+        
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 class="font-bold mb-2">Product Information</h3>
+            <p><strong>Product:</strong> {{ listing.product_name }}</p>
+            <p><strong>Quantity:</strong> {{ listing.quantity }} {{ listing.unit }}</p>
+            <p><strong>Price:</strong> ${{ listing.price_per_unit }}/{{ listing.unit }}</p>
+        </div>
+        
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 class="font-bold mb-2">Seller Information</h3>
+            <p><strong>Farm:</strong> {{ listing.seller.name }}</p>
+            <p><strong>Phone:</strong> {{ listing.seller.owner.phone_number|default:"Not provided" }}</p>
+            <p><strong>Email:</strong> {{ listing.seller.owner.email|default:"Not provided" }}</p>
+        </div>
+        
+        <div class="space-y-4">
+            <a href="tel:{{ listing.seller.owner.phone_number }}" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-center block">
+                <i class="ri-phone-line"></i> Call Seller
+            </a>
+            <a href="mailto:{{ listing.seller.owner.email }}?subject=Inquiry about {{ listing.product_name }}" class="w-full border border-green-600 text-green-600 px-6 py-3 rounded-lg hover:bg-green-50 transition text-center block">
+                <i class="ri-mail-line"></i> Send Email
+            </a>
+            <a href="{% url 'core:listing_detail' listing.id %}" class="w-full bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition text-center block">
+                <i class="ri-arrow-left-line"></i> Back to Product
+            </a>
+        </div>
+        
+        <div class="mt-6 p-3 bg-yellow-50 rounded-lg text-sm text-yellow-800">
+            <i class="ri-information-line"></i> 
+            Always inspect products before purchasing. FarmWise is not responsible for transaction disputes.
+        </div>
+    </div>
+</div>
+{% endblock %}

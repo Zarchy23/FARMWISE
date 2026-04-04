@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}My Bookings{% endblock %}
+{% block page_title %}My Equipment Bookings{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    {% for booking in bookings %}
+    <div class="bg-white rounded-xl shadow p-6">
+        <div class="flex justify-between items-start flex-wrap gap-4">
+            <div>
+                <h3 class="text-xl font-bold">{{ booking.equipment.name }}</h3>
+                <p class="text-gray-500">{{ booking.start_date }} to {{ booking.end_date }} ({{ booking.total_days }} days)</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-sm font-semibold 
+                {% if booking.status == 'confirmed' %}bg-green-100 text-green-700
+                {% elif booking.status == 'pending' %}bg-yellow-100 text-yellow-700
+                {% elif booking.status == 'completed' %}bg-blue-100 text-blue-700
+                {% else %}bg-red-100 text-red-700{% endif %}">
+                {{ booking.get_status_display }}
+            </span>
+        </div>
+        
+        <div class="mt-4 grid md:grid-cols-3 gap-4">
+            <div>
+                <p class="text-gray-500 text-sm">Total Cost</p>
+                <p class="text-xl font-bold text-green-600">${{ booking.total_cost }}</p>
+            </div>
+            <div>
+                <p class="text-gray-500 text-sm">Deposit Paid</p>
+                <p class="text-xl font-bold">${{ booking.deposit_paid }}</p>
+            </div>
+            <div>
+                <p class="text-gray-500 text-sm">Pickup Location</p>
+                <p class="font-medium">{{ booking.pickup_location|default:"Contact owner" }}</p>
+            </div>
+        </div>
+        
+        {% if booking.status == 'pending' %}
+        <div class="mt-4">
+            <a href="{% url 'core:cancel_booking' booking.id %}" class="text-red-600 hover:underline text-sm">Cancel Booking</a>
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="bg-white rounded-xl shadow p-12 text-center">
+        <i class="ri-calendar-line text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500">No bookings yet.</p>
+        <a href="{% url 'core:equipment_list' %}" class="text-green-600 hover:underline mt-2 inline-block">Browse equipment</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

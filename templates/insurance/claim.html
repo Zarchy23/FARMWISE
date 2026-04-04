@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}File Claim{% endblock %}
+{% block page_title %}File Insurance Claim{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-2">File Insurance Claim</h1>
+        <p class="text-gray-500 mb-6">Policy: {{ policy.policy_number }} - {{ policy.get_policy_type_display }}</p>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Damage Date</label>
+                <input type="date" name="damage_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Damage Percentage</label>
+                <input type="number" step="1" name="damage_percentage" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., 50 for 50% damage">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Estimated Loss Amount ($)</label>
+                <input type="number" step="0.01" name="estimated_loss" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Estimated financial loss">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Damage Description</label>
+                <textarea name="description" rows="4" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Describe what happened, cause of damage, extent of loss..."></textarea>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Damage Photos</label>
+                <input type="file" name="photos" multiple accept="image/*" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                <p class="text-sm text-gray-500 mt-1">Upload photos of the damage (recommended)</p>
+            </div>
+            
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <p class="text-sm text-yellow-800">
+                    <i class="ri-information-line"></i> 
+                    Your claim will be reviewed by our insurance partner within 5-7 business days.
+                    Please provide accurate information for faster processing.
+                </p>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Submit Claim</button>
+                <a href="{% url 'core:insurance' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.querySelector('input[name="damage_date"]').value = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

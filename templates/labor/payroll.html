@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Payroll{% endblock %}
+{% block page_title %}Payroll Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold">Payroll</h1>
+            <p class="text-gray-500">Process and manage worker payments</p>
+        </div>
+    </div>
+
+    <!-- Payroll Summary -->
+    <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">${{ total_payroll }}</div>
+            <div class="text-sm text-gray-500">Total Payroll This Month</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ pending_count }}</div>
+            <div class="text-sm text-gray-500">Pending Payments</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">{{ workers_count }}</div>
+            <div class="text-sm text-gray-500">Active Workers</div>
+        </div>
+    </div>
+
+    <!-- Payroll Table -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="text-left p-4">Worker</th>
+                        <th class="text-left p-4">Period</th>
+                        <th class="text-left p-4">Hours</th>
+                        <th class="text-left p-4">Total Pay</th>
+                        <th class="text-left p-4">Net Pay</th>
+                        <th class="text-left p-4">Status</th>
+                        <th class="text-left p-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payroll in payrolls %}
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-4 font-medium">{{ payroll.worker.worker.get_full_name }}</td>
+                        <td class="p-4">{{ payroll.period_start|date:"M d" }} - {{ payroll.period_end|date:"M d" }}</td>
+                        <td class="p-4">{{ payroll.total_hours|floatformat:1 }}</td>
+                        <td class="p-4">${{ payroll.total_pay|floatformat:2 }}</td>
+                        <td class="p-4 font-bold text-green-600">${{ payroll.net_pay|floatformat:2 }}</td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold 
+                                {% if payroll.status == 'paid' %}bg-green-100 text-green-700
+                                {% elif payroll.status == 'pending' %}bg-yellow-100 text-yellow-700
+                                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                {{ payroll.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            {% if payroll.status == 'pending' %}
+                            <a href="{% url 'core:process_payroll' payroll.id %}" class="bg-green-600 text-white px-3 py-1 rounded text-sm">Mark Paid</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center p-8 text-gray-500">No payroll records found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Welcome Banner -->
+    <div class="bg-gradient-to-r from-green-600 to-green-800 rounded-xl p-6 text-white mb-8">
+        <h2 class="text-2xl font-bold">Welcome back, {{ user.get_full_name|default:user.username }}!</h2>
+        <p class="mt-2">Here's what's happening on your farm today.</p>
+        <p class="text-sm mt-1 opacity-90">{{ user.farm_name|default:"Your Farm" }} • {{ user|length }} active farms</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow p-6 card-hover">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-gray-500 text-sm">My Farms</p>
+                    <p class="text-3xl font-bold">{{ farms.count }}</p>
+                </div>
+                <i class="ri-farm-line text-4xl text-green-600"></i>
+            </div>
+            <a href="{% url 'core:farm_create' %}" class="text-green-600 text-sm mt-2 inline-block">+ Add Farm</a>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow p-6 card-hover">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-gray-500 text-sm">Active Crops</p>
+                    <p class="text-3xl font-bold">{{ active_crops }}</p>
+                </div>
+                <i class="ri-seedling-line text-4xl text-green-600"></i>
+            </div>
+            <a href="{% url 'core:crop_plant' %}" class="text-green-600 text-sm mt-2 inline-block">+ Plant Crop</a>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow p-6 card-hover">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Livestock</p>
+                    <p class="text-3xl font-bold">{{ total_animals }}</p>
+                </div>
+                <i class="ri-cow-line text-4xl text-green-600"></i>
+            </div>
+            <a href="{% url 'core:animal_add' %}" class="text-green-600 text-sm mt-2 inline-block">+ Add Animal</a>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow p-6 card-hover">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-gray-500 text-sm">This Month Revenue</p>
+                    <p class="text-3xl font-bold text-green-600">${{ monthly_revenue|floatformat:2 }}</p>
+                </div>
+                <i class="ri-money-dollar-circle-line text-4xl text-green-600"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="grid lg:grid-cols-2 gap-8">
+        <!-- Recent Activities -->
+        <div class="bg-white rounded-xl shadow p-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center"><i class="ri-history-line mr-2 text-green-600"></i> Recent Activities</h2>
+            <div class="space-y-3">
+                {% for activity in recent_activities|slice:":8" %}
+                <div class="flex items-center space-x-3 border-b pb-3">
+                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="ri-notification-line text-green-600 text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm">{{ activity.message }}</p>
+                        <p class="text-xs text-gray-400">{{ activity.created_at|timesince }} ago</p>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center py-8">No recent activities. Start by adding a farm!</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Weather & Quick Actions -->
+        <div class="space-y-6">
+            <!-- Weather Widget -->
+            <div class="bg-white rounded-xl shadow p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center"><i class="ri-cloud-line mr-2 text-green-600"></i> Weather</h2>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-4xl font-bold">{{ weather.temp }}°C</div>
+                        <div class="text-gray-500">{{ weather.condition }}</div>
+                    </div>
+                    <i class="ri-sun-line text-6xl text-yellow-500"></i>
+                </div>
+                <p class="mt-3 text-sm text-gray-600">{{ weather.forecast }}</p>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-xl shadow p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center"><i class="ri-flashlight-line mr-2 text-green-600"></i> Quick Actions</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="{% url 'core:farm_create' %}" class="bg-green-50 text-green-700 p-3 rounded-lg text-center hover:bg-green-100 transition">
+                        <i class="ri-add-line block text-xl"></i>
+                        <span class="text-sm">Add Farm</span>
+                    </a>
+                    <a href="{% url 'core:crop_plant' %}" class="bg-green-50 text-green-700 p-3 rounded-lg text-center hover:bg-green-100 transition">
+                        <i class="ri-seedling-line block text-xl"></i>
+                        <span class="text-sm">Plant Crop</span>
+                    </a>
+                    <a href="{% url 'core:animal_add' %}" class="bg-green-50 text-green-700 p-3 rounded-lg text-center hover:bg-green-100 transition">
+                        <i class="ri-cow-line block text-xl"></i>
+                        <span class="text-sm">Add Animal</span>
+                    </a>
+                    <a href="{% url 'core:pest_detection' %}" class="bg-green-50 text-green-700 p-3 rounded-lg text-center hover:bg-green-100 transition">
+                        <i class="ri-camera-line block text-xl"></i>
+                        <span class="text-sm">Pest Scan</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

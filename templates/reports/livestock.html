@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Livestock Report{% endblock %}
+{% block page_title %}Livestock Report{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Summary Stats -->
+    <div class="grid md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ total_animals }}</div>
+            <div class="text-sm text-gray-500">Total Animals</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ total_species }}</div>
+            <div class="text-sm text-gray-500">Species</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-yellow-600">{{ total_milk|default:"0" }}</div>
+            <div class="text-sm text-gray-500">Total Milk (L)</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">{{ total_health_records }}</div>
+            <div class="text-sm text-gray-500">Health Records</div>
+        </div>
+    </div>
+    
+    <!-- Species Breakdown -->
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-xl font-bold mb-4">Population by Species</h2>
+        <canvas id="speciesChart" height="200"></canvas>
+    </div>
+    
+    <!-- Species Details Table -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <h2 class="text-xl font-bold p-6 border-b">Detailed Species Report</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="text-left p-4">Species</th>
+                        <th class="text-left p-4">Total</th>
+                        <th class="text-left p-4">Male</th>
+                        <th class="text-left p-4">Female</th>
+                        <th class="text-left p-4">Alive</th>
+                        <th class="text-left p-4">Avg Weight (kg)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for species in species_data %}
+                    <tr class="border-b">
+                        <td class="p-4 font-medium">{{ species.name }}</td>
+                        <td class="p-4">{{ species.total }}</td>
+                        <td class="p-4">{{ species.male }}</td>
+                        <td class="p-4">{{ species.female }}</td>
+                        <td class="p-4">{{ species.alive }}</td>
+                        <td class="p-4">{{ species.avg_weight|floatformat:0|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Health Records Summary -->
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-xl font-bold mb-4">Health Records by Type</h2>
+        <canvas id="healthChart" height="150"></canvas>
+    </div>
+</div>
+
+<script>
+    // Species Chart
+    new Chart(document.getElementById('speciesChart'), {
+        type: 'bar',
+        data: {
+            labels: [{% for s in species_data %}'{{ s.name }}',{% endfor %}],
+            datasets: [{
+                label: 'Number of Animals',
+                data: [{% for s in species_data %}{{ s.total }},{% endfor %}],
+                backgroundColor: '#22c55e',
+                borderRadius: 8
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: true }
+    });
+    
+    // Health Records Chart
+    new Chart(document.getElementById('healthChart'), {
+        type: 'doughnut',
+        data: {
+            labels: [{% for h in health_types %}'{{ h.type }}',{% endfor %}],
+            datasets: [{
+                data: [{% for h in health_types %}{{ h.count }},{% endfor %}],
+                backgroundColor: ['#22c55e', '#3b82f6', '#eab308', '#ef4444', '#8b5cf6']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: true }
+    });
+</script>
+{% endblock %}

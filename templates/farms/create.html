@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block title %}Add Farm{% endblock %}
+{% block page_title %}Add New Farm{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Add New Farm</h1>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Farm Name</label>
+                <input type="text" name="name" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-sm text-gray-500 mt-1">Give your farm a unique name</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Find Location</label>
+                <input type="text" name="location_search" id="location-search-input" placeholder="Search for your location (address, city, coordinates)" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-sm text-gray-500 mt-1">Search by address or enter latitude,longitude (e.g., -17.8252,25.8855)</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Location Map</label>
+                <div id="map" class="map-container w-full h-80 rounded-lg border mb-2"></div>
+                <input type="hidden" name="location" id="location">
+                <p class="text-sm text-gray-500 mt-1">Click on the map or use search above to set your farm location</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Total Area (hectares)</label>
+                <input type="number" step="0.01" name="total_area_hectares" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Farm Type</label>
+                <select name="farm_type" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="crop">Crop Farm</option>
+                    <option value="livestock">Livestock Farm</option>
+                    <option value="mixed">Mixed Crop & Livestock</option>
+                    <option value="agroforestry">Agroforestry</option>
+                    <option value="aquaculture">Aquaculture</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Address</label>
+                <textarea name="address" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Create Farm</button>
+                <a href="{% url 'core:farm_list' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Initialize map centered on default location
+    var map = L.map('map').setView([-1.286389, 36.817223], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    
+    var marker = null;
+    var locationSearchInput = document.getElementById('location-search-input');
+    var locationInput = document.getElementById('location');
+    
+    // Helper function to update map and marker
+    function updateLocation(lat, lng, address = null) {
+        if (marker) {
+            marker.remove();
+        }
+        marker = L.marker([lat, lng]).addTo(map);
+        map.setView([lat, lng], 13);
+        locationInput.value = JSON.stringify({lat: lat, lng: lng});
+        
+        if (address) {
+            document.querySelector('textarea[name="address"]').value = address;
+        }
+    }
+    
+    // Handle map click
+    map.on('click', function(e) {
+        updateLocation(e.latlng.lat, e.latlng.lng);
+        
+        // Reverse geocoding to get address
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.display_name) {
+                    document.querySelector('textarea[name="address"]').value = data.display_name;
+                    locationSearchInput.value = data.display_name.split(',')[0]; // Show first part in search
+                }
+            })
+            .catch(err => console.error('Geocoding error:', err));
+    });
+    
+    // Handle location search input
+    locationSearchInput.addEventListener('change', function() {
+        var searchValue = this.value.trim();
+        if (!searchValue) return;
+        
+        // Check if input is coordinates (lat,lng format)
+        var coordMatch = searchValue.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+        if (coordMatch) {
+            var lat = parseFloat(coordMatch[1]);
+            var lng = parseFloat(coordMatch[2]);
+            
+            // Validate coordinate ranges
+            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                updateLocation(lat, lng);
+                
+                // Reverse geocoding for address
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.display_name) {
+                            document.querySelector('textarea[name="address"]').value = data.display_name;
+                        }
+                    })
+                    .catch(err => console.error('Geocoding error:', err));
+                return;
+            }
+        }
+        
+        // Search by address
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchValue)}&limit=1`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    var result = data[0];
+                    var lat = parseFloat(result.lat);
+                    var lng = parseFloat(result.lon);
+                    updateLocation(lat, lng, result.display_name);
+                } else {
+                    alert('Location not found. Please try another search.');
+                }
+            })
+            .catch(err => {
+                console.error('Search error:', err);
+                alert('Error searching for location. Please try again.');
+            });
+    });
+    
+    // Optional: Add search on Enter key
+    locationSearchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.dispatchEvent(new Event('change'));
+        }
+    });
+</script>
+{% endblock %}

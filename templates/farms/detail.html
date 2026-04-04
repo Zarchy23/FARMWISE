@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block title %}{{ farm.name }} - Farm Details{% endblock %}
+{% block page_title %}Farm: {{ farm.name }}{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Back Button -->
+    <a href="{% url 'core:farm_list' %}" class="text-green-600 hover:text-green-700 flex items-center space-x-1 mb-4">
+        <i class="ri-arrow-left-line"></i>
+        <span>Back to Farms</span>
+    </a>
+
+    <!-- Farm Header -->
+    <div class="bg-gradient-to-r from-green-700 to-green-900 rounded-xl p-8 text-white mb-8">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-4xl font-bold mb-2">{{ farm.name }}</h1>
+                <p class="text-lg opacity-90">{{ farm.get_farm_type_display }} | {{ farm.total_area_hectares }} hectares</p>
+                <div class="flex items-center space-x-4 mt-4">
+                    <span class="px-3 py-1 rounded-full {% if farm.status == 'active' %}bg-green-600{% elif farm.status == 'inactive' %}bg-yellow-600{% else %}bg-red-600{% endif %}">{{ farm.get_status_display }}</span>
+                    {% if farm.is_verified %}
+                    <span class="px-3 py-1 rounded-full bg-white bg-opacity-20">✓ Verified</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-right">
+                <a href="{% url 'core:farm_edit' farm.pk %}" class="bg-white text-green-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition">Edit Farm</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Farm Details Grid -->
+    <div class="grid lg:grid-cols-3 gap-8 mb-8">
+        <!-- Main Info -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h2 class="text-xl font-bold mb-4">Farm Information</h2>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <p class="text-gray-500 text-sm">Location</p>
+                        <p class="font-semibold">{{ farm.address }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Area</p>
+                        <p class="font-semibold">{{ farm.total_area_hectares }} hectares</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-sm">Registration Number</p>
+                        <p class="font-semibold">{{ farm.registration_number }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-sm">Farm Owner</p>
+                        <p class="font-semibold">{{ farm.owner.get_full_name|default:farm.owner.username }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fields Section -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">Fields ({{ fields.count }})</h2>
+                    <a href="{% url 'core:field_create' farm.pk %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm flex items-center space-x-1">
+                        <i class="ri-add-line"></i>
+                        <span>Add Field</span>
+                    </a>
+                </div>
+                
+                {% if fields %}
+                <div class="space-y-4">
+                    {% for field in fields %}
+                    <div class="border-l-4 border-green-500 pl-4 py-3 bg-gray-50 rounded">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-semibold text-lg">{{ field.name }}</h3>
+                                <p class="text-gray-600 text-sm">{{ field.area_hectares }} ha | {{ field.get_soil_type_display }}</p>
+                                {% if field.irrigation_available %}
+                                <span class="mt-2 inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">💧 Irrigation</span>
+                                {% endif %}
+                            </div>
+                            <div class="flex space-x-2">
+                                <a href="{% url 'core:field_edit' field.pk %}" class="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition text-sm"><i class="ri-edit-line"></i></a>
+                                <a href="{% url 'core:field_delete' field.pk %}" class="px-3 py-1 text-red-600 hover:bg-red-50 rounded transition text-sm"><i class="ri-delete-bin-line"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-center py-8">No fields defined yet. Add fields to track crops.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar Stats -->
+        <div>
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">Quick Stats</h3>
+                <div class="space-y-4">
+                    <div class="border-b pb-4">
+                        <p class="text-gray-500 text-sm">Total Fields</p>
+                        <p class="text-3xl font-bold text-green-600">{{ fields.count }}</p>
+                    </div>
+                    <div class="border-b pb-4">
+                        <p class="text-gray-500 text-sm">Active Crops</p>
+                        <p class="text-3xl font-bold text-green-600">{{ active_crops.count }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-sm">Last Updated</p>
+                        <p class="font-semibold">{{ farm.updated_at|timesince }} ago</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <a href="{% url 'core:crop_plant' %}" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition text-center flex items-center justify-center space-x-2">
+                    <i class="ri-seedling-line"></i>
+                    <span>Plant Crop</span>
+                </a>
+                <a href="{% url 'core:farm_edit' farm.pk %}" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition text-center">Edit Farm</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Crops -->
+    {% if active_crops %}
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold mb-4">Active Crops on This Farm</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+            {% for crop in active_crops %}
+            <div class="border rounded-lg p-4 hover:shadow-lg transition">
+                <h3 class="font-semibold">{{ crop.crop_type.name }} - {{ crop.variety }}</h3>
+                <p class="text-sm text-gray-600">Field: {{ crop.field.name }}</p>
+                <p class="text-sm text-gray-600">Planted: {{ crop.planting_date }}</p>
+                <div class="mt-2 flex items-center justify-between">
+                    <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ crop.get_status_display }}</span>
+                    <a href="{% url 'core:crop_detail' crop.pk %}" class="text-green-600 text-sm hover:underline">View →</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow p-6">
+        <div class="flex justify-between items-start flex-wrap gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">{{ farm.name }}</h1>
+                <p class="text-gray-500">{{ farm.total_area_hectares }} hectares | {{ farm.get_farm_type_display }}</p>
+                <div class="flex items-center space-x-2 mt-2">
+                    {% if farm.is_verified %}
+                    <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full"><i class="ri-verified-badge-line"></i> Verified</span>
+                    {% endif %}
+                    <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full">{{ farm.status }}</span>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <a href="{% url 'core:farm_edit' farm.id %}" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition">Edit Farm</a>
+                <a href="{% url 'core:farm_delete' farm.id %}" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">Delete</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-xl font-bold mb-4">Farm Location</h2>
+        <div id="farmMap" class="map-container w-full h-80 rounded-lg"></div>
+    </div>
+
+    <!-- Fields & Crops -->
+    <div class="grid md:grid-cols-2 gap-6">
+        <!-- Fields -->
+        <div class="bg-white rounded-xl shadow p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Fields</h2>
+                    <a href="{% url 'core:field_create' farm.id %}" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition">+ Add Field</a>
+            </div>
+            <div class="space-y-3">
+                {% for field in fields %}
+                <div class="border-b pb-3">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="font-medium">{{ field.name }}</span>
+                            <p class="text-xs text-gray-500">{{ field.area_hectares }} ha | {{ field.get_soil_type_display }}</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <a href="{% url 'core:field_edit' field.id %}" class="text-yellow-600 hover:text-yellow-800"><i class="ri-edit-line"></i></a>
+                            <a href="{% url 'core:field_delete' field.id %}" class="text-red-600 hover:text-red-800"><i class="ri-delete-bin-line"></i></a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center py-4">No fields added yet</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Active Crops -->
+        <div class="bg-white rounded-xl shadow p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Active Crops</h2>
+                <a href="{% url 'core:crop_plant' %}" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition">+ Plant Crop</a>
+            </div>
+            <div class="space-y-3">
+                {% for crop in active_crops %}
+                <div class="border-b pb-3">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="font-medium">{{ crop.crop_type.name }}</span>
+                            <p class="text-xs text-gray-500">{{ crop.field.name }} | Planted {{ crop.planting_date }}</p>
+                        </div>
+                        <a href="{% url 'core:crop_detail' crop.id %}" class="text-blue-600 hover:text-blue-800"><i class="ri-eye-line"></i></a>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center py-4">No active crops</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize map
+    var map = L.map('farmMap').setView([{{ farm.location.y|default:"-1.286389" }}, {{ farm.location.x|default:"36.817223" }}], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.marker([{{ farm.location.y|default:"-1.286389" }}, {{ farm.location.x|default:"36.817223" }}]).addTo(map);
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Plant Crop{% endblock %}
+{% block page_title %}Plant New Crop{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Plant New Crop</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Select Field</label>
+                <select name="field" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Field --</option>
+                    {% for field in form.fields.field.queryset %}
+                    <option value="{{ field.id }}">{{ field.farm.name }} - {{ field.name }} ({{ field.area_hectares }} ha)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Crop Type</label>
+                <select name="crop_type" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Crop --</option>
+                    {% for crop in form.fields.crop_type.queryset %}
+                    <option value="{{ crop.id }}">{{ crop.name }} ({{ crop.growing_days }} days to harvest)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Variety</label>
+                <input type="text" name="variety" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Hybrid, Local, Organic">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Season</label>
+                <select name="season" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="main">Main Season</option>
+                    <option value="off">Off Season</option>
+                    <option value="dry">Dry Season</option>
+                    <option value="wet">Wet Season</option>
+                </select>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Planting Date</label>
+                    <input type="date" name="planting_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Expected Harvest Date</label>
+                    <input type="date" name="expected_harvest_date" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Estimated Yield (kg)</label>
+                <input type="number" step="0.01" name="estimated_yield_kg" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Notes</label>
+                <textarea name="notes" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Any additional information..."></textarea>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Plant Crop</button>
+                <a href="{% url 'core:crop_list' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Auto-calculate expected harvest date based on crop type
+    const cropTypeSelect = document.querySelector('select[name="crop_type"]');
+    const plantingDateInput = document.querySelector('input[name="planting_date"]');
+    const harvestDateInput = document.querySelector('input[name="expected_harvest_date"]');
+    
+    function calculateHarvestDate() {
+        if (cropTypeSelect.value && plantingDateInput.value) {
+            const cropOption = cropTypeSelect.options[cropTypeSelect.selectedIndex];
+            const cropText = cropOption.text;
+            const daysMatch = cropText.match(/(\d+) days/);
+            if (daysMatch) {
+                const growingDays = parseInt(daysMatch[1]);
+                const plantingDate = new Date(plantingDateInput.value);
+                const harvestDate = new Date(plantingDate);
+                harvestDate.setDate(plantingDate.getDate() + growingDays);
+                harvestDateInput.value = harvestDate.toISOString().split('T')[0];
+            }
+        }
+    }
+    
+    cropTypeSelect.addEventListener('change', calculateHarvestDate);
+    plantingDateInput.addEventListener('change', calculateHarvestDate);
+</script>
+{% endblock %}

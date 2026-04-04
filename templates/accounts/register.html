@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Register{% endblock %}
+{% block page_title %}Register{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <div class="text-center mb-8">
+            <i class="ri-leaf-line text-5xl text-green-600"></i>
+            <h2 class="text-2xl font-bold mt-2">Create Account</h2>
+            <p class="text-gray-500">Join FarmWise today</p>
+        </div>
+
+        <!-- Display Form Errors -->
+        {% if form.non_field_errors %}
+            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                {% for error in form.non_field_errors %}
+                    <p class="text-red-700 text-sm"><i class="ri-error-warning-line mr-2"></i>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            <!-- Username Field -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Username</label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                        {% for error in form.username.errors %}
+                            <p><i class="ri-error-warning-line mr-1"></i>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Email Field -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Email</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                        {% for error in form.email.errors %}
+                            <p><i class="ri-error-warning-line mr-1"></i>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Phone Number Field -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Phone Number</label>
+                {{ form.phone_number }}
+                <p class="text-gray-500 text-sm mt-1">Format: +254712345678 or 0712345678</p>
+                {% if form.phone_number.errors %}
+                    <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                        {% for error in form.phone_number.errors %}
+                            <p><i class="ri-error-warning-line mr-1"></i>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- User Type Field -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Account Type</label>
+                {{ form.user_type }}
+                {% if form.user_type.errors %}
+                    <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                        {% for error in form.user_type.errors %}
+                            <p><i class="ri-error-warning-line mr-1"></i>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Password Field -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Password</label>
+                {{ form.password1 }}
+                {% if form.password1.errors %}
+                    <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                        {% for error in form.password1.errors %}
+                            <p><i class="ri-error-warning-line mr-1"></i>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if form.password1.help_text %}
+                    <small class="text-gray-600 block mt-1">{{ form.password1.help_text|safe }}</small>
+                {% endif %}
+            </div>
+            
+            <!-- Confirm Password Field -->
+            <div class="mb-6">
+                <label class="block text-gray-700 font-medium mb-2">Confirm Password</label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}
+                    <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                        {% for error in form.password2.errors %}
+                            <p><i class="ri-error-warning-line mr-1"></i>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition font-medium">
+                <i class="ri-user-add-line mr-2"></i>Create Account
+            </button>
+        </form>
+        
+        <div class="mt-6 text-center">
+            <p class="text-gray-600">Already have an account? <a href="{% url 'login' %}" class="text-green-600 hover:underline">Login</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

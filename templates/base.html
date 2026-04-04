@@ -1,0 +1,332 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FarmWise - {% block title %}Agriculture Management{% endblock %}</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Remix Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        :root {
+            --bg-overlay: rgba(0, 0, 0, 0.5);
+            --bg-overlay-light: rgba(0, 0, 0, 0.3);
+        }
+        .sidebar { transition: all 0.3s; }
+        .map-container { height: 400px; border-radius: 0.5rem; }
+        .loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; }
+        .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+        .status-badge { @apply px-2 py-1 rounded-full text-xs font-semibold; }
+        .status-active { @apply bg-green-100 text-green-800; }
+        .status-warning { @apply bg-yellow-100 text-yellow-800; }
+        .status-danger { @apply bg-red-100 text-red-800; }
+        .status-info { @apply bg-blue-100 text-blue-800; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+        /* Home page background styles */
+        .bg-image-hero { background-size: cover; background-position: center; background-attachment: fixed; }
+        .bg-overlay { position: absolute; inset: 0; background-color: var(--bg-overlay); }
+        .bg-overlay-light { position: absolute; inset: 0; background-color: var(--bg-overlay-light); }
+        .hero-section { position: relative; overflow: hidden; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50" x-data="{ sidebarOpen: false, notificationsOpen: false, userMenuOpen: false }">
+    <!-- Loading Spinner -->
+    <div class="loading fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50" id="loadingSpinner" style="display: none;">
+        <div class="bg-white rounded-lg p-4 flex items-center space-x-3 shadow-xl">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+            <span class="text-gray-700">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div x-show="sidebarOpen" x-cloak class="fixed inset-0 bg-black bg-opacity-50 z-20" @click="sidebarOpen = false"></div>
+
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 z-30 h-screen w-64 bg-green-800 text-white transform transition-transform duration-300 ease-in-out overflow-y-auto" 
+           :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+           x-data="{ expandedMenu: null }">
+        <div class="p-5 border-b border-green-700">
+            <div class="flex items-center space-x-2">
+                <i class="ri-leaf-line text-2xl"></i>
+                <span class="font-bold text-xl">FarmWise</span>
+            </div>
+        </div>
+        <nav class="p-4 space-y-1">
+            {% load permissions %}
+            
+            <!-- Dashboard (All Users) -->
+            <a href="{% url 'core:dashboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                <i class="ri-dashboard-line"></i><span>Dashboard</span>
+            </a>
+
+            <!-- My Farms (if user has farm access) -->
+            {% if user|has_module_permission:"farms.view_own" or user|has_module_permission:"farms.view_coop" or user|has_module_permission:"farms.view_assigned" %}
+            <a href="{% url 'core:farm_list' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                <i class="ri-farm-line"></i><span>My Farms</span>
+            </a>
+            {% endif %}
+
+            <!-- Crops (if user can view crops) -->
+            {% if user|has_module_permission:"crops.view_own" or user|has_module_permission:"crops.view_coop" or user|has_module_permission:"crops.view_assigned" %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'crops' ? null : 'crops'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-seedling-line"></i><span>Crops</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'crops' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'crops'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:crop_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">List</a>
+                    {% if user|has_module_permission:"crops.create" %}
+                    <a href="{% url 'core:crop_plant' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Plant</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Livestock (if user can view livestock) -->
+            {% if user|has_module_permission:"livestock.view_own" or user|has_module_permission:"livestock.view_coop" or user|has_module_permission:"livestock.view_assigned" %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'livestock' ? null : 'livestock'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-cow-line"></i><span>Livestock</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'livestock' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'livestock'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:animal_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">List</a>
+                    {% if user|has_module_permission:"livestock.create" %}
+                    <a href="{% url 'core:animal_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Equipment (if user can access equipment) -->
+            {% if user|has_module_permission:"equipment.view_own" or user|has_module_permission:"equipment.view_all" or user|has_module_permission:"equipment.view_coop" %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'equipment' ? null : 'equipment'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-tractor-line"></i><span>Equipment</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'equipment' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'equipment'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:equipment_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">List</a>
+                    {% if user|has_module_permission:"equipment.create" %}
+                    <a href="{% url 'core:equipment_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add</a>
+                    {% endif %}
+                    {% if user|has_module_permission:"equipment.book" %}
+                    <a href="{% url 'core:my_bookings' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Bookings</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Marketplace (if user can access marketplace) -->
+            {% if user|has_module_permission:"marketplace.view_all" or user|has_module_permission:"marketplace.create_listing" %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'marketplace' ? null : 'marketplace'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-store-line"></i><span>Marketplace</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'marketplace' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'marketplace'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:marketplace' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">List</a>
+                    {% if user|has_module_permission:"marketplace.create_listing" %}
+                    <a href="{% url 'core:create_listing' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Sell</a>
+                    <a href="{% url 'core:my_listings' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Listings</a>
+                    {% endif %}
+                    <a href="{% url 'core:my_orders' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Orders</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Pest Detection (if user has pest detection access) -->
+            {% if user|has_module_permission:"pest.view_own" or user|has_module_permission:"pest.view_coop" or user|has_module_permission:"pest.view_all_pending" %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'pest' ? null : 'pest'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-bug-line"></i><span>Pest Detection</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'pest' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'pest'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:pest_detection' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Detection</a>
+                    {% if user|has_module_permission:"pest.upload" %}
+                    <a href="{% url 'core:pest_upload' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Upload</a>
+                    {% endif %}
+                    <a href="{% url 'core:pest_history' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">History</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Weather (if user has weather access - most roles do) -->
+            {% if user|has_module_permission:"weather.view_all" %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'weather' ? null : 'weather'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-cloud-line"></i><span>Weather</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'weather' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'weather'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:weather' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Forecast</a>
+                    <a href="{% url 'core:weather_alerts' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Alerts</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Insurance (if user has insurance access) -->
+            {% if user|has_module_permission:"insurance.view_own" or user|has_module_permission:"insurance.view_all" or user|has_module_permission:"insurance.view_coop" %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'insurance' ? null : 'insurance'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-shield-line"></i><span>Insurance</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'insurance' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'insurance'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:insurance' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Policies</a>
+                    {% if user|has_module_permission:"insurance.buy" %}
+                    <a href="{% url 'core:buy_insurance' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Buy</a>
+                    <a href="{% url 'core:my_claims' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Claims</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Labor (if user can manage labor) -->
+            {% if user|has_module_permission:"labor.view_own" or user|has_module_permission:"labor.create" %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'labor' ? null : 'labor'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-user-settings-line"></i><span>Labor</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'labor' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'labor'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:labor' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    {% if user|has_module_permission:"labor.create" %}
+                    <a href="{% url 'core:add_worker' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Worker</a>
+                    <a href="{% url 'core:payroll_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Payroll</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Reports (if user has report access) -->
+            {% if user|has_module_permission:"reports.view_own" or user|has_module_permission:"reports.generate_own" or user|has_module_permission:"reports.view_coop" %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'reports' ? null : 'reports'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-bar-chart-line"></i><span>Reports</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'reports' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'reports'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:reports' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    {% if user|has_module_permission:"reports.generate_own" %}
+                    <a href="{% url 'core:financial_report' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Financial</a>
+                    <a href="{% url 'core:crop_yield_report' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Crop Yield</a>
+                    <a href="{% url 'core:livestock_report' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Livestock</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Navigation -->
+        <nav class="bg-white shadow-sm sticky top-0 z-10">
+            <div class="px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <button @click="sidebarOpen = !sidebarOpen" class="md:hidden text-gray-600">
+                        <i class="ri-menu-line text-2xl"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-800">{% block page_title %}Dashboard{% endblock %}</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- Notifications -->
+                    <div class="relative">
+                        <button @click="notificationsOpen = !notificationsOpen" class="text-gray-600 hover:text-gray-800">
+                            <i class="ri-notification-line text-2xl"></i>
+                            {% if unread_notifications > 0 %}
+                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ unread_notifications }}</span>
+                            {% endif %}
+                        </button>
+                        <div x-show="notificationsOpen" @click.away="notificationsOpen = false" x-cloak class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-20">
+                            <div class="p-3 border-b"><h3 class="font-semibold">Notifications</h3></div>
+                            <div class="max-h-96 overflow-y-auto">
+                                {% for notification in recent_notifications %}
+                                <div class="p-3 border-b hover:bg-gray-50 cursor-pointer">
+                                    <p class="text-sm font-medium">{{ notification.title }}</p>
+                                    <p class="text-xs text-gray-500">{{ notification.message|truncatechars:50 }}</p>
+                                    <p class="text-xs text-gray-400 mt-1">{{ notification.created_at|timesince }} ago</p>
+                                </div>
+                                {% empty %}
+                                <div class="p-3 text-center text-gray-500">No notifications</div>
+                                {% endfor %}
+                            </div>
+                            <div class="p-2 border-t text-center"><a href="#" class="text-sm text-green-600">View all</a></div>
+                        </div>
+                    </div>
+                    
+                    <!-- User Menu -->
+                    <div class="relative">
+                        <button @click="userMenuOpen = !userMenuOpen" class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                <i class="ri-user-line text-green-600"></i>
+                            </div>
+                            <span class="hidden md:inline text-gray-700">{{ user.get_full_name|default:user.username }}</span>
+                            <i class="ri-arrow-down-s-line text-gray-500"></i>
+                        </button>
+                        <div x-show="userMenuOpen" @click.away="userMenuOpen = false" x-cloak class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-20">
+                            <a href="{% url 'core:profile' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="ri-user-line mr-2"></i> Profile</a>
+                            <a href="{% url 'core:settings' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="ri-settings-line mr-2"></i> Settings</a>
+                            <hr class="my-1">
+                            <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"><i class="ri-logout-box-line mr-2"></i> Logout</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="p-6">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-700 border border-green-300{% elif message.tags == 'error' %}bg-red-100 text-red-700 border border-red-300{% else %}bg-blue-100 text-blue-700 border border-blue-300{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        function showLoading() { document.getElementById('loadingSpinner').style.display = 'flex'; }
+        function hideLoading() { document.getElementById('loadingSpinner').style.display = 'none'; }
+        
+        // Auto-hide messages after 5 seconds
+        setTimeout(() => {
+            document.querySelectorAll('.bg-green-100, .bg-red-100, .bg-blue-100').forEach(el => {
+                el.style.transition = 'opacity 0.5s';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 500);
+            });
+        }, 5000);
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

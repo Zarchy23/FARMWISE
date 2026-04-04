@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}Book Equipment{% endblock %}
+{% block page_title %}Book Equipment{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-2">Book {{ equipment.name }}</h1>
+        <p class="text-gray-500 mb-6">Rate: ${{ equipment.daily_rate }}/day | Deposit: ${{ equipment.deposit_amount }}</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Start Date</label>
+                    <input type="date" name="start_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" id="startDate">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">End Date</label>
+                    <input type="date" name="end_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" id="endDate">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Pickup Location</label>
+                <input type="text" name="pickup_location" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Where will you pick up the equipment?">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Special Instructions</label>
+                <textarea name="renter_notes" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Any special requests or instructions for the owner..."></textarea>
+            </div>
+            
+            <!-- Cost Summary -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 class="font-bold mb-3">Cost Summary</h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>Daily Rate:</span>
+                        <span>${{ equipment.daily_rate }}/day</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Number of Days:</span>
+                        <span id="daysCount">0</span>
+                    </div>
+                    <div class="flex justify-between border-t pt-2 font-bold">
+                        <span>Total Rental Cost:</span>
+                        <span id="totalCost">$0</span>
+                    </div>
+                    <div class="flex justify-between text-yellow-600">
+                        <span>Deposit (Refundable):</span>
+                        <span>${{ equipment.deposit_amount }}</span>
+                    </div>
+                    <div class="flex justify-between text-green-600 font-bold">
+                        <span>Total Due Now:</span>
+                        <span id="totalDue">${{ equipment.deposit_amount }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Confirm Booking</button>
+                <a href="{% url 'core:equipment_detail' equipment.id %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+    const daysCountSpan = document.getElementById('daysCount');
+    const totalCostSpan = document.getElementById('totalCost');
+    const totalDueSpan = document.getElementById('totalDue');
+    const dailyRate = {{ equipment.daily_rate }};
+    const deposit = {{ equipment.deposit_amount }};
+    
+    function calculateCost() {
+        if (startDate.value && endDate.value) {
+            const start = new Date(startDate.value);
+            const end = new Date(endDate.value);
+            const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            
+            if (days > 0) {
+                daysCountSpan.textContent = days;
+                const total = days * dailyRate;
+                totalCostSpan.textContent = `$${total}`;
+                totalDueSpan.textContent = `$${total + deposit}`;
+            } else {
+                daysCountSpan.textContent = 'Invalid dates';
+            }
+        }
+    }
+    
+    startDate.addEventListener('change', calculateCost);
+    endDate.addEventListener('change', calculateCost);
+    
+    // Set min date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    startDate.min = tomorrow.toISOString().split('T')[0];
+</script>
+{% endblock %}

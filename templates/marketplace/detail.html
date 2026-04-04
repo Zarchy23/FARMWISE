@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load permissions %}
+
+{% block title %}{{ listing.product_name }} - Marketplace{% endblock %}
+{% block page_title %}{{ listing.product_name }}{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Product Image & Details (2/3 width) -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <!-- Image -->
+            <div class="bg-gray-200 aspect-square flex items-center justify-center">
+                {% if listing.images %}
+                <img src="{{ listing.images.url }}" alt="{{ listing.product_name }}" class="w-full h-full object-cover">
+                {% else %}
+                <i class="ri-image-line text-6xl text-gray-400"></i>
+                {% endif %}
+            </div>
+
+            <!-- Product Info -->
+            <div class="p-6">
+                <span class="inline-block bg-green-100 text-green-800 text-sm font-semibold px-4 py-2 rounded-full">
+                    {{ listing.category }}
+                </span>
+
+                <h1 class="text-3xl font-bold text-gray-900 mt-4 mb-2">{{ listing.product_name }}</h1>
+
+                <!-- Badges -->
+                <div class="flex gap-2 flex-wrap mt-4 mb-6">
+                    {% if listing.is_organic %}
+                    <span class="bg-green-100 text-green-800 px-3 py-1 rounded text-sm font-semibold">🌱 Organic</span>
+                    {% endif %}
+                    {% if listing.delivery_available %}
+                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded text-sm font-semibold">📦 Delivery +${{ listing.delivery_fee }}</span>
+                    {% endif %}
+                </div>
+
+                <!-- Description -->
+                <div class="border-t pt-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-3">Description</h3>
+                    <p class="text-gray-600 leading-relaxed whitespace-pre-wrap">{{ listing.description }}</p>
+                </div>
+
+                <!-- Details Grid -->
+                <div class="border-t mt-6 pt-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Product Details</h3>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-gray-600 text-sm">Available</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ listing.quantity }} {{ listing.unit }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 text-sm">Price Per Unit</p>
+                            <p class="text-2xl font-bold text-green-600">${{ listing.price_per_unit }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 text-sm">Total Value</p>
+                            <p class="text-2xl font-bold text-blue-600">${{ listing.total_price }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 text-sm">Posted On</p>
+                            <p class="text-lg font-bold text-gray-900">{{ listing.created_at|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+
+                    {% if listing.harvest_date or listing.expiry_date %}
+                    <div class="mt-6 pt-6 border-t space-y-2">
+                        {% if listing.harvest_date %}
+                        <p class="text-gray-600 text-sm">
+                            <i class="ri-calendar-2-line text-green-600"></i>
+                            <span class="font-semibold">Harvested:</span> {{ listing.harvest_date|date:"F j, Y" }}
+                        </p>
+                        {% endif %}
+                        {% if listing.expiry_date %}
+                        <p class="text-gray-600 text-sm">
+                            <i class="ri-alarm-warning-line text-orange-600"></i>
+                            <span class="font-semibold">Expires:</span> {{ listing.expiry_date|date:"F j, Y" }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar (1/3 width) -->
+    <div>
+        <!-- Seller Card -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Seller</h3>
+            
+            <div class="flex items-center mb-6">
+                <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
+                    <i class="ri-user-line text-2xl text-green-600"></i>
+                </div>
+                <div class="ml-3">
+                    <h4 class="font-bold text-gray-900">{{ listing.seller.owner.get_full_name|default:listing.seller.owner.username }}</h4>
+                    <p class="text-gray-600 text-sm">{{ listing.seller.farm_name }}</p>
+                </div>
+            </div>
+
+            <div class="space-y-3 text-sm mb-4">
+                {% if listing.seller.owner.phone_number %}
+                <p class="text-gray-600">
+                    <i class="ri-phone-line text-green-600 mr-2"></i>
+                    <a href="tel:{{ listing.seller.owner.phone_number }}" class="text-green-600 hover:underline">
+                        {{ listing.seller.owner.phone_number }}
+                    </a>
+                </p>
+                {% endif %}
+                {% if listing.seller.owner.email %}
+                <p class="text-gray-600">
+                    <i class="ri-mail-line text-green-600 mr-2"></i>
+                    <a href="mailto:{{ listing.seller.owner.email }}" class="text-green-600 hover:underline">
+                        {{ listing.seller.owner.email }}
+                    </a>
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Buy CTA -->
+        {% if user.is_authenticated and user != listing.seller.owner %}
+        <div class="bg-green-50 border-2 border-green-300 rounded-lg p-6 sticky top-24">
+            <a href="{% url 'core:buy_product' listing.pk %}" class="w-full block text-center bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-bold mb-3">
+                <i class="ri-shopping-cart-2-line"></i> Proceed to Buy
+            </a>
+            <p class="text-gray-600 text-sm text-center">Minimum order: 1 {{ listing.unit }}</p>
+        </div>
+        {% elif user == listing.seller.owner %}
+        <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 text-center">
+            <i class="ri-check-double-line text-3xl text-blue-600 block mb-2"></i>
+            <p class="font-bold text-gray-900">Your Product</p>
+        </div>
+        {% else %}
+        <div class="bg-orange-50 border-2 border-orange-300 rounded-lg p-6">
+            <h4 class="font-bold text-gray-900 mb-3">Want to Buy?</h4>
+            <a href="{% url 'core:register' %}" class="w-full block text-center bg-orange-600 text-white py-2 rounded hover:bg-orange-700 transition font-bold mb-2 text-sm">
+                Create Account
+            </a>
+            <a href="{% url 'core:login' %}" class="w-full block text-center border-2 border-orange-600 text-orange-600 py-2 rounded hover:bg-orange-50 transition font-bold text-sm">
+                Sign In
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Share -->
+        <div class="bg-white rounded-lg shadow p-6 mt-6">
+            <h4 class="font-bold text-gray-900 mb-3">Share</h4>
+            <div class="flex gap-2">
+                <button onclick="alert('Share feature coming soon!')" class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 text-sm font-semibold">
+                    <i class="ri-facebook-line"></i>
+                </button>
+                <button onclick="alert('Share feature coming soon!')" class="flex-1 bg-blue-400 text-white py-2 rounded hover:bg-blue-500 text-sm font-semibold">
+                    <i class="ri-twitter-line"></i>
+                </button>
+                <button onclick="alert('Share feature coming soon!')" class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 text-sm font-semibold">
+                    <i class="ri-whatsapp-line"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back to Marketplace -->
+<div class="mt-8 text-center">
+    <a href="{% url 'core:marketplace' %}" class="inline-block text-green-600 hover:text-green-700 font-semibold">
+        <i class="ri-arrow-left-line"></i> Back to Marketplace
+    </a>
+</div>
+{% endblock %}
+                <span class="font-medium">{{ listing.quantity }} {{ listing.unit }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-500">Total Price:</span>
+                <span class="font-bold">${{ listing.total_price }}</span>
+            </div>
+            {% if listing.is_organic %}
+            <div class="flex justify-between">
+                <span class="text-gray-500">Certification:</span>
+                <span class="text-green-600 font-medium">Organic</span>
+            </div>
+            {% endif %}
+            {% if listing.harvest_date %}
+            <div class="flex justify-between">
+                <span class="text-gray-500">Harvest Date:</span>
+                <span>{{ listing.harvest_date }}</span>
+            </div>
+            {% endif %}
+            {% if listing.expiry_date %}
+            <div class="flex justify-between">
+                <span class="text-gray-500">Expiry Date:</span>
+                <span class="{% if listing.expiry_date <= today %}text-red-600{% else %}text-gray-700{% endif %}">
+                    {{ listing.expiry_date }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="mt-4">
+            <h3 class="font-semibold mb-2">Description</h3>
+            <p class="text-gray-600">{{ listing.description|default:"No description provided." }}</p>
+        </div>
+        
+        <div class="mt-6 space-y-3">
+            <a href="{% url 'core:buy_product' listing.id %}" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-center block">
+                Buy Now
+            </a>
+            <a href="{% url 'core:contact_seller' listing.id %}" class="w-full border border-green-600 text-green-600 px-6 py-3 rounded-lg hover:bg-green-50 transition text-center block">
+                Contact Seller
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

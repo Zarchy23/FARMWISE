@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}My Farms{% endblock %}
+{% block page_title %}My Farms{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <div>
+        <h1 class="text-2xl font-bold">My Farms</h1>
+        <p class="text-gray-500">Manage all your farms in one place</p>
+    </div>
+    <a href="{% url 'core:farm_create' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+        <i class="ri-add-line"></i>
+        <span>Add Farm</span>
+    </a>
+</div>
+
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for farm in farms %}
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden card-hover">
+        <div class="h-32 bg-gradient-to-r from-green-400 to-green-600 flex items-center justify-center">
+            <i class="ri-farm-line text-5xl text-white"></i>
+        </div>
+        <div class="p-5">
+            <h3 class="font-bold text-xl mb-1">{{ farm.name }}</h3>
+            <p class="text-gray-500 text-sm">{{ farm.total_area_hectares }} hectares</p>
+            <p class="text-gray-500 text-sm mb-3">{{ farm.get_farm_type_display }}</p>
+            
+            <div class="flex items-center space-x-2 mb-4">
+                {% if farm.is_verified %}
+                <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full"><i class="ri-verified-badge-line"></i> Verified</span>
+                {% endif %}
+                <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full">{{ farm.status }}</span>
+            </div>
+            
+            <div class="flex space-x-2">
+                <a href="{% url 'core:farm_detail' farm.id %}" class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-center hover:bg-blue-700 transition text-sm">View</a>
+                <a href="{% url 'core:farm_edit' farm.id %}" class="bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700 transition text-sm"><i class="ri-edit-line"></i></a>
+                <a href="{% url 'core:farm_delete' farm.id %}" class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition text-sm"><i class="ri-delete-bin-line"></i></a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center py-12 bg-white rounded-xl">
+        <i class="ri-farm-line text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500">No farms yet.</p>
+        <a href="{% url 'core:farm_create' %}" class="text-green-600 hover:underline mt-2 inline-block">Create your first farm</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

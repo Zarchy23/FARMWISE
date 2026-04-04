@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Policy Details{% endblock %}
+{% block page_title %}Insurance Policy Details{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">{{ policy.get_policy_type_display }}</h1>
+                    <p class="text-blue-100">Policy #{{ policy.policy_number }}</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-white text-blue-600">
+                    {{ policy.get_status_display }}
+                </span>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-bold text-gray-700 mb-3">Policy Information</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between border-b py-2">
+                            <span class="text-gray-500">Provider:</span>
+                            <span>{{ policy.provider }}</span>
+                        </div>
+                        <div class="flex justify-between border-b py-2">
+                            <span class="text-gray-500">Start Date:</span>
+                            <span>{{ policy.start_date }}</span>
+                        </div>
+                        <div class="flex justify-between border-b py-2">
+                            <span class="text-gray-500">End Date:</span>
+                            <span>{{ policy.end_date }}</span>
+                        </div>
+                        <div class="flex justify-between border-b py-2">
+                            <span class="text-gray-500">Sum Insured:</span>
+                            <span class="font-bold">${{ policy.sum_insured }}</span>
+                        </div>
+                        <div class="flex justify-between border-b py-2">
+                            <span class="text-gray-500">Premium Paid:</span>
+                            <span>${{ policy.premium_paid }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="font-bold text-gray-700 mb-3">Coverage Details</h3>
+                    <div class="space-y-2">
+                        {% if policy.crop_type %}
+                        <div class="flex justify-between border-b py-2">
+                            <span class="text-gray-500">Crop Type:</span>
+                            <span>{{ policy.crop_type }}</span>
+                        </div>
+                        {% endif %}
+                        {% if policy.area_hectares %}
+                        <div class="flex justify-between border-b py-2">
+                            <span class="text-gray-500">Area:</span>
+                            <span>{{ policy.area_hectares }} hectares</span>
+                        </div>
+                        {% endif %}
+                        {% if policy.livestock_count %}
+                        <div class="flex justify-between border-b py-2">
+                            <span class="text-gray-500">Livestock Count:</span>
+                            <span>{{ policy.livestock_count }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="flex justify-between border-b py-2">
+                            <span class="text-gray-500">Farm:</span>
+                            <span>{{ policy.farm.name }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex space-x-3">
+                <a href="{% url 'core:file_claim' policy.id %}" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition">File a Claim</a>
+                <a href="{% url 'core:insurance' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Back</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

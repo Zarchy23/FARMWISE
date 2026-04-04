@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Breeding Record{% endblock %}
+{% block page_title %}Add Breeding Record{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-2">Add Breeding Record</h1>
+        <p class="text-gray-500 mb-6">Animal: {{ animal.tag_number }} ({{ animal.animal_type.breed }})</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Breeding Date</label>
+                <input type="date" name="breeding_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Mate Animal</label>
+                <select name="mate_animal" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Mate --</option>
+                    {% for mate in available_mates %}
+                    <option value="{{ mate.id }}">{{ mate.tag_number }} - {{ mate.animal_type.breed }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Breeding Method</label>
+                <input type="text" name="method" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Natural, Artificial Insemination">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Result</label>
+                <select name="result" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Result --</option>
+                    <option value="success">Successful - Pregnant</option>
+                    <option value="failed">Failed</option>
+                    <option value="aborted">Aborted</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Expected Calving Date</label>
+                <input type="date" name="expected_calving_date" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-sm text-gray-500 mt-1">Auto-calculated based on gestation period</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Notes</label>
+                <textarea name="notes" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Additional notes about breeding..."></textarea>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Save Record</button>
+                <a href="{% url 'core:animal_detail' animal.id %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const breedingDate = document.querySelector('input[name="breeding_date"]');
+    const expectedDate = document.querySelector('input[name="expected_calving_date"]');
+    
+    breedingDate.addEventListener('change', function() {
+        if (this.value && {{ animal.animal_type.gestation_days|default:"280" }}) {
+            const date = new Date(this.value);
+            date.setDate(date.getDate() + {{ animal.animal_type.gestation_days|default:"280" }});
+            expectedDate.value = date.toISOString().split('T')[0];
+        }
+    });
+    
+    document.querySelector('input[name="breeding_date"]').value = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

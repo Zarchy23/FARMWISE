@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}Sell Product{% endblock %}
+{% block page_title %}List Product for Sale{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">List Product for Sale</h1>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Product Name</label>
+                <input type="text" name="product_name" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Organic Tomatoes, Fresh Maize">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Category</label>
+                <input type="text" name="category" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Vegetables, Fruits, Grains">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Description</label>
+                <textarea name="description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Describe your product, quality, freshness, etc."></textarea>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Quantity</label>
+                    <input type="number" step="0.01" name="quantity" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Unit</label>
+                    <select name="unit" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="kg">Kilogram (kg)</option>
+                        <option value="g">Gram (g)</option>
+                        <option value="ton">Ton</option>
+                        <option value="liter">Liter</option>
+                        <option value="piece">Piece</option>
+                        <option value="bunch">Bunch</option>
+                        <option value="crate">Crate</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Price per Unit ($)</label>
+                <input type="number" step="0.01" name="price_per_unit" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-sm text-gray-500 mt-1">Total price will be calculated automatically</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Harvest Date</label>
+                    <input type="date" name="harvest_date" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Expiry Date</label>
+                    <input type="date" name="expiry_date" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" name="is_organic" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    <span class="ml-2 text-gray-700">This product is certified organic</span>
+                </label>
+            </div>
+            
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" name="delivery_available" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    <span class="ml-2 text-gray-700">Delivery available</span>
+                </label>
+            </div>
+            
+            <div class="mb-4" id="deliveryFeeField" style="display: none;">
+                <label class="block text-gray-700 font-medium mb-2">Delivery Fee ($)</label>
+                <input type="number" step="0.01" name="delivery_fee" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" value="0">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Product Images</label>
+                <input type="file" name="images" multiple accept="image/*" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                <p class="text-sm text-gray-500 mt-1">You can upload multiple images</p>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">List for Sale</button>
+                <a href="{% url 'core:marketplace' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const deliveryCheckbox = document.querySelector('input[name="delivery_available"]');
+    const deliveryFeeField = document.getElementById('deliveryFeeField');
+    
+    deliveryCheckbox.addEventListener('change', function() {
+        deliveryFeeField.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Calculate total preview
+    const quantityInput = document.querySelector('input[name="quantity"]');
+    const priceInput = document.querySelector('input[name="price_per_unit"]');
+    
+    function updateTotalPreview() {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const total = quantity * price;
+        const previewDiv = document.getElementById('totalPreview') || createTotalPreview();
+        previewDiv.innerHTML = total > 0 ? `Total Listing Price: $${total.toFixed(2)}` : '';
+    }
+    
+    function createTotalPreview() {
+        const div = document.createElement('div');
+        div.id = 'totalPreview';
+        div.className = 'mt-2 text-sm text-green-600 font-medium';
+        priceInput.parentNode.appendChild(div);
+        return div;
+    }
+    
+    quantityInput.addEventListener('input', updateTotalPreview);
+    priceInput.addEventListener('input', updateTotalPreview);
+</script>
+{% endblock %}

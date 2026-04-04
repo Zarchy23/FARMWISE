@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Buy {{ listing.product_name }}{% endblock %}
+{% block page_title %}Purchase Product{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-6">Purchase Product</h1>
+
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <!-- Product Summary -->
+                <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                    <h3 class="font-bold text-gray-900 mb-4">Order Summary</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Product:</span>
+                            <span class="font-semibold">{{ listing.product_name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Seller:</span>
+                            <span class="font-semibold">{{ listing.seller.farm_name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Available:</span>
+                            <span class="font-semibold">{{ listing.quantity }} {{ listing.unit }}</span>
+                        </div>
+                        <div class="flex justify-between border-t pt-3">
+                            <span class="text-gray-600">Price per unit:</span>
+                            <span class="font-bold text-lg">${{ listing.price_per_unit }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quantity Section -->
+                <div class="border rounded-lg p-6">
+                    <h3 class="font-bold text-gray-900 mb-4">Quantity</h3>
+                    <div class="mb-4">
+                        <label for="id_quantity" class="block text-gray-700 font-semibold mb-2">How much would you like to order?</label>
+                        {{ form.quantity }}
+                        <p class="text-gray-600 text-sm mt-2">Maximum available: {{ listing.quantity }} {{ listing.unit }}</p>
+                    </div>
+                    {% if form.quantity.errors %}
+                    <div class="text-red-600 text-sm">{{ form.quantity.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Delivery Address -->
+                <div class="border rounded-lg p-6">
+                    <h3 class="font-bold text-gray-900 mb-4">Delivery Address</h3>
+                    <div>
+                        <label for="id_delivery_address" class="block text-gray-700 font-semibold mb-2">Where should we deliver?</label>
+                        {{ form.delivery_address }}
+                        <p class="text-gray-600 text-sm mt-2">Provide your complete delivery address</p>
+                    </div>
+                    {% if form.delivery_address.errors %}
+                    <div class="text-red-600 text-sm">{{ form.delivery_address.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Buyer Notes -->
+                <div class="border rounded-lg p-6">
+                    <h3 class="font-bold text-gray-900 mb-4">Additional Notes (Optional)</h3>
+                    <div>
+                        <label for="id_buyer_notes" class="block text-gray-700 font-semibold mb-2">Any special requests?</label>
+                        {{ form.buyer_notes }}
+                        <p class="text-gray-600 text-sm mt-2">e.g., preferred packaging, delivery time, quality preferences</p>
+                    </div>
+                    {% if form.buyer_notes.errors %}
+                    <div class="text-red-600 text-sm">{{ form.buyer_notes.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex gap-4">
+                    <a href="{% url 'core:listing_detail' listing.pk %}" class="flex-1 text-center border-2 border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition font-bold">
+                        Cancel
+                    </a>
+                    <button type="submit" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-bold">
+                        <i class="ri-check-line"></i> Continue to Checkout
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order Preview Sidebar -->
+    <div>
+        <div class="bg-green-50 border-2 border-green-300 rounded-lg p-6 sticky top-24">
+            <h3 class="font-bold text-gray-900 mb-4">Order Preview</h3>
+
+            <div class="space-y-4">
+                <!-- Product -->
+                <div>
+                    <p class="text-gray-600 text-sm">Product</p>
+                    <p class="font-bold text-gray-900">{{ listing.product_name }}</p>
+                </div>
+
+                <!-- Unit Price -->
+                <div class="border-t pt-4">
+                    <p class="text-gray-600 text-sm">Unit Price</p>
+                    <p class="text-2xl font-bold text-green-600">${{ listing.price_per_unit }}</p>
+                </div>
+
+                <!-- Quantity Display (will update with JS) -->
+                <div class="border-t pt-4">
+                    <p class="text-gray-600 text-sm">Quantity Selected</p>
+                    <p class="text-xl font-bold text-gray-900" id="qty-display">
+                        <span id="qty-value">1</span> {{ listing.unit }}
+                    </p>
+                </div>
+
+                <!-- Subtotal -->
+                <div class="border-t pt-4">
+                    <p class="text-gray-600 text-sm">Subtotal</p>
+                    <p class="text-2xl font-bold text-gray-900" id="subtotal">
+                        $<span id="subtotal-value">{{ listing.price_per_unit }}</span>
+                    </p>
+                </div>
+
+                <!-- Delivery Fee (if applicable) -->
+                {% if listing.delivery_available %}
+                <div class="border-t pt-4">
+                    <p class="text-gray-600 text-sm">Delivery Fee</p>
+                    <p class="font-bold text-gray-900">${{ listing.delivery_fee }}</p>
+                </div>
+
+                <!-- Total -->
+                <div class="border-t pt-4 bg-white -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
+                    <p class="text-gray-600 text-sm">Total</p>
+                    <p class="text-3xl font-bold text-green-600" id="total">
+                        $<span id="total-value">{{ listing.price_per_unit|add:listing.delivery_fee }}</span>
+                    </p>
+                </div>
+                {% else %}
+                <div class="border-t pt-4 bg-white -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
+                    <p class="text-gray-600 text-sm">Total</p>
+                    <p class="text-3xl font-bold text-green-600" id="total">
+                        $<span id="total-value">{{ listing.price_per_unit }}</span>
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Info -->
+            <div class="mt-6 pt-4 border-t text-sm text-gray-600">
+                <p class="mb-2"><i class="ri-shield-check-line text-green-600"></i> Secure payment</p>
+                <p><i class="ri-truck-line text-green-600"></i> Fast delivery available</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Update order preview on quantity change
+    const quantityInput = document.querySelector('input[name="quantity"]');
+    const subtotalSpan = document.querySelector('#subtotal-value');
+    const totalSpan = document.querySelector('#total-value');
+    const qtyValue = document.querySelector('#qty-value');
+    
+    const unitPrice = {{ listing.price_per_unit }};
+    const deliveryFee = {{ listing.delivery_fee }};
+
+    function updatePreview() {
+        const qty = parseFloat(quantityInput.value) || 1;
+        const subtotal = qty * unitPrice;
+        const total = subtotal + deliveryFee;
+        
+        qtyValue.textContent = qty;
+        subtotalSpan.textContent = subtotal.toFixed(2);
+        totalSpan.textContent = total.toFixed(2);
+    }
+
+    quantityInput.addEventListener('change', updatePreview);
+    quantityInput.addEventListener('input', updatePreview);
+</script>
+{% endblock %}

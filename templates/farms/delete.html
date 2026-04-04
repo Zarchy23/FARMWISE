@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Delete Farm{% endblock %}
+{% block page_title %}Delete Farm{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8 text-center">
+        <i class="ri-delete-bin-line text-6xl text-red-500 mb-4"></i>
+        <h1 class="text-2xl font-bold mb-4">Delete Farm</h1>
+        <p class="text-gray-600 mb-6">
+            Are you sure you want to delete <strong class="font-bold">{{ farm.name }}</strong>?
+            This action cannot be undone and will remove all associated fields, crops, and data.
+        </p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="flex space-x-3">
+                <button type="submit" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">Yes, Delete</button>
+                <a href="{% url 'core:farm_detail' farm.id %}" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition text-center">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

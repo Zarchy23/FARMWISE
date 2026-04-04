@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}My Listings{% endblock %}
+{% block page_title %}My Product Listings{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold">My Listings</h1>
+            <p class="text-gray-500">Manage your products for sale</p>
+        </div>
+        <a href="{% url 'core:create_listing' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+            <i class="ri-add-line"></i> New Listing
+        </a>
+    </div>
+
+    <!-- Listings Table -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="text-left p-4">Product</th>
+                        <th class="text-left p-4">Quantity</th>
+                        <th class="text-left p-4">Price</th>
+                        <th class="text-left p-4">Status</th>
+                        <th class="text-left p-4">Created</th>
+                        <th class="text-left p-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for listing in listings %}
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-4 font-medium">{{ listing.product_name }}</td>
+                        <td class="p-4">{{ listing.quantity }} {{ listing.unit }}</td>
+                        <td class="p-4">${{ listing.price_per_unit }}/{{ listing.unit }}</td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold 
+                                {% if listing.status == 'active' %}bg-green-100 text-green-700
+                                {% elif listing.status == 'sold' %}bg-blue-100 text-blue-700
+                                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                {{ listing.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="p-4">{{ listing.created_at|date:"M d, Y" }}</td>
+                        <td class="p-4">
+                            <div class="flex space-x-2">
+                                <a href="{% url 'core:listing_detail' listing.id %}" class="text-blue-600 hover:text-blue-800"><i class="ri-eye-line"></i></a>
+                                <a href="#" class="text-yellow-600 hover:text-yellow-800"><i class="ri-edit-line"></i></a>
+                                <a href="#" class="text-red-600 hover:text-red-800"><i class="ri-delete-bin-line"></i></a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center p-8 text-gray-500">
+                            No listings yet. <a href="{% url 'core:create_listing' %}" class="text-green-600">Create your first listing</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

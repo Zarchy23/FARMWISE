@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Record Harvest{% endblock %}
+{% block page_title %}Record Harvest{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-2">Record Harvest</h1>
+        <p class="text-gray-500 mb-6">Crop: {{ crop.crop_type.name }} in {{ crop.field.name }}</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Harvest Date</label>
+                    <input type="date" name="harvest_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Quantity (kg)</label>
+                    <input type="number" step="0.01" name="quantity_kg" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Quality Grade</label>
+                <select name="quality_grade" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="premium">Premium Grade</option>
+                    <option value="grade_a">Grade A</option>
+                    <option value="grade_b">Grade B</option>
+                    <option value="grade_c">Grade C</option>
+                    <option value="reject">Rejected</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Selling Price (per kg)</label>
+                <input type="number" step="0.01" name="selling_price_kg" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="$">
+                <p class="text-sm text-gray-500 mt-1">Total revenue will be calculated automatically</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Buyer Name</label>
+                <input type="text" name="buyer_name" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Notes</label>
+                <textarea name="notes" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Quality observations, market conditions, etc."></textarea>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Save Harvest</button>
+                <a href="{% url 'core:crop_detail' crop.id %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelector('input[name="harvest_date"]').value = today;
+    
+    // Calculate total revenue preview
+    const quantityInput = document.querySelector('input[name="quantity_kg"]');
+    const priceInput = document.querySelector('input[name="selling_price_kg"]');
+    
+    function updateRevenuePreview() {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const revenue = quantity * price;
+        const previewDiv = document.getElementById('revenuePreview') || createRevenuePreview();
+        previewDiv.innerHTML = revenue > 0 ? `Estimated Revenue: $${revenue.toFixed(2)}` : '';
+    }
+    
+    function createRevenuePreview() {
+        const div = document.createElement('div');
+        div.id = 'revenuePreview';
+        div.className = 'mt-2 text-sm text-green-600 font-medium';
+        priceInput.parentNode.appendChild(div);
+        return div;
+    }
+    
+    quantityInput.addEventListener('input', updateRevenuePreview);
+    priceInput.addEventListener('input', updateRevenuePreview);
+</script>
+{% endblock %}

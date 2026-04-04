@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Weather Alerts{% endblock %}
+{% block page_title %}Weather Alerts{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold">Active Weather Alerts</h1>
+        <a href="{% url 'core:weather' %}" class="text-green-600 hover:underline">View Forecast →</a>
+    </div>
+    
+    {% for alert in alerts %}
+    <div class="rounded-xl shadow overflow-hidden border-l-4 
+        {% if alert.severity == 'emergency' %}border-red-600 bg-red-50
+        {% elif alert.severity == 'alert' %}border-orange-500 bg-orange-50
+        {% elif alert.severity == 'warning' %}border-yellow-500 bg-yellow-50
+        {% else %}border-blue-500 bg-blue-50{% endif %}">
+        <div class="p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h3 class="text-xl font-bold">{{ alert.title }}</h3>
+                    <p class="text-sm text-gray-500 mt-1">{{ alert.farm.name }} | {{ alert.start_date|date:"F j, H:i" }}</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-sm font-semibold
+                    {% if alert.severity == 'emergency' %}bg-red-600 text-white
+                    {% elif alert.severity == 'alert' %}bg-orange-500 text-white
+                    {% elif alert.severity == 'warning' %}bg-yellow-500 text-white
+                    {% else %}bg-blue-500 text-white{% endif %}">
+                    {{ alert.get_severity_display|upper }}
+                </span>
+            </div>
+            <p class="mt-3">{{ alert.message }}</p>
+            <div class="mt-4 flex space-x-3">
+                {% if not alert.is_read %}
+                <a href="{% url 'core:mark_alert_read' alert.id %}" class="text-sm text-green-600 hover:underline">Mark as Read</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="bg-white rounded-xl shadow p-12 text-center">
+        <i class="ri-cloud-line text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500">No active weather alerts for your farms.</p>
+        <p class="text-sm text-gray-400 mt-2">Check back during severe weather conditions</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

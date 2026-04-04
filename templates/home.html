@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}FarmWise - Revolutionizing Agriculture{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<style>
+    /* Hide sidebar on home page */
+    aside { display: none !important; }
+    .sidebar { display: none !important; }
+    body { margin-left: 0 !important; }
+    main, .main-content { margin-left: 0 !important; width: 100% !important; }
+</style>
+
+<!-- Top Navigation Bar with Auth Buttons -->
+<nav class="fixed top-0 left-0 right-0 bg-gray-900/95 backdrop-blur border-b border-green-700/30 z-50">
+    <div class="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-2 text-white text-2xl font-bold">
+            <i class="ri-leaf-line text-green-500"></i>
+            <span>FarmWise</span>
+        </div>
+        <div class="flex gap-3">
+            {% if user.is_authenticated %}
+                <div class="text-white text-sm">Welcome, {{ user.first_name|default:user.username }}!</div>
+                <a href="{% url 'core:dashboard' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium">
+                    <i class="ri-folder-open-line mr-1"></i>Dashboard
+                </a>
+                <a href="{% url 'logout' %}" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition text-sm font-medium">
+                    <i class="ri-logout-box-line mr-1"></i>Logout
+                </a>
+            {% else %}
+                <a href="{% url 'core:register' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium">
+                    <i class="ri-user-add-line mr-1"></i>Register
+                </a>
+                <a href="{% url 'login' %}" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition text-sm font-medium">
+                    <i class="ri-login-box-line mr-1"></i>Login
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<!-- Full Page Background -->
+<style>
+    .hero-full-page {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        z-index: -1;
+    }
+    
+    .page-wrapper {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        margin-top: 60px;
+    }
+</style>
+
+<div class="hero-full-page" style="background-image: url('https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=1920&h=1080&fit=crop');"></div>
+
+<!-- Main Hero Content -->
+<div class="page-wrapper">
+    <!-- Dark Overlay -->
+    <div class="absolute inset-0 bg-black/40 z-0"></div>
+    
+    <!-- Content -->
+    <div class="relative z-10 flex-1 flex flex-col justify-center items-center text-white px-6 text-center max-w-3xl">
+        <!-- Animated Background Elements -->
+        <div class="absolute inset-0 opacity-10 z-0">
+            <div class="absolute top-1/4 right-1/4 w-64 h-64 bg-green-500 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-1/4 left-1/4 w-64 h-64 bg-blue-500 rounded-full blur-3xl"></div>
+        </div>
+        
+        <!-- Text Content -->
+        <div class="relative z-10">
+            <h1 class="text-5xl md:text-7xl font-bold mb-4 leading-tight drop-shadow-lg">
+                Revolutionize Your Farm
+            </h1>
+            <p class="text-xl md:text-2xl text-gray-100 mb-8 drop-shadow-md">
+                AI-Powered Agriculture Management with Real-time Analytics
+            </p>
+            
+            <!-- CTA Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="{% url 'core:register' %}" class="bg-green-600 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-green-700 transition shadow-lg inline-block">
+                    Get Started Now
+                </a>
+                <a href="{% url 'login' %}" class="bg-white/20 backdrop-blur border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white/30 transition shadow-lg inline-block">
+                    Learn More
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer (minimal) -->
+<footer class="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur text-gray-300 py-2 text-center z-40 text-xs">
+    <p>&copy; 2024 FarmWise. All rights reserved.</p>
+</footer>
+{% endblock %}

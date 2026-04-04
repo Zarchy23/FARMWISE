@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Buy Insurance{% endblock %}
+{% block page_title %}Purchase Insurance{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Purchase Crop Insurance</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Policy Type</label>
+                <select name="policy_type" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="crop">Crop Insurance</option>
+                    <option value="livestock">Livestock Insurance</option>
+                    <option value="equipment">Equipment Insurance</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Select Farm</label>
+                <select name="farm" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Farm --</option>
+                    {% for farm in farms %}
+                    <option value="{{ farm.id }}">{{ farm.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-4" id="cropFields">
+                <label class="block text-gray-700 font-medium mb-2">Crop Type</label>
+                <input type="text" name="crop_type" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Maize, Wheat, Rice">
+            </div>
+            
+            <div class="mb-4" id="areaFields">
+                <label class="block text-gray-700 font-medium mb-2">Area (hectares)</label>
+                <input type="number" step="0.01" name="area_hectares" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" id="areaHectares">
+            </div>
+            
+            <div class="mb-4" id="livestockFields" style="display: none;">
+                <label class="block text-gray-700 font-medium mb-2">Number of Livestock</label>
+                <input type="number" name="livestock_count" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Sum Insured ($ per hectare)</label>
+                <input type="number" name="coverage_per_hectare" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" value="500" id="coveragePerHectare">
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Start Date</label>
+                    <input type="date" name="start_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">End Date</label>
+                    <input type="date" name="end_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Insurance Provider</label>
+                <input type="text" name="provider" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Insurance company name">
+            </div>
+            
+            <!-- Premium Calculation -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 class="font-bold mb-3">Premium Calculation</h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>Sum Insured:</span>
+                        <span id="sumInsuredDisplay">$0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Premium Rate:</span>
+                        <span>5%</span>
+                    </div>
+                    <div class="flex justify-between border-t pt-2 font-bold text-green-600">
+                        <span>Premium to Pay:</span>
+                        <span id="premiumDisplay">$0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Purchase Policy</button>
+                <a href="{% url 'core:insurance' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const policyType = document.querySelector('select[name="policy_type"]');
+    const cropFields = document.getElementById('cropFields');
+    const areaFields = document.getElementById('areaFields');
+    const livestockFields = document.getElementById('livestockFields');
+    const areaInput = document.getElementById('areaHectares');
+    const coverageInput = document.getElementById('coveragePerHectare');
+    const sumInsuredDisplay = document.getElementById('sumInsuredDisplay');
+    const premiumDisplay = document.getElementById('premiumDisplay');
+    
+    policyType.addEventListener('change', function() {
+        if (this.value === 'crop') {
+            cropFields.style.display = 'block';
+            areaFields.style.display = 'block';
+            livestockFields.style.display = 'none';
+        } else if (this.value === 'livestock') {
+            cropFields.style.display = 'none';
+            areaFields.style.display = 'none';
+            livestockFields.style.display = 'block';
+        } else {
+            cropFields.style.display = 'block';
+            areaFields.style.display = 'block';
+            livestockFields.style.display = 'none';
+        }
+    });
+    
+    function calculatePremium() {
+        const area = parseFloat(areaInput.value) || 0;
+        const coverage = parseFloat(coverageInput.value) || 0;
+        const sumInsured = area * coverage;
+        const premium = sumInsured * 0.05;
+        
+        sumInsuredDisplay.textContent = `$${sumInsured.toFixed(2)}`;
+        premiumDisplay.textContent = `$${premium.toFixed(2)}`;
+    }
+    
+    areaInput.addEventListener('input', calculatePremium);
+    coverageInput.addEventListener('input', calculatePremium);
+    
+    // Set default dates
+    const today = new Date();
+    const startDateInput = document.querySelector('input[name="start_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    
+    startDateInput.value = today.toISOString().split('T')[0];
+    const endDate = new Date(today);
+    endDate.setFullYear(today.getFullYear() + 1);
+    endDateInput.value = endDate.toISOString().split('T')[0];
+</script>
+{% endblock %}

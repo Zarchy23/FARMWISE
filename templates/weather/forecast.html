@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}Weather Forecast{% endblock %}
+{% block page_title %}Weather Forecast{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold">Weather Forecast</h1>
+        <p class="text-gray-600">7-day forecast to plan your farm activities</p>
+    </div>
+
+    <!-- Current Weather -->
+    <div class="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg shadow-lg p-8 text-white mb-8">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-lg opacity-90">Today's Weather</p>
+                <div class="text-5xl font-bold mt-2">28°C</div>
+                <p class="text-xl opacity-90 mt-2">Sunny & Clear</p>
+            </div>
+            <i class="ri-sun-line text-7xl opacity-50"></i>
+        </div>
+        <div class="mt-6 grid grid-cols-3 gap-4">
+            <div>
+                <p class="text-sm opacity-75">Humidity</p>
+                <p class="text-2xl font-bold">65%</p>
+            </div>
+            <div>
+                <p class="text-sm opacity-75">Wind Speed</p>
+                <p class="text-2xl font-bold">12 km/h</p>
+            </div>
+            <div>
+                <p class="text-sm opacity-75">Rainfall</p>
+                <p class="text-2xl font-bold">0 mm</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forecast Grid -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {% for item in forecast %}
+        <div class="bg-white rounded-lg shadow p-4 card-hover">
+            <p class="text-sm text-gray-600 mb-3">{{ item.day|date:"D, M d" }}</p>
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <p class="text-sm">{{ item.condition }}</p>
+                    <p class="text-2xl font-bold text-gray-700">{{ item.temp_high }}°C</p>
+                    <p class="text-sm text-gray-500">Lo: {{ item.temp_low }}°C</p>
+                </div>
+                <div class="text-4xl">
+                    {% if item.icon == 'sun' %}
+                    <i class="ri-sun-line text-yellow-500"></i>
+                    {% elif item.icon == 'cloud-sun' %}
+                    <i class="ri-cloud-sun-line text-gray-400"></i>
+                    {% elif item.icon == 'rainy' %}
+                    <i class="ri-rainy-line text-blue-500"></i>
+                    {% elif item.icon == 'cloudy' %}
+                    <i class="ri-cloud-line text-gray-400"></i>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Alerts Section -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+            <i class="ri-alert-line mr-2 text-yellow-500"></i>
+            Weather Alerts
+        </h2>
+        <div class="space-y-3">
+            <div class="border-l-4 border-yellow-500 bg-yellow-50 p-4 rounded">
+                <p class="font-semibold text-yellow-800">Dry Spell Expected</p>
+                <p class="text-sm text-yellow-700">Plan irrigation for the next 5 days</p>
+            </div>
+            <div class="border-l-4 border-blue-500 bg-blue-50 p-4 rounded">
+                <p class="font-semibold text-blue-800">Moderate Winds</p>
+                <p class="text-sm text-blue-700">Wind speeds expected to increase tomorrow</p>
+            </div>
+        </div>
+    </div>
+</div>
+        </div>
+        <div class="text-right">
+            <div class="text-4xl font-bold">{{ current.temp }}°C</div>
+            <div class="text-gray-500">{{ current.condition }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+    {% for day in forecast %}
+    <div class="bg-white rounded-xl shadow p-4 text-center">
+        <p class="font-bold">{{ day.day|date:"D" }}</p>
+        <p class="text-sm text-gray-500">{{ day.day|date:"M d" }}</p>
+        <i class="ri-{{ day.icon }}-line text-3xl my-2 {% if day.icon == 'sun' %}text-yellow-500{% elif day.icon == 'rainy' %}text-blue-500{% else %}text-gray-500{% endif %}"></i>
+        <p class="text-xl font-bold">{{ day.temp_high }}°</p>
+        <p class="text-sm text-gray-500">{{ day.temp_low }}°</p>
+        <p class="text-xs text-gray-400 mt-1">{{ day.condition }}</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% if alerts %}
+<div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+    <h3 class="font-bold text-yellow-800 flex items-center"><i class="ri-alert-line mr-2"></i> Weather Alerts</h3>
+    {% for alert in alerts %}
+    <div class="mt-2 text-sm text-yellow-700">{{ alert }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+    <h3 class="font-bold text-blue-800 flex items-center"><i class="ri-lightbulb-line mr-2"></i> Farming Tips</h3>
+    <ul class="mt-2 space-y-1 text-sm text-blue-700">
+        <li>• {% if forecast.0.condition == 'Rainy' %}Delay fertilizer application until after rain{% else %}Good time for fertilizer application{% endif %}</li>
+        <li>• Check soil moisture before irrigation planning</li>
+        <li>• Monitor for pest activity in warm, humid conditions</li>
+    </ul>
+</div>
+{% endblock %}

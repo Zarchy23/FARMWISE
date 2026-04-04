@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}Pest Detection{% endblock %}
+{% block page_title %}AI Pest Detection{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold">AI Pest Detection System</h1>
+        <p class="text-gray-600">Upload a photo of affected crop to identify pests and get treatment recommendations</p>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="grid lg:grid-cols-2 gap-8 mb-8">
+        <!-- Upload Form -->
+        <div class="bg-white rounded-lg shadow p-8">
+            <h2 class="text-xl font-bold mb-4">
+                <i class="ri-camera-line mr-2"></i>Upload Crop Image
+            </h2>
+            <form method="post" enctype="multipart/form-data" action="{% url 'core:pest_upload' %}">
+                {% csrf_token %}
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-green-500 transition">
+                    <input type="file" name="image" accept="image/*" class="hidden" id="imageInput" onchange="updateFileName()">
+                    <label for="imageInput" class="cursor-pointer">
+                        <i class="ri-image-add-line text-4xl text-gray-400 mb-2"></i>
+                        <p class="font-semibold text-gray-700 mt-2">Click to upload or drag and drop</p>
+                        <p class="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                    </label>
+                </div>
+                <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-semibold mt-4">
+                    Analyze Crop
+                </button>
+            </form>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-gradient-to-br from-green-50 to-blue-50 rounded-lg shadow p-8">
+            <h3 class="text-xl font-bold mb-4 text-green-800">How to Use</h3>
+            <div class="space-y-4">
+                <div class="flex space-x-4">
+                    <div class="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">1</div>
+                    <div>
+                        <p class="font-semibold">Take a Clear Photo</p>
+                        <p class="text-sm text-gray-600">Capture the affected area of your crop in good lighting</p>
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <div class="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">2</div>
+                    <div>
+                        <p class="font-semibold">Upload Image</p>
+                        <p class="text-sm text-gray-600">Select the image file from your device</p>
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <div class="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">3</div>
+                    <div>
+                        <p class="font-semibold">Get Diagnosis</p>
+                        <p class="text-sm text-gray-600">AI will identify the pest/disease and suggest treatments</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Section -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Detection History</h2>
+            <a href="{% url 'core:pest_history' %}" class="text-green-600 hover:text-green-700">View All →</a>
+        </div>
+        <p class="text-gray-600 text-center py-8">No detections yet. Upload an image to analyze your crops.</p>
+    </div>
+</div>
+
+<script>
+    function updateFileName() {
+        const input = document.getElementById('imageInput');
+        if (input.files.length > 0) {
+            const label = input.parentElement.parentElement;
+            label.innerHTML = '<i class="ri-check-line text-4xl text-green-600 mb-2"></i><p class="font-semibold text-green-700 mt-2">File selected</p><p class="text-sm text-gray-500">' + input.files[0].name + '</p>';
+        }
+    }
+</script>
+        
+        <form method="post" enctype="multipart/form-data" id="pestForm">
+            {% csrf_token %}
+            
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6 hover:border-green-500 transition cursor-pointer" id="dropZone">
+                <input type="file" name="image" accept="image/*" required class="hidden" id="fileInput">
+                <i class="ri-upload-cloud-2-line text-4xl text-gray-400 mb-2"></i>
+                <p class="text-gray-500">Click or drag and drop to upload</p>
+                <p class="text-sm text-gray-400 mt-1">JPG, PNG, or JPEG (Max 10MB)</p>
+            </div>
+            
+            <div id="previewContainer" class="hidden mb-6">
+                <img id="previewImage" class="max-h-64 mx-auto rounded-lg shadow">
+            </div>
+            
+            <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition" id="analyzeBtn">
+                Analyze Image
+            </button>
+        </form>
+    </div>
+    
+    {% if result %}
+    <div class="bg-white rounded-xl shadow-lg p-6 mt-6">
+        <h2 class="text-xl font-bold mb-4 flex items-center"><i class="ri-flask-line text-green-600 mr-2"></i> Detection Result</h2>
+        <div class="space-y-3">
+            <div class="flex justify-between items-center border-b pb-2">
+                <span class="font-medium">Detected Pest/Disease:</span>
+                <span class="text-lg font-bold text-red-600">{{ result.pest_name }}</span>
+            </div>
+            <div class="flex justify-between items-center border-b pb-2">
+                <span class="font-medium">Confidence:</span>
+                <span class="text-green-600 font-bold">{{ result.confidence }}%</span>
+            </div>
+            <div class="border-b pb-2">
+                <span class="font-medium block mb-1">Treatment Recommendation:</span>
+                <p class="text-gray-700">{{ result.treatment }}</p>
+            </div>
+            <div class="pt-2">
+                <span class="font-medium block mb-1">Severity:</span>
+                <span class="px-3 py-1 rounded-full text-sm font-semibold 
+                    {% if result.severity == 'high' %}bg-red-100 text-red-700
+                    {% elif result.severity == 'medium' %}bg-yellow-100 text-yellow-700
+                    {% else %}bg-green-100 text-green-700{% endif %}">
+                    {{ result.severity|upper }}
+                </span>
+            </div>
+        </div>
+        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+            <i class="ri-alert-line mr-1"></i> Consult with a local agronomist for confirmation before applying treatment.
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewImage = document.getElementById('previewImage');
+    
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-green-500', 'bg-green-50');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-green-500', 'bg-green-50');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-green-500', 'bg-green-50');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            fileInput.files = file;
+            previewFile(file);
+        }
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+        if (fileInput.files[0]) {
+            previewFile(fileInput.files[0]);
+        }
+    });
+    
+    function previewFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImage.src = e.target.result;
+            previewContainer.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+</script>
+{% endblock %}

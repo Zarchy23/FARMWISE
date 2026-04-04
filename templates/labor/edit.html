@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Edit Worker{% endblock %}
+{% block page_title %}Edit Worker{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Edit Worker: {{ worker.worker.get_full_name }}</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Hourly Wage ($)</label>
+                <input type="number" step="0.50" name="hourly_wage" value="{{ worker.hourly_wage }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Status</label>
+                <select name="is_active" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="true" {% if worker.is_active %}selected{% endif %}>Active</option>
+                    <option value="false" {% if not worker.is_active %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Skills</label>
+                <textarea name="skills" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">{{ worker.skills|join:", " }}</textarea>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Emergency Contact</label>
+                    <input type="text" name="emergency_contact" value="{{ worker.emergency_contact }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Emergency Phone</label>
+                    <input type="tel" name="emergency_phone" value="{{ worker.emergency_phone }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Notes</label>
+                <textarea name="notes" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">{{ worker.notes }}</textarea>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Save Changes</button>
+                <a href="{% url 'core:labor' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

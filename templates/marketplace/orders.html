@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}My Orders{% endblock %}
+{% block page_title %}My Orders{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold">My Orders</h1>
+            <p class="text-gray-500">Track your purchases</p>
+        </div>
+    </div>
+
+    <!-- Orders List -->
+    <div class="space-y-4">
+        {% for order in orders %}
+        <div class="bg-white rounded-xl shadow p-6">
+            <div class="flex justify-between items-start flex-wrap gap-4">
+                <div>
+                    <h3 class="text-xl font-bold">{{ order.listing.product_name }}</h3>
+                    <p class="text-gray-500 text-sm">Order #{{ order.id }} | {{ order.created_at|date:"M d, Y" }}</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-sm font-semibold 
+                    {% if order.status == 'delivered' %}bg-green-100 text-green-700
+                    {% elif order.status == 'processing' %}bg-blue-100 text-blue-700
+                    {% elif order.status == 'cancelled' %}bg-red-100 text-red-700
+                    {% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                    {{ order.get_status_display }}
+                </span>
+            </div>
+            
+            <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <p class="text-gray-500 text-sm">Quantity</p>
+                    <p class="font-medium">{{ order.quantity }} {{ order.listing.unit }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-sm">Unit Price</p>
+                    <p class="font-medium">${{ order.unit_price }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-sm">Total Amount</p>
+                    <p class="font-bold text-green-600">${{ order.total_amount }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-sm">Seller</p>
+                    <p class="font-medium">{{ order.listing.seller.name }}</p>
+                </div>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t">
+                <p class="text-gray-500 text-sm">Delivery Address</p>
+                <p class="text-sm">{{ order.delivery_address }}</p>
+            </div>
+            
+            {% if order.status == 'pending' %}
+            <div class="mt-4 flex space-x-3">
+                <a href="#" class="text-red-600 hover:text-red-800 text-sm">Cancel Order</a>
+            </div>
+            {% elif order.status == 'delivered' %}
+            <div class="mt-4">
+                <a href="#" class="text-green-600 hover:text-green-800 text-sm">Write a Review →</a>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="bg-white rounded-xl shadow p-12 text-center">
+            <i class="ri-shopping-bag-line text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">No orders yet.</p>
+            <a href="{% url 'core:marketplace' %}" class="text-green-600 hover:underline mt-2 inline-block">Start shopping</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}{{ equipment.name }}{% endblock %}
+{% block page_title %}Equipment Details{% endblock %}
+
+{% block content %}
+<div class="grid md:grid-cols-2 gap-6">
+    <!-- Main Info -->
+    <div class="bg-white rounded-xl shadow p-6">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-2xl font-bold">{{ equipment.name }}</h1>
+                <p class="text-gray-500">{{ equipment.get_category_display }}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-sm font-semibold 
+                {% if equipment.status == 'available' %}bg-green-100 text-green-700
+                {% elif equipment.status == 'rented' %}bg-yellow-100 text-yellow-700
+                {% else %}bg-red-100 text-red-700{% endif %}">
+                {{ equipment.get_status_display }}
+            </span>
+        </div>
+        
+        <div class="mt-4">
+            <p class="text-gray-700">{{ equipment.description|default:"No description provided." }}</p>
+        </div>
+        
+        <div class="mt-4 space-y-2">
+            <div class="flex justify-between border-b py-2">
+                <span class="text-gray-500">Daily Rate:</span>
+                <span class="font-bold text-lg text-green-600">${{ equipment.daily_rate }}/day</span>
+            </div>
+            <div class="flex justify-between border-b py-2">
+                <span class="text-gray-500">Weekly Rate:</span>
+                <span>${{ equipment.weekly_rate|default:"N/A" }}/week</span>
+            </div>
+            <div class="flex justify-between border-b py-2">
+                <span class="text-gray-500">Monthly Rate:</span>
+                <span>${{ equipment.monthly_rate|default:"N/A" }}/month</span>
+            </div>
+            <div class="flex justify-between border-b py-2">
+                <span class="text-gray-500">Security Deposit:</span>
+                <span>${{ equipment.deposit_amount }}</span>
+            </div>
+            <div class="flex justify-between border-b py-2">
+                <span class="text-gray-500">Location:</span>
+                <span>{{ equipment.location }}</span>
+            </div>
+            <div class="flex justify-between py-2">
+                <span class="text-gray-500">Owner:</span>
+                <span>{{ equipment.owner.get_full_name }}</span>
+            </div>
+        </div>
+        
+        <div class="mt-6">
+            <a href="{% url 'core:equipment_book' equipment.id %}" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-center block">
+                Book This Equipment
+            </a>
+        </div>
+    </div>
+    
+    <!-- Map & Specifications -->
+    <div class="space-y-6">
+        <div class="bg-white rounded-xl shadow p-6">
+            <h2 class="text-xl font-bold mb-4">Location</h2>
+            <div id="equipmentMap" class="map-container w-full h-64 rounded-lg"></div>
+        </div>
+        
+        {% if equipment.specifications %}
+        <div class="bg-white rounded-xl shadow p-6">
+            <h2 class="text-xl font-bold mb-4">Specifications</h2>
+            <div class="space-y-2">
+                {% for key, value in equipment.specifications.items %}
+                <div class="flex justify-between border-b py-2">
+                    <span class="text-gray-500">{{ key|title }}:</span>
+                    <span>{{ value }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    var map = L.map('equipmentMap').setView([{{ equipment.location_lat|default:"-1.286389" }}, {{ equipment.location_lng|default:"36.817223" }}], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    L.marker([{{ equipment.location_lat|default:"-1.286389" }}, {{ equipment.location_lng|default:"36.817223" }}]).addTo(map);
+</script>
+{% endblock %}

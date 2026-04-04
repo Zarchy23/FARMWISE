@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Edit Equipment{% endblock %}
+{% block page_title %}Edit Equipment Listing{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Edit Equipment: {{ equipment.name }}</h1>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Equipment Name</label>
+                <input type="text" name="name" value="{{ equipment.name }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Category</label>
+                <select name="category" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="tractor" {% if equipment.category == 'tractor' %}selected{% endif %}>Tractor</option>
+                    <option value="harvester" {% if equipment.category == 'harvester' %}selected{% endif %}>Harvester</option>
+                    <option value="planter" {% if equipment.category == 'planter' %}selected{% endif %}>Planter</option>
+                    <option value="sprayer" {% if equipment.category == 'sprayer' %}selected{% endif %}>Sprayer</option>
+                    <option value="plow" {% if equipment.category == 'plow' %}selected{% endif %}>Plow</option>
+                    <option value="other" {% if equipment.category == 'other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Description</label>
+                <textarea name="description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">{{ equipment.description }}</textarea>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Daily Rate ($)</label>
+                    <input type="number" step="0.01" name="daily_rate" value="{{ equipment.daily_rate }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Status</label>
+                    <select name="status" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="available" {% if equipment.status == 'available' %}selected{% endif %}>Available</option>
+                        <option value="rented" {% if equipment.status == 'rented' %}selected{% endif %}>Rented</option>
+                        <option value="maintenance" {% if equipment.status == 'maintenance' %}selected{% endif %}>Under Maintenance</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Location</label>
+                <input type="text" name="location" value="{{ equipment.location }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Save Changes</button>
+                <a href="{% url 'core:equipment_detail' equipment.id %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

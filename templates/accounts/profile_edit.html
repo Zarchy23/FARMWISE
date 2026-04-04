@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Edit Profile{% endblock %}
+{% block page_title %}Edit Profile{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Edit Profile</h1>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Profile Picture</label>
+                {% if user.profile_picture %}
+                <div class="mb-2">
+                    <img src="{{ user.profile_picture.url }}" class="w-24 h-24 rounded-full object-cover">
+                </div>
+                {% endif %}
+                <input type="file" name="profile_picture" accept="image/*" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">First Name</label>
+                    <input type="text" name="first_name" value="{{ user.first_name }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Last Name</label>
+                    <input type="text" name="last_name" value="{{ user.last_name }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Email</label>
+                <input type="email" name="email" value="{{ user.email }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Phone Number</label>
+                <input type="tel" name="phone_number" value="{{ user.phone_number }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Preferred Language</label>
+                <select name="preferred_language" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="en" {% if user.preferred_language == 'en' %}selected{% endif %}>English</option>
+                    <option value="es" {% if user.preferred_language == 'es' %}selected{% endif %}>Spanish</option>
+                    <option value="fr" {% if user.preferred_language == 'fr' %}selected{% endif %}>French</option>
+                    <option value="sw" {% if user.preferred_language == 'sw' %}selected{% endif %}>Swahili</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" name="accepts_sms" {% if user.accepts_sms %}checked{% endif %} class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    <span class="ml-2 text-gray-700">Receive SMS notifications</span>
+                </label>
+            </div>
+            
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" name="accepts_email" {% if user.accepts_email %}checked{% endif %} class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    <span class="ml-2 text-gray-700">Receive Email notifications</span>
+                </label>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Save Changes</button>
+                <a href="{% url 'core:profile' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

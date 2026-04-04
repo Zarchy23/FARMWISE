@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Add Field{% endblock %}
+{% block page_title %}Add Field{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Add New Field to {{ farm.name }}</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Field Name</label>
+                <input type="text" name="name" placeholder="e.g., North Plot, Field A, Maize Field" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-sm text-gray-500 mt-1">Give your field a unique identifier</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Area (hectares)</label>
+                <input type="number" step="0.01" name="area_hectares" placeholder="0.00" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-sm text-gray-500 mt-1">Enter the size of your field in hectares</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Soil Type</label>
+                <select name="soil_type" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Soil Type --</option>
+                    <option value="sandy">Sandy</option>
+                    <option value="clay">Clay</option>
+                    <option value="loamy">Loamy</option>
+                    <option value="silty">Silty</option>
+                    <option value="peaty">Peaty</option>
+                </select>
+                <p class="text-sm text-gray-500 mt-1">Choose the predominant soil type in this field</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Slope</label>
+                <select name="slope" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Slope --</option>
+                    <option value="flat">Flat (0-3%)</option>
+                    <option value="gentle">Gentle (3-8%)</option>
+                    <option value="moderate">Moderate (8-15%)</option>
+                    <option value="steep">Steep (15-25%)</option>
+                </select>
+                <p class="text-sm text-gray-500 mt-1">Select the terrain slope of this field</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" name="irrigation_available" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    <span class="ml-2 text-gray-700">Irrigation available</span>
+                </label>
+                <p class="text-sm text-gray-500 mt-1">Check if this field has access to irrigation</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Notes</label>
+                <textarea name="notes" rows="3" placeholder="Additional information about this field..." class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+                <p class="text-sm text-gray-500 mt-1">Any additional details about this field (optional)</p>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Create Field</button>
+                <a href="{% url 'core:farm_detail' farm.id %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

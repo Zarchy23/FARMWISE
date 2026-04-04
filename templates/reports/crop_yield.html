@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Crop Yield Report{% endblock %}
+{% block page_title %}Crop Yield Report{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Summary Stats -->
+    <div class="grid md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ total_crops }}</div>
+            <div class="text-sm text-gray-500">Total Crops Planted</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ total_harvested|default:"0" }}</div>
+            <div class="text-sm text-gray-500">Total Harvested (kg)</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-yellow-600">{{ avg_yield|default:"0" }}</div>
+            <div class="text-sm text-gray-500">Avg Yield (kg/ha)</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">{{ total_revenue|default:"0" }}</div>
+            <div class="text-sm text-gray-500">Total Revenue ($)</div>
+        </div>
+    </div>
+    
+    <!-- Yield by Crop Chart -->
+    <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-xl font-bold mb-4">Yield by Crop Type</h2>
+        <canvas id="yieldChart" height="200"></canvas>
+    </div>
+    
+    <!-- Crop Performance Table -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <h2 class="text-xl font-bold p-6 border-b">Crop Performance Details</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="text-left p-4">Crop</th>
+                        <th class="text-left p-4">Area Planted (ha)</th>
+                        <th class="text-left p-4">Total Harvest (kg)</th>
+                        <th class="text-left p-4">Yield (kg/ha)</th>
+                        <th class="text-left p-4">Revenue ($)</th>
+                        <th class="text-left p-4">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for crop in crop_data %}
+                    <tr class="border-b">
+                        <td class="p-4 font-medium">{{ crop.name }}</td>
+                        <td class="p-4">{{ crop.area|floatformat:1 }}</td>
+                        <td class="p-4">{{ crop.harvest|floatformat:0|default:"-" }}</td>
+                        <td class="p-4">{{ crop.yield|floatformat:0|default:"-" }}</td>
+                        <td class="p-4">${{ crop.revenue|floatformat:0|default:"0" }}</td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold 
+                                {% if crop.status == 'harvested' %}bg-green-100 text-green-700
+                                {% elif crop.status == 'growing' %}bg-blue-100 text-blue-700
+                                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                {{ crop.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Export Button -->
+    <div class="text-right">
+        <a href="{% url 'core:export_report' 'crop' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition inline-flex items-center space-x-2">
+            <i class="ri-download-line"></i>
+            <span>Export to CSV</span>
+        </a>
+    </div>
+</div>
+
+<script>
+    new Chart(document.getElementById('yieldChart'), {
+        type: 'bar',
+        data: {
+            labels: [{% for c in crop_data %}'{{ c.name }}',{% endfor %}],
+            datasets: [
+                {
+                    label: 'Yield (kg/ha)',
+                    data: [{% for c in crop_data %}{{ c.yield|default:0 }},{% endfor %}],
+                    backgroundColor: '#22c55e',
+                    borderRadius: 8
+                },
+                {
+                    label: 'Revenue ($)',
+                    data: [{% for c in crop_data %}{{ c.revenue|default:0 }},{% endfor %}],
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 8
+                }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: true }
+    });
+</script>
+{% endblock %}

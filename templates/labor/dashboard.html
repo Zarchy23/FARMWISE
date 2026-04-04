@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block title %}Labor Management{% endblock %}
+{% block page_title %}Farm Workers{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">Farm Workers</h1>
+            <p class="text-gray-600">Manage your farm workforce and track labor hours</p>
+        </div>
+        <a href="{% url 'core:add_worker' %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+            <i class="ri-add-line"></i>
+            <span>Add Worker</span>
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6 card-hover">
+            <p class="text-gray-500 text-sm mb-2">Active Workers</p>
+            <p class="text-3xl font-bold text-green-600">{{ workers.count }}</p>
+            <p class="text-xs text-gray-400 mt-2">Farm employees</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6 card-hover">
+            <p class="text-gray-500 text-sm mb-2">Hours This Month</p>
+            <p class="text-3xl font-bold text-blue-600">{{ total_hours|default:0 }}</p>
+            <p class="text-xs text-gray-400 mt-2">Total labor hours</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6 card-hover">
+            <p class="text-gray-500 text-sm mb-2">Monthly Payroll</p>
+            <p class="text-3xl font-bold text-purple-600">Pending</p>
+            <p class="text-xs text-gray-400 mt-2">Calculate & process</p>
+            <a href="{% url 'core:payroll_list' %}" class="text-purple-600 text-sm mt-2 inline-block hover:underline">View payroll →</a>
+        </div>
+    </div>
+
+    <!-- Workers List -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="p-6 border-b">
+            <h2 class="text-xl font-bold">Active Workers</h2>
+        </div>
+        
+        {% if workers %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Hourly Rate</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for worker in workers %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <div class="font-semibold">{{ worker.worker.get_full_name }}</div>
+                            <div class="text-sm text-gray-500">ID: {{ worker.worker.id }}</div>
+                        </td>
+                        <td class="px-6 py-4">{{ worker.get_position_display }}</td>
+                        <td class="px-6 py-4">${{ worker.hourly_wage }}/hr</td>
+                        <td class="px-6 py-4">
+                            <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">Active</span>
+                        </td>
+                        <td class="px-6 py-4 text-sm space-x-2">
+                            <a href="{% url 'core:log_hours' worker.pk %}" class="text-blue-600 hover:underline">Log Hours</a>
+                            <a href="{% url 'core:edit_worker' worker.pk %}" class="text-blue-600 hover:underline">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <i class="ri-user-add-line text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">No workers yet. Add your first worker to track labor hours.</p>
+            <a href="{% url 'core:add_worker' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition inline-block mt-4">Add Worker</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Links -->
+    <div class="grid md:grid-cols-3 gap-4 mt-8">
+        <a href="{% url 'core:add_worker' %}" class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-center">
+            <i class="ri-user-add-line text-3xl text-green-600 mb-2"></i>
+            <p class="font-semibold">Add New Worker</p>
+        </a>
+        
+        <a href="{% url 'core:payroll_list' %}" class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-center">
+            <i class="ri-money-dollar-circle-line text-3xl text-purple-600 mb-2"></i>
+            <p class="font-semibold">Manage Payroll</p>
+        </a>
+        
+        <a href="{% url 'core:labor' %}" class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition text-center">
+            <i class="ri-bar-chart-line text-3xl text-blue-600 mb-2"></i>
+            <p class="font-semibold">View Reports</p>
+        </a>
+    </div>
+</div>
+    <a href="{% url 'core:add_worker' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+        <i class="ri-add-line"></i>
+        <span>Add Worker</span>
+    </a>
+</div>
+
+<!-- Summary Stats -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl shadow p-4 text-center">
+        <div class="text-2xl font-bold text-green-600">{{ workers.count }}</div>
+        <div class="text-sm text-gray-500">Active Workers</div>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 text-center">
+        <div class="text-2xl font-bold text-blue-600">{{ total_hours|floatformat:0 }}</div>
+        <div class="text-sm text-gray-500">Hours This Month</div>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 text-center">
+        <div class="text-2xl font-bold text-yellow-600">{{ pending_payroll|default:"0" }}</div>
+        <div class="text-sm text-gray-500">Pending Payroll</div>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4 text-center">
+        <div class="text-2xl font-bold text-purple-600">{{ total_paid|default:"0" }}</div>
+        <div class="text-sm text-gray-500">Paid This Month</div>
+    </div>
+</div>
+
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for worker in workers %}
+    <div class="bg-white rounded-xl shadow overflow-hidden card-hover">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold">{{ worker.worker.get_full_name }}</h3>
+                    <p class="text-sm opacity-90">Since {{ worker.hire_date|date:"M Y" }}</p>
+                </div>
+                <i class="ri-user-line text-3xl"></i>
+            </div>
+        </div>
+        <div class="p-4">
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Hourly Wage:</span>
+                    <span class="font-medium">${{ worker.hourly_wage }}/hour</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Hours This Month:</span>
+                    <span class="font-medium">{{ worker.total_hours|default:"0" }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">This Month Pay:</span>
+                    <span class="font-medium text-green-600">${{ worker.monthly_pay|default:"0" }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Phone:</span>
+                    <span class="font-medium">{{ worker.worker.phone_number|default:"N/A" }}</span>
+                </div>
+            </div>
+            <div class="mt-4 flex space-x-2">
+                <a href="{% url 'core:log_hours' worker.id %}" class="flex-1 bg-green-600 text-white px-3 py-1 rounded text-center text-sm hover:bg-green-700 transition">
+                    <i class="ri-time-line"></i> Log Hours
+                </a>
+                <a href="{% url 'core:edit_worker' worker.id %}" class="bg-yellow-600 text-white px-3 py-1 rounded text-center text-sm hover:bg-yellow-700 transition">
+                    <i class="ri-edit-line"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center py-12 bg-white rounded-xl">
+        <i class="ri-user-settings-line text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500">No workers yet.</p>
+        <a href="{% url 'core:add_worker' %}" class="text-green-600 hover:underline mt-2 inline-block">Add your first worker</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

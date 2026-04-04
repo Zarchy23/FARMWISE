@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}All Policies{% endblock %}
+{% block page_title %}All Insurance Policies{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold">My Insurance Policies</h1>
+            <p class="text-gray-500">Manage all your insurance coverage</p>
+        </div>
+        <a href="{% url 'core:buy_insurance' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+            <i class="ri-add-line"></i> Buy New Policy
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow p-4">
+        <form method="get" class="flex flex-wrap gap-4">
+            <select name="status" class="border border-gray-300 rounded-lg px-4 py-2">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="expired">Expired</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+            <select name="policy_type" class="border border-gray-300 rounded-lg px-4 py-2">
+                <option value="">All Types</option>
+                <option value="crop">Crop Insurance</option>
+                <option value="livestock">Livestock Insurance</option>
+                <option value="equipment">Equipment Insurance</option>
+            </select>
+            <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-lg">Filter</button>
+        </form>
+    </div>
+
+    <!-- Policies List -->
+    <div class="grid md:grid-cols-2 gap-6">
+        {% for policy in policies %}
+        <div class="bg-white rounded-xl shadow overflow-hidden card-hover">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">{{ policy.get_policy_type_display }}</span>
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold 
+                        {% if policy.status == 'active' %}bg-green-500
+                        {% elif policy.status == 'expired' %}bg-red-500
+                        {% else %}bg-gray-500{% endif %}">
+                        {{ policy.get_status_display }}
+                    </span>
+                </div>
+                <p class="text-sm opacity-90 mt-1">Policy #{{ policy.policy_number }}</p>
+            </div>
+            <div class="p-5">
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Farm:</span>
+                        <span>{{ policy.farm.name }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Sum Insured:</span>
+                        <span class="font-bold">${{ policy.sum_insured }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Premium Paid:</span>
+                        <span>${{ policy.premium_paid }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Period:</span>
+                        <span>{{ policy.start_date }} to {{ policy.end_date }}</span>
+                    </div>
+                </div>
+                <div class="mt-4 flex space-x-2">
+                    <a href="{% url 'core:insurance_detail' policy.id %}" class="flex-1 bg-blue-600 text-white px-3 py-1 rounded text-center text-sm">View Details</a>
+                    <a href="{% url 'core:file_claim' policy.id %}" class="flex-1 bg-red-600 text-white px-3 py-1 rounded text-center text-sm">File Claim</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-12 bg-white rounded-xl">
+            <i class="ri-shield-line text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">No insurance policies found.</p>
+            <a href="{% url 'core:buy_insurance' %}" class="text-green-600 hover:underline mt-2 inline-block">Buy your first policy</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

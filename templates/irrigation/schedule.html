@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Schedule Irrigation{% endblock %}
+{% block page_title %}Schedule New Irrigation{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Schedule Irrigation</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Select Field</label>
+                <select name="field" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Field --</option>
+                    {% for field in fields %}
+                    <option value="{{ field.id }}">{{ field.farm.name }} - {{ field.name }} ({{ field.area_hectares }} ha)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Scheduled Date</label>
+                <input type="date" name="scheduled_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Duration (hours)</label>
+                <input type="number" step="0.5" name="duration_hours" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., 2.5">
+            </div>
+            
+            <div class="bg-blue-50 rounded-lg p-4 mb-6">
+                <p class="text-sm text-blue-800">
+                    <i class="ri-information-line"></i>
+                    Estimated water usage: <span id="waterEstimate">0</span> liters
+                </p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Notes</label>
+                <textarea name="notes" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Any additional information..."></textarea>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Schedule</button>
+                <a href="{% url 'core:irrigation' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const fieldSelect = document.querySelector('select[name="field"]');
+    const durationInput = document.querySelector('input[name="duration_hours"]');
+    const waterSpan = document.getElementById('waterEstimate');
+    
+    const fieldAreas = {
+        {% for field in fields %}
+        "{{ field.id }}": {{ field.area_hectares }},
+        {% endfor %}
+    };
+    
+    function updateWaterEstimate() {
+        const fieldId = fieldSelect.value;
+        const duration = parseFloat(durationInput.value) || 0;
+        const area = fieldAreas[fieldId] || 0;
+        const waterLiters = duration * area * 1000;
+        waterSpan.textContent = waterLiters.toFixed(0);
+    }
+    
+    fieldSelect.addEventListener('change', updateWaterEstimate);
+    durationInput.addEventListener('input', updateWaterEstimate);
+    
+    document.querySelector('input[name="scheduled_date"]').value = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Add Input{% endblock %}
+{% block page_title %}Add Farm Input{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-2">Add Input Application</h1>
+        <p class="text-gray-500 mb-6">Crop: {{ crop.crop_type.name }} in {{ crop.field.name }}</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Input Type</label>
+                    <select name="input_type" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="seed">Seeds</option>
+                        <option value="fertilizer">Fertilizer</option>
+                        <option value="pesticide">Pesticide</option>
+                        <option value="herbicide">Herbicide</option>
+                        <option value="fungicide">Fungicide</option>
+                        <option value="organic">Organic Amendment</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Application Date</label>
+                    <input type="date" name="application_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Product Name</label>
+                <input type="text" name="product_name" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., DAP, Urea, Roundup">
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Quantity</label>
+                    <input type="number" step="0.01" name="quantity" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Unit</label>
+                    <select name="unit" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="kg">kg</option>
+                        <option value="g">g</option>
+                        <option value="l">l</option>
+                        <option value="ml">ml</option>
+                        <option value="bag">Bag</option>
+                        <option value="bottle">Bottle</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Cost per Unit ($)</label>
+                    <input type="number" step="0.01" name="cost_per_unit" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Application Method</label>
+                <input type="text" name="application_method" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Spray, Broadcast, Side-dress">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Notes</label>
+                <textarea name="notes" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Weather conditions, application details, etc."></textarea>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <div class="flex justify-between font-bold">
+                    <span>Total Cost:</span>
+                    <span id="totalCost" class="text-green-600">$0.00</span>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Save Input</button>
+                <a href="{% url 'core:crop_detail' crop.id %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const quantityInput = document.querySelector('input[name="quantity"]');
+    const costInput = document.querySelector('input[name="cost_per_unit"]');
+    const totalSpan = document.getElementById('totalCost');
+    
+    function calculateTotal() {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const cost = parseFloat(costInput.value) || 0;
+        const total = quantity * cost;
+        totalSpan.textContent = `$${total.toFixed(2)}`;
+    }
+    
+    quantityInput.addEventListener('input', calculateTotal);
+    costInput.addEventListener('input', calculateTotal);
+    
+    // Set today's date
+    document.querySelector('input[name="application_date"]').value = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

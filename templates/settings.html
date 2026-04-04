@@ -1,0 +1,436 @@
+{% extends 'base.html' %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings - Account & Preferences{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-4xl" x-data="{ activeTab: 'profile' }">
+    <!-- Settings Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
+        <p class="text-gray-600 mt-2">Manage your account, notifications, and preferences</p>
+    </div>
+
+    <!-- Settings Navigation Tabs -->
+    <div class="mb-6 flex flex-wrap gap-2 border-b border-gray-200">
+        <button @click="activeTab = 'profile'" :class="activeTab === 'profile' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-600'" 
+                class="px-4 py-2 font-medium transition">
+            <i class="ri-user-line mr-2"></i>Profile
+        </button>
+        <button @click="activeTab = 'security'" :class="activeTab === 'security' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-600'" 
+                class="px-4 py-2 font-medium transition">
+            <i class="ri-shield-line mr-2"></i>Security
+        </button>
+        <button @click="activeTab = 'notifications'" :class="activeTab === 'notifications' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-600'" 
+                class="px-4 py-2 font-medium transition">
+            <i class="ri-notification-line mr-2"></i>Notifications
+        </button>
+        <button @click="activeTab = 'privacy'" :class="activeTab === 'privacy' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-600'" 
+                class="px-4 py-2 font-medium transition">
+            <i class="ri-eye-line mr-2"></i>Privacy
+        </button>
+        <button @click="activeTab = 'billing'" :class="activeTab === 'billing' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-600'" 
+                class="px-4 py-2 font-medium transition">
+            <i class="ri-wallet-line mr-2"></i>Billing
+        </button>
+    </div>
+
+    <!-- Profile Settings Tab -->
+    <div x-show="activeTab === 'profile'" x-transition class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold mb-6">Profile Settings</h2>
+        
+        <form method="post" action="#" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Profile Picture -->
+            <div class="flex items-start gap-6">
+                <div>
+                    <img src="https://ui-avatars.com/api/?name={{ user.first_name }}+{{ user.last_name }}&size=120" 
+                         alt="Profile" class="w-24 h-24 rounded-full border-4 border-green-100">
+                </div>
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Profile Picture</label>
+                    <input type="file" accept="image/*" class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <p class="text-xs text-gray-500 mt-1">JPG or PNG, max 2MB</p>
+                </div>
+            </div>
+
+            <!-- Name Fields -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <input type="text" value="{{ user.first_name }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <input type="text" value="{{ user.last_name }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                </div>
+            </div>
+
+            <!-- Email -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <input type="email" value="{{ user.email }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+            </div>
+
+            <!-- Phone -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input type="tel" placeholder="+1 (555) 123-4567" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+            </div>
+
+            <!-- User Type -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
+                <div class="px-3 py-2 bg-gray-100 rounded-lg text-gray-600">
+                    {{ user.get_user_type_display }}
+                </div>
+            </div>
+
+            <!-- Bio -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                <textarea placeholder="Tell us about yourself..." rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"></textarea>
+            </div>
+
+            <!-- Save Button -->
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-save-line mr-2"></i>Save Changes
+                </button>
+                <button type="reset" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Security Settings Tab -->
+    <div x-show="activeTab === 'security'" x-transition class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold mb-6">Security Settings</h2>
+        
+        <div class="space-y-6">
+            <!-- Change Password -->
+            <div class="border-b pb-6">
+                <h3 class="text-lg font-semibold mb-4">Change Password</h3>
+                <form method="post" action="{% url 'core:change_password' %}" class="space-y-4">
+                    {% csrf_token %}
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                        <input type="password" name="old_password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                        <input type="password" name="new_password1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        <p class="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                        <input type="password" name="new_password2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                    </div>
+                    
+                    <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                        Update Password
+                    </button>
+                </form>
+            </div>
+
+            <!-- Two-Factor Authentication -->
+            <div class="border-b pb-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold">Two-Factor Authentication</h3>
+                        <p class="text-gray-600 text-sm mt-1">Add an extra layer of security to your account</p>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" class="w-5 h-5 rounded">
+                        <span class="text-sm font-medium">Enable</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Active Sessions -->
+            <div>
+                <h3 class="text-lg font-semibold mb-4">Active Sessions</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <i class="ri-computer-line text-2xl text-gray-400"></i>
+                            <div>
+                                <p class="font-medium">Windows Computer</p>
+                                <p class="text-sm text-gray-500">Last active: Today at 2:30 PM</p>
+                            </div>
+                        </div>
+                        <button class="text-red-600 hover:text-red-700 text-sm">Sign Out</button>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <i class="ri-smartphone-line text-2xl text-gray-400"></i>
+                            <div>
+                                <p class="font-medium">iPhone</p>
+                                <p class="text-sm text-gray-500">Last active: Yesterday at 9:15 AM</p>
+                            </div>
+                        </div>
+                        <button class="text-red-600 hover:text-red-700 text-sm">Sign Out</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Tab -->
+    <div x-show="activeTab === 'notifications'" x-transition class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold mb-6">Notification Preferences</h2>
+        
+        <div class="space-y-6">
+            <!-- Email Notifications -->
+            <div class="border-b pb-6">
+                <h3 class="text-lg font-semibold mb-4">Email Notifications</h3>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked class="w-4 h-4 rounded">
+                        <div>
+                            <p class="font-medium">Farm Updates</p>
+                            <p class="text-sm text-gray-500">Get notified about crop & livestock updates</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked class="w-4 h-4 rounded">
+                        <div>
+                            <p class="font-medium">Weather Alerts</p>
+                            <p class="text-sm text-gray-500">Receive alerts for extreme weather</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked class="w-4 h-4 rounded">
+                        <div>
+                            <p class="font-medium">Market Updates</p>
+                            <p class="text-sm text-gray-500">Price changes and marketplace activity</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" class="w-4 h-4 rounded">
+                        <div>
+                            <p class="font-medium">Weekly Digest</p>
+                            <p class="text-sm text-gray-500">Summary of your farm activity</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Push Notifications -->
+            <div class="border-b pb-6">
+                <h3 class="text-lg font-semibold mb-4">Push Notifications</h3>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked class="w-4 h-4 rounded">
+                        <div>
+                            <p class="font-medium">Urgent Alerts</p>
+                            <p class="text-sm text-gray-500">Critical alerts (Pest detection, health issues)</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked class="w-4 h-4 rounded">
+                        <div>
+                            <p class="font-medium">Activity Reminders</p>
+                            <p class="text-sm text-gray-500">Reminders for scheduled tasks</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- SMS Notifications -->
+            <div>
+                <h3 class="text-lg font-semibold mb-4">SMS Notifications</h3>
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" class="w-4 h-4 rounded">
+                    <div>
+                        <p class="font-medium">Emergency Alerts Only</p>
+                        <p class="text-sm text-gray-500">Only critical alerts (may incur charges)</p>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Save Button -->
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                    Save Preferences
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Tab -->
+    <div x-show="activeTab === 'privacy'" x-transition class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold mb-6">Privacy Settings</h2>
+        
+        <div class="space-y-6">
+            <!-- Profile Visibility -->
+            <div class="border-b pb-6">
+                <h3 class="text-lg font-semibold mb-4">Profile Visibility</h3>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3">
+                        <input type="radio" name="profile_visibility" checked class="w-4 h-4">
+                        <div>
+                            <p class="font-medium">Private</p>
+                            <p class="text-sm text-gray-500">Only you can see your profile</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="radio" name="profile_visibility" class="w-4 h-4">
+                        <div>
+                            <p class="font-medium">Friends Only</p>
+                            <p class="text-sm text-gray-500">Only your connections can see</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="radio" name="profile_visibility" class="w-4 h-4">
+                        <div>
+                            <p class="font-medium">Public</p>
+                            <p class="text-sm text-gray-500">Anyone can view your profile</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Data Sharing -->
+            <div class="border-b pb-6">
+                <h3 class="text-lg font-semibold mb-4">Data & Analytics</h3>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" checked class="w-4 h-4 rounded">
+                        <div>
+                            <p class="font-medium">Usage Analytics</p>
+                            <p class="text-sm text-gray-500">Help us improve by sharing usage data</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" class="w-4 h-4 rounded">
+                        <div>
+                            <p class="font-medium">Anonymized Research</p>
+                            <p class="text-sm text-gray-500">Participate in agricultural research</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Dangerous Zone -->
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-red-800 mb-4">Danger Zone</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium">Download Your Data</p>
+                            <p class="text-sm text-gray-600">Get a copy of all your data</p>
+                        </div>
+                        <button class="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition">
+                            Download
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between border-t pt-3">
+                        <div>
+                            <p class="font-medium">Delete Account</p>
+                            <p class="text-sm text-gray-600">Permanently delete your account and all data</p>
+                        </div>
+                        <button onclick="confirm('Are you sure? This cannot be undone.')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                    Save Privacy Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Billing Tab -->
+    <div x-show="activeTab === 'billing'" x-transition class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold mb-6">Billing & Subscription</h2>
+        
+        <div class="space-y-6">
+            <!-- Current Plan -->
+            <div class="border-b pb-6">
+                <h3 class="text-lg font-semibold mb-4">Current Plan</h3>
+                <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-2xl font-bold text-green-700">Pro Plan</p>
+                            <p class="text-gray-600 mt-1">$29/month • Renews: May 3, 2026</p>
+                            <div class="mt-3 flex gap-2">
+                                <span class="px-3 py-1 bg-green-200 text-green-800 rounded-full text-sm font-medium">Active</span>
+                                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">Auto-renew enabled</span>
+                            </div>
+                        </div>
+                        <button class="px-6 py-2 border-2 border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition">
+                            Upgrade
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="border-b pb-6">
+                <h3 class="text-lg font-semibold mb-4">Payment Method</h3>
+                <div class="bg-gray-100 rounded-lg p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="ri-visa-line text-3xl text-blue-600"></i>
+                        <div>
+                            <p class="font-medium">Visa ending in 4242</p>
+                            <p class="text-sm text-gray-600">Expires 12/26</p>
+                        </div>
+                    </div>
+                    <button class="text-blue-600 hover:text-blue-700 text-sm">Update</button>
+                </div>
+            </div>
+
+            <!-- Billing History -->
+            <div>
+                <h3 class="text-lg font-semibold mb-4">Billing History</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-sm font-semibold">Invoice</th>
+                                <th class="px-4 py-2 text-left text-sm font-semibold">Date</th>
+                                <th class="px-4 py-2 text-left text-sm font-semibold">Amount</th>
+                                <th class="px-4 py-2 text-left text-sm font-semibold">Status</th>
+                                <th class="px-4 py-2 text-left text-sm font-semibold">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="px-4 py-3">INV-2026-001003</td>
+                                <td class="px-4 py-3">Apr 3, 2026</td>
+                                <td class="px-4 py-3">$29.00</td>
+                                <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Paid</span></td>
+                                <td class="px-4 py-3"><a href="#" class="text-blue-600 hover:underline text-sm">Download</a></td>
+                            </tr>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="px-4 py-3">INV-2026-000900</td>
+                                <td class="px-4 py-3">Mar 3, 2026</td>
+                                <td class="px-4 py-3">$29.00</td>
+                                <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Paid</span></td>
+                                <td class="px-4 py-3"><a href="#" class="text-blue-600 hover:underline text-sm">Download</a></td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3">INV-2026-000800</td>
+                                <td class="px-4 py-3">Feb 3, 2026</td>
+                                <td class="px-4 py-3">$29.00</td>
+                                <td class="px-4 py-3"><span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Paid</span></td>
+                                <td class="px-4 py-3"><a href="#" class="text-blue-600 hover:underline text-sm">Download</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

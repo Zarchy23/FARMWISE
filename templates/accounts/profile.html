@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}My Profile{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-green-600 to-green-800 p-6 text-white">
+            <div class="flex items-center space-x-4">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center">
+                    {% if user.profile_picture %}
+                    <img src="{{ user.profile_picture.url }}" class="w-full h-full rounded-full object-cover">
+                    {% else %}
+                    <i class="ri-user-line text-4xl text-green-600"></i>
+                    {% endif %}
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold">{{ user.get_full_name|default:user.username }}</h1>
+                    <p class="text-green-100">{{ user.get_user_type_display }}</p>
+                    <p class="text-green-200 text-sm mt-1">Member since {{ user.date_joined|date:"F Y" }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Profile Info -->
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">Personal Information</h2>
+                <a href="{% url 'core:profile_edit' %}" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition">
+                    <i class="ri-edit-line"></i> Edit Profile
+                </a>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-500">Username</label>
+                        <p class="text-gray-800">{{ user.username }}</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-500">Full Name</label>
+                        <p class="text-gray-800">{{ user.get_full_name|default:"Not provided" }}</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-500">Email Address</label>
+                        <p class="text-gray-800">{{ user.email }}</p>
+                        {% if user.email_verified %}
+                        <span class="text-xs text-green-600"><i class="ri-verified-badge-line"></i> Verified</span>
+                        {% else %}
+                        <span class="text-xs text-yellow-600">Not verified</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-500">Phone Number</label>
+                        <p class="text-gray-800">{{ user.phone_number|default:"Not provided" }}</p>
+                        {% if user.phone_verified %}
+                        <span class="text-xs text-green-600"><i class="ri-verified-badge-line"></i> Verified</span>
+                        {% else %}
+                        <span class="text-xs text-yellow-600">Not verified</span>
+                        {% endif %}
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-500">Preferred Language</label>
+                        <p class="text-gray-800">{{ user.preferred_language|upper }}</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-500">Notifications</label>
+                        <p class="text-gray-800">
+                            {% if user.accepts_sms %}SMS {% endif %}
+                            {% if user.accepts_email %}Email{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-6">
+            
+            <h2 class="text-xl font-bold mb-4">Farm Statistics</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ farm_count|default:"0" }}</div>
+                    <div class="text-sm text-gray-500">Farms</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ crop_count|default:"0" }}</div>
+                    <div class="text-sm text-gray-500">Crops Planted</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-purple-600">{{ animal_count|default:"0" }}</div>
+                    <div class="text-sm text-gray-500">Animals</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-yellow-600">${{ total_revenue|default:"0" }}</div>
+                    <div class="text-sm text-gray-500">Total Revenue</div>
+                </div>
+            </div>
+            
+            <hr class="my-6">
+            
+            <h2 class="text-xl font-bold mb-4">Account Settings</h2>
+            <div class="space-y-3">
+                <a href="{% url 'password_reset' %}" class="text-blue-600 hover:underline block">Change Password</a>
+                <a href="#" class="text-blue-600 hover:underline block">Notification Preferences</a>
+                <a href="#" class="text-red-600 hover:underline block">Delete Account</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
