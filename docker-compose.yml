@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: farmwise_db
+    environment:
+      POSTGRES_DB: farmwise
+      POSTGRES_USER: farmwise_user
+      POSTGRES_PASSWORD: farmwise_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U farmwise_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - farmwise_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: farmwise_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - farmwise_network
+
+  web:
+    build: .
+    container_name: farmwise_web
+    command: >
+      bash -c "python manage.py migrate &&
+               python manage.py collectstatic --noinput &&
+               daphne -b 0.0.0.0 -p 8000 farmwise.asgi:application"
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: "django-insecure-development-key-change-in-production"
+      DATABASE_URL: "postgresql://farmwise_user:farmwise_password@db:5432/farmwise"
+      REDIS_URL: "redis://redis:6379/0"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,web"
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - farmwise_network
+
+  celery:
+    build: .
+    container_name: farmwise_celery
+    command: celery -A farmwise worker -l info
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: "django-insecure-development-key-change-in-production"
+      DATABASE_URL: "postgresql://farmwise_user:farmwise_password@db:5432/farmwise"
+      REDIS_URL: "redis://redis:6379/0"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    networks:
+      - farmwise_network
+
+  celery-beat:
+    build: .
+    container_name: farmwise_celery_beat
+    command: celery -A farmwise beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: "django-insecure-development-key-change-in-production"
+      DATABASE_URL: "postgresql://farmwise_user:farmwise_password@db:5432/farmwise"
+      REDIS_URL: "redis://redis:6379/0"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    networks:
+      - farmwise_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:
+
+networks:
+  farmwise_network:
+    driver: bridge
