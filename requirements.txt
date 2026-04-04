@@ -39,3 +39,4 @@ hiredis
 argon2-cffi
 djangorestframework-simplejwt
 django-sendgrid-v5
+coreapi

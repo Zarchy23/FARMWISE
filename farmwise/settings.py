@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     # 'django.contrib.gis',  # PostGIS for geospatial data - Enable after PostGIS installation
     
     # Third party apps
@@ -128,44 +129,47 @@ else:
 # Redis & Channels (WebSockets & Caching)
 # ============================================================
 
-REDIS_URL = config('REDIS_URL', default='redis://localhost:6379')
+REDIS_URL = config('REDIS_URL', default='')
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [REDIS_URL],
-            "capacity": 1500,
-            "expiry": 10,
-        },
-    },
-}
-
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': f'{REDIS_URL}/1',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'PARSER_CLASS': 'redis.connection.HiredisParser',
-            'CONNECTION_POOL_CLASS': 'redis.BlockingConnectionPool',
-            'CONNECTION_POOL_CLASS_KWARGS': {
-                'max_connections': 50,
-                'timeout': 20,
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [REDIS_URL],
+                "capacity": 1500,
+                "expiry": 10,
             },
-            'MAX_CONNECTIONS': 1000,
-            'PICKLE_VERSION': -1,
         },
-        'KEY_PREFIX': 'farmwise',
-        'TIMEOUT': 300,  # 5 minutes
     }
-}
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': f'{REDIS_URL}/1',
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+            'KEY_PREFIX': 'farmwise',
+            'TIMEOUT': 300,
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
 
 # ============================================================
 # Celery Configuration (Async Tasks)
 # ============================================================
 
-CELERY_BROKER_URL = REDIS_URL
+CELERY_BROKER_URL = REDIS_URL if REDIS_URL else 'memory://'
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -491,9 +495,11 @@ LEAFLET_CONFIG = {
 # Security Settings
 # ============================================================
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 if not DEBUG:
     # HTTPS Settings
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000  # 1 year
