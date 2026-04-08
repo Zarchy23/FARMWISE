@@ -1192,6 +1192,8 @@ Be thorough, professional, and educational. Provide practical, actionable advice
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'OpenAI API error: {str(e)}')
+        logger.error(f'Error type: {type(e).__name__}')
+        logger.error(f'Full error: {repr(e)}')
         
         return {
             'pest_detected': False,
@@ -1234,10 +1236,13 @@ Be thorough, professional, and educational. Provide practical, actionable advice
         }
     
     except Exception as e:
-        # General error
+        # Any other error (including connection errors)
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f'Pest analysis error: {str(e)}', exc_info=True)
+        logger.error(f'Pest analysis error: {str(e)}')
+        logger.error(f'Error type: {type(e).__name__}')
+        logger.error(f'Full error: {repr(e)}')
+        logger.error(f'Traceback:', exc_info=True)
         
         return {
             'pest_detected': False,
