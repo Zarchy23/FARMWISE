@@ -47,11 +47,11 @@
             <div class="text-sm text-gray-500">Total Water Used (L)</div>
         </div>
         <div class="bg-white rounded-xl shadow p-4 text-center">
-            <div class="text-2xl font-bold text-green-600">{{ this_month_hours|default:"0" }}</div>
+            <div class="text-2xl font-bold text-green-600">{{ month_hours|default:"0" }}</div>
             <div class="text-sm text-gray-500">Hours This Month</div>
         </div>
         <div class="bg-white rounded-xl shadow p-4 text-center">
-            <div class="text-2xl font-bold text-yellow-600">{{ next_schedule_date|default:"None" }}</div>
+            <div class="text-2xl font-bold text-yellow-600">{% if next_scheduled %}{{ next_scheduled.scheduled_date }}{% else %}None{% endif %}</div>
             <div class="text-sm text-gray-500">Next Scheduled</div>
         </div>
     </div>

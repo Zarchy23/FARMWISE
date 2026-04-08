@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Edit Product{% endblock %}
+{% block page_title %}Edit Product Listing{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Edit Product Listing</h1>
+        
+        {% if form.non_field_errors %}
+            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Seller/Farm Selection (READ-ONLY) -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">
+                    {{ form.seller.label }}
+                </label>
+                <div class="p-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                    {{ listing.seller.farm_name }} ({{ listing.seller.owner.get_full_name|default:listing.seller.owner.username }})
+                </div>
+                <p class="text-sm text-gray-500 mt-1">Cannot be changed after listing is created</p>
+                <!-- Hidden input to preserve seller value -->
+                <input type="hidden" name="seller" value="{{ listing.seller.id }}">
+            </div>
+            
+            <!-- Product Name -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">
+                    {{ form.product_name.label }}
+                    <span class="text-red-600">*</span>
+                </label>
+                {{ form.product_name }}
+                {% if form.product_name.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.product_name.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Category -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">{{ form.category.label }}</label>
+                {{ form.category }}
+                {% if form.category.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.category.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Description -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">{{ form.description.label }}</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.description.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Quantity & Unit -->
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">
+                        {{ form.quantity.label }}
+                        <span class="text-red-600">*</span>
+                    </label>
+                    {{ form.quantity }}
+                    {% if form.quantity.errors %}
+                        <div class="text-red-600 text-sm mt-1">{{ form.quantity.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">
+                        {{ form.unit.label }}
+                        <span class="text-red-600">*</span>
+                    </label>
+                    {{ form.unit }}
+                    {% if form.unit.errors %}
+                        <div class="text-red-600 text-sm mt-1">{{ form.unit.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Price per Unit -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">
+                    {{ form.price_per_unit.label }}
+                    <span class="text-red-600">*</span>
+                </label>
+                {{ form.price_per_unit }}
+                {% if form.price_per_unit.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.price_per_unit.errors }}</div>
+                {% endif %}
+                <p class="text-sm text-gray-500 mt-1">Total price will be calculated automatically</p>
+            </div>
+            
+            <!-- Harvest & Expiry Dates -->
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">{{ form.harvest_date.label }}</label>
+                    {{ form.harvest_date }}
+                    {% if form.harvest_date.errors %}
+                        <div class="text-red-600 text-sm mt-1">{{ form.harvest_date.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">{{ form.expiry_date.label }}</label>
+                    {{ form.expiry_date }}
+                    {% if form.expiry_date.errors %}
+                        <div class="text-red-600 text-sm mt-1">{{ form.expiry_date.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Organic Checkbox -->
+            <div class="mb-4">
+                <label class="flex items-center">
+                    {{ form.is_organic }}
+                    <span class="ml-2 text-gray-700">{{ form.is_organic.label }}</span>
+                </label>
+                {% if form.is_organic.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.is_organic.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Delivery Available Checkbox -->
+            <div class="mb-4">
+                <label class="flex items-center">
+                    {{ form.delivery_available }}
+                    <span class="ml-2 text-gray-700">{{ form.delivery_available.label }}</span>
+                </label>
+                {% if form.delivery_available.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.delivery_available.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Delivery Fee -->
+            <div class="mb-4" id="deliveryFeeField" style="display: {% if form.delivery_available.value %}block{% else %}none{% endif %};">
+                <label class="block text-gray-700 font-medium mb-2">{{ form.delivery_fee.label }}</label>
+                {{ form.delivery_fee }}
+                {% if form.delivery_fee.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.delivery_fee.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Product Images -->
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">{{ form.images.label }}</label>
+                
+                {% if listing.images %}
+                    <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-sm font-semibold text-gray-700 mb-2">Current image:</p>
+                        <img src="{{ listing.images.url }}" alt="{{ listing.product_name }}" class="w-48 h-48 object-cover rounded-lg shadow">
+                        <div class="mt-3 flex items-center">
+                            <input type="checkbox" name="images-clear" id="id_images_clear" class="w-4 h-4 text-red-600">
+                            <label for="id_images_clear" class="ml-2 text-sm text-gray-600">Remove this image</label>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <p class="text-sm font-semibold text-gray-700 mb-2">Upload new image:</p>
+                    <div class="relative border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-400 hover:bg-green-50 transition cursor-pointer" onclick="document.getElementById('id_images').click()">
+                        <i class="ri-image-add-line text-3xl text-green-600 block mb-2"></i>
+                        <p class="text-gray-600 font-medium">Click to upload or drag and drop</p>
+                        <p class="text-gray-500 text-sm">PNG, JPG, GIF up to 10MB</p>
+                        <input type="file" name="images" id="id_images" class="hidden" accept="image/*">
+                    </div>
+                    {% if form.images.errors %}
+                        <div class="text-red-600 text-sm mt-2">{{ form.images.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- File name display -->
+                <div id="fileNameDisplay" class="text-sm text-gray-600 hidden">
+                    Selected file: <span id="fileName" class="font-semibold"></span>
+                </div>
+            </div>
+            
+            <!-- Buttons -->
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">Update Listing</button>
+                <a href="{% url 'core:listing_detail' listing.pk %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Handle file input display
+    const fileInput = document.getElementById('id_images');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const fileName = document.getElementById('fileName');
+    const uploadBox = fileInput.parentElement;
+    
+    // Show selected file name
+    fileInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+            fileName.textContent = this.files[0].name;
+            fileNameDisplay.classList.remove('hidden');
+        }
+    });
+    
+    // Drag and drop
+    uploadBox.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('bg-green-50', 'border-green-400');
+    });
+    
+    uploadBox.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('bg-green-50', 'border-green-400');
+    });
+    
+    uploadBox.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('bg-green-50', 'border-green-400');
+        
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            fileInput.files = e.dataTransfer.files;
+            fileName.textContent = e.dataTransfer.files[0].name;
+            fileNameDisplay.classList.remove('hidden');
+        }
+    });
+    
+    // Delivery fee toggle
+    const deliveryCheckbox = document.querySelector('input[name="delivery_available"]');
+    const deliveryFeeField = document.getElementById('deliveryFeeField');
+    
+    deliveryCheckbox.addEventListener('change', function() {
+        deliveryFeeField.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Calculate total preview
+    const quantityInput = document.querySelector('input[name="quantity"]');
+    const priceInput = document.querySelector('input[name="price_per_unit"]');
+    
+    function updateTotalPreview() {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const total = quantity * price;
+        const previewDiv = document.getElementById('totalPreview') || createTotalPreview();
+        previewDiv.innerHTML = total > 0 ? `Total Listing Price: $${total.toFixed(2)}` : '';
+    }
+    
+    function createTotalPreview() {
+        const div = document.createElement('div');
+        div.id = 'totalPreview';
+        div.className = 'mt-2 text-sm text-green-600 font-medium';
+        priceInput.parentNode.appendChild(div);
+        return div;
+    }
+    
+    quantityInput.addEventListener('input', updateTotalPreview);
+    priceInput.addEventListener('input', updateTotalPreview);
+</script>
+{% endblock %}

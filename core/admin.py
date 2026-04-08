@@ -582,3 +582,12 @@ class NotificationAdmin(admin.ModelAdmin):
 admin.site.site_header = "FarmWise Administration"
 admin.site.site_title = "FarmWise Admin Portal"
 admin.site.index_title = "Welcome to FarmWise - Agriculture Management System"
+
+# ============================================================
+# ADMIN SITE CUSTOMIZATION
+# ============================================================
+
+# Customize admin site
+admin.site.site_header = "FarmWise System Administration"
+admin.site.site_title = "FarmWise Admin"
+admin.site.index_title = "Welcome to FarmWise Administration Dashboard"

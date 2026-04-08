@@ -22,6 +22,7 @@
         <table class="w-full">
             <thead class="bg-gray-50 border-b">
                 <tr>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Photo</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Crop</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Field</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Planted Date</th>
@@ -33,6 +34,15 @@
             <tbody class="divide-y">
                 {% for crop in crops.object_list %}
                 <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        {% if crop.photo %}
+                        <img src="{{ crop.photo.url }}" alt="{{ crop.crop_type.name }}" class="w-16 h-16 object-cover rounded">
+                        {% else %}
+                        <div class="w-16 h-16 bg-green-100 rounded flex items-center justify-center">
+                            <i class="ri-leaf-line text-green-600 text-xl"></i>
+                        </div>
+                        {% endif %}
+                    </td>
                     <td class="px-6 py-4">
                         <div class="font-semibold">{{ crop.crop_type.name }}</div>
                         <div class="text-sm text-gray-500">{{ crop.variety }}</div>
@@ -63,86 +73,4 @@
     </div>
     {% endif %}
 </div>
-<div class="flex justify-between items-center mb-6 flex-wrap gap-4">
-    <div>
-        <h1 class="text-2xl font-bold">All Crops</h1>
-        <p class="text-gray-500">Track all your planted crops</p>
-    </div>
-    <div class="flex space-x-3">
-        <select id="statusFilter" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-            <option value="">All Status</option>
-            <option value="planned">Planned</option>
-            <option value="planted">Planted</option>
-            <option value="growing">Growing</option>
-            <option value="harvested">Harvested</option>
-            <option value="failed">Failed</option>
-        </select>
-        <a href="{% url 'core:crop_plant' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
-            <i class="ri-add-line"></i>
-            <span>Plant Crop</span>
-        </a>
-    </div>
-</div>
-
-<div class="bg-white rounded-xl shadow overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full">
-            <thead class="bg-gray-50 border-b">
-                <tr>
-                    <th class="text-left p-4">Crop</th>
-                    <th class="text-left p-4">Field</th>
-                    <th class="text-left p-4">Farm</th>
-                    <th class="text-left p-4">Planting Date</th>
-                    <th class="text-left p-4">Expected Harvest</th>
-                    <th class="text-left p-4">Status</th>
-                    <th class="text-left p-4">Yield (kg)</th>
-                    <th class="text-left p-4">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for crop in crops %}
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="p-4 font-medium">{{ crop.crop_type.name }}</td>
-                    <td class="p-4">{{ crop.field.name }}</td>
-                    <td class="p-4">{{ crop.field.farm.name }}</td>
-                    <td class="p-4">{{ crop.planting_date }}</td>
-                    <td class="p-4">{{ crop.expected_harvest_date }}</td>
-                    <td class="p-4">
-                        <span class="px-2 py-1 rounded-full text-xs font-semibold 
-                            {% if crop.status == 'growing' %}bg-green-100 text-green-700
-                            {% elif crop.status == 'harvested' %}bg-blue-100 text-blue-700
-                            {% elif crop.status == 'failed' %}bg-red-100 text-red-700
-                            {% else %}bg-gray-100 text-gray-700{% endif %}">
-                            {{ crop.get_status_display }}
-                        </span>
-                    </td>
-                    <td class="p-4">{{ crop.actual_yield_kg|default:"-" }}</td>
-                    <td class="p-4">
-                        <div class="flex space-x-2">
-                            <a href="{% url 'core:crop_detail' crop.id %}" class="text-blue-600 hover:text-blue-800"><i class="ri-eye-line"></i></a>
-                            <a href="{% url 'core:crop_edit' crop.id %}" class="text-yellow-600 hover:text-yellow-800"><i class="ri-edit-line"></i></a>
-                            <a href="{% url 'core:crop_harvest' crop.id %}" class="text-green-600 hover:text-green-800"><i class="ri-add-line"></i></a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8" class="text-center p-8 text-gray-500">No crops yet. <a href="{% url 'core:crop_plant' %}" class="text-green-600">Plant your first crop</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    document.getElementById('statusFilter').addEventListener('change', function() {
-        const status = this.value;
-        if (status) {
-            window.location.href = `?status=${status}`;
-        } else {
-            window.location.href = window.location.pathname;
-        }
-    });
-</script>
 {% endblock %}

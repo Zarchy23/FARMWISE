@@ -7,69 +7,95 @@
     <div class="bg-white rounded-xl shadow-lg p-6">
         <h1 class="text-2xl font-bold mb-6">List Your Equipment for Rent</h1>
         
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="p-4 rounded-lg {% if message.tags %}bg-{{ message.tags }}-100 text-{{ message.tags }}-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             
             <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Equipment Name</label>
-                <input type="text" name="name" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., John Deere Tractor">
+                <label class="block text-gray-700 font-medium mb-2">Equipment Name <span class="text-red-500">*</span></label>
+                <input type="text" name="name" required value="{{ form.name.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., John Deere Tractor">
+                {% if form.name.errors %}<p class="text-red-600 text-sm mt-1">{{ form.name.errors }}</p>{% endif %}
             </div>
             
             <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Category</label>
-                <select name="category" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="tractor">Tractor</option>
-                    <option value="harvester">Harvester</option>
-                    <option value="planter">Planter</option>
-                    <option value="sprayer">Sprayer</option>
-                    <option value="plow">Plow</option>
-                    <option value="cultivator">Cultivator</option>
-                    <option value="trailer">Trailer</option>
-                    <option value="irrigation">Irrigation Equipment</option>
-                    <option value="other">Other</option>
+                <label class="block text-gray-700 font-medium mb-2">Category <span class="text-red-500">*</span></label>
+                <select name="category" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Category --</option>
+                    <option value="tractor" {% if form.category.value == "tractor" %}selected{% endif %}>Tractor</option>
+                    <option value="harvester" {% if form.category.value == "harvester" %}selected{% endif %}>Harvester</option>
+                    <option value="planter" {% if form.category.value == "planter" %}selected{% endif %}>Planter</option>
+                    <option value="sprayer" {% if form.category.value == "sprayer" %}selected{% endif %}>Sprayer</option>
+                    <option value="plow" {% if form.category.value == "plow" %}selected{% endif %}>Plow</option>
+                    <option value="cultivator" {% if form.category.value == "cultivator" %}selected{% endif %}>Cultivator</option>
+                    <option value="trailer" {% if form.category.value == "trailer" %}selected{% endif %}>Trailer</option>
+                    <option value="irrigation" {% if form.category.value == "irrigation" %}selected{% endif %}>Irrigation Equipment</option>
+                    <option value="other" {% if form.category.value == "other" %}selected{% endif %}>Other</option>
                 </select>
+                {% if form.category.errors %}<p class="text-red-600 text-sm mt-1">{{ form.category.errors }}</p>{% endif %}
             </div>
             
             <div class="mb-4">
                 <label class="block text-gray-700 font-medium mb-2">Description</label>
-                <textarea name="description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Describe the equipment, its condition, features..."></textarea>
+                <textarea name="description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Describe the equipment, its condition, features...">{{ form.description.value|default:'' }}</textarea>
+                {% if form.description.errors %}<p class="text-red-600 text-sm mt-1">{{ form.description.errors }}</p>{% endif %}
             </div>
             
             <div class="grid md:grid-cols-2 gap-4">
                 <div class="mb-4">
-                    <label class="block text-gray-700 font-medium mb-2">Daily Rate ($)</label>
-                    <input type="number" step="0.01" name="daily_rate" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Price per day">
+                    <label class="block text-gray-700 font-medium mb-2">Hourly Rate ($)</label>
+                    <input type="number" step="0.01" min="0" name="hourly_rate" value="{{ form.hourly_rate.value|default:0 }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+                    {% if form.hourly_rate.errors %}<p class="text-red-600 text-sm mt-1">{{ form.hourly_rate.errors }}</p>{% endif %}
                 </div>
                 <div class="mb-4">
-                    <label class="block text-gray-700 font-medium mb-2">Security Deposit ($)</label>
-                    <input type="number" step="0.01" name="deposit_amount" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Refundable deposit">
+                    <label class="block text-gray-700 font-medium mb-2">Daily Rate ($) <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" min="0" name="daily_rate" required value="{{ form.daily_rate.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Price per day">
+                    {% if form.daily_rate.errors %}<p class="text-red-600 text-sm mt-1">{{ form.daily_rate.errors }}</p>{% endif %}
                 </div>
             </div>
             
             <div class="grid md:grid-cols-2 gap-4">
                 <div class="mb-4">
                     <label class="block text-gray-700 font-medium mb-2">Weekly Rate ($)</label>
-                    <input type="number" step="0.01" name="weekly_rate" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+                    <input type="number" step="0.01" min="0" name="weekly_rate" value="{{ form.weekly_rate.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+                    {% if form.weekly_rate.errors %}<p class="text-red-600 text-sm mt-1">{{ form.weekly_rate.errors }}</p>{% endif %}
                 </div>
                 <div class="mb-4">
                     <label class="block text-gray-700 font-medium mb-2">Monthly Rate ($)</label>
-                    <input type="number" step="0.01" name="monthly_rate" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+                    <input type="number" step="0.01" min="0" name="monthly_rate" value="{{ form.monthly_rate.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+                    {% if form.monthly_rate.errors %}<p class="text-red-600 text-sm mt-1">{{ form.monthly_rate.errors }}</p>{% endif %}
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Security Deposit ($)</label>
+                    <input type="number" step="0.01" min="0" name="deposit_amount" value="{{ form.deposit_amount.value|default:0 }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Refundable deposit">
+                    {% if form.deposit_amount.errors %}<p class="text-red-600 text-sm mt-1">{{ form.deposit_amount.errors }}</p>{% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Location <span class="text-red-500">*</span></label>
+                    <input type="text" name="location" required value="{{ form.location.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="City, address for pickup">
+                    {% if form.location.errors %}<p class="text-red-600 text-sm mt-1">{{ form.location.errors }}</p>{% endif %}
                 </div>
             </div>
             
             <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Location</label>
-                <input type="text" name="location" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="City, address for pickup">
-            </div>
-            
-            <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Equipment Images</label>
-                <input type="file" name="images" multiple accept="image/*" class="w-full border border-gray-300 rounded-lg px-4 py-2">
-                <p class="text-sm text-gray-500 mt-1">Upload photos of the equipment (optional)</p>
+                <label class="block text-gray-700 font-medium mb-2">Equipment Specifications</label>
+                <textarea name="specifications" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Engine capacity, horsepower, year of make, etc.">{{ form.specifications.value|default:'' }}</textarea>
+                {% if form.specifications.errors %}<p class="text-red-600 text-sm mt-1">{{ form.specifications.errors }}</p>{% endif %}
             </div>
             
             <div class="flex space-x-3 mt-6">
-                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">List Equipment</button>
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition font-bold">List Equipment</button>
                 <a href="{% url 'core:equipment_list' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
             </div>
         </form>

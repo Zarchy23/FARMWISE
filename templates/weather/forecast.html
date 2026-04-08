@@ -3,120 +3,346 @@
 {% block page_title %}Weather Forecast{% endblock %}
 
 {% block content %}
-<div>
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6 rounded-lg">
+    
     <!-- Header -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold">Weather Forecast</h1>
-        <p class="text-gray-600">7-day forecast to plan your farm activities</p>
+    <div class="mb-10">
+        <h1 class="text-4xl font-bold text-white drop-shadow-lg">Weather Forecast</h1>
+        <p class="text-blue-200 text-lg mt-2">Real-time forecast to optimize your farming activities</p>
     </div>
 
-    <!-- Current Weather -->
-    <div class="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg shadow-lg p-8 text-white mb-8">
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-lg opacity-90">Today's Weather</p>
-                <div class="text-5xl font-bold mt-2">28°C</div>
-                <p class="text-xl opacity-90 mt-2">Sunny & Clear</p>
-            </div>
-            <i class="ri-sun-line text-7xl opacity-50"></i>
+    <!-- Current Weather Card - Animated -->
+    <div class="relative mb-10 overflow-hidden rounded-2xl shadow-2xl">
+        <!-- Animated background -->
+        <div class="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 opacity-90"></div>
+        <div class="absolute inset-0">
+            <div class="absolute top-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
+            <div class="absolute bottom-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full translate-x-1/2 translate-y-1/2 animate-pulse" style="animation-delay: 0.5s"></div>
         </div>
-        <div class="mt-6 grid grid-cols-3 gap-4">
-            <div>
-                <p class="text-sm opacity-75">Humidity</p>
-                <p class="text-2xl font-bold">65%</p>
-            </div>
-            <div>
-                <p class="text-sm opacity-75">Wind Speed</p>
-                <p class="text-2xl font-bold">12 km/h</p>
-            </div>
-            <div>
-                <p class="text-sm opacity-75">Rainfall</p>
-                <p class="text-2xl font-bold">0 mm</p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Forecast Grid -->
-    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {% for item in forecast %}
-        <div class="bg-white rounded-lg shadow p-4 card-hover">
-            <p class="text-sm text-gray-600 mb-3">{{ item.day|date:"D, M d" }}</p>
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <p class="text-sm">{{ item.condition }}</p>
-                    <p class="text-2xl font-bold text-gray-700">{{ item.temp_high }}°C</p>
-                    <p class="text-sm text-gray-500">Lo: {{ item.temp_low }}°C</p>
+        <div class="relative z-10 p-8 md:p-12 text-white">
+            <div class="flex justify-between items-start mb-8">
+                <div class="animate-fadeIn">
+                    <p class="text-lg font-light opacity-90 mb-2">Today's Weather</p>
+                    {% if weather.temp != 'N/A' %}
+                        <div class="text-6xl font-bold drop-shadow-lg">{{ weather.temp|floatformat:0 }}°C</div>
+                        <p class="text-2xl font-light opacity-90 mt-3">{{ weather.condition }}</p>
+                        <p class="text-sm opacity-75 mt-1">{{ weather.description }}</p>
+                        <p class="text-xs opacity-60 mt-2">Last updated: {{ weather.last_updated|date:"H:i" }}</p>
+                    {% else %}
+                        <div class="text-3xl font-semibold">No Data Available</div>
+                        <p class="text-lg mt-2">{{ weather.description }}</p>
+                    {% endif %}
                 </div>
-                <div class="text-4xl">
-                    {% if item.icon == 'sun' %}
-                    <i class="ri-sun-line text-yellow-500"></i>
-                    {% elif item.icon == 'cloud-sun' %}
-                    <i class="ri-cloud-sun-line text-gray-400"></i>
-                    {% elif item.icon == 'rainy' %}
-                    <i class="ri-rainy-line text-blue-500"></i>
-                    {% elif item.icon == 'cloudy' %}
-                    <i class="ri-cloud-line text-gray-400"></i>
+                <div class="text-8xl opacity-70 animate-bounce" style="animation-duration: 3s">
+                    {% if weather.condition|lower == 'sunny' or weather.condition|lower == 'clear' %}
+                        <i class="ri-sun-line text-yellow-300"></i>
+                    {% elif weather.condition|lower == 'cloudy' or weather.condition|lower == 'overcast' %}
+                        <i class="ri-cloud-line"></i>
+                    {% elif weather.condition|lower == 'rainy' or weather.condition|lower == 'rain' %}
+                        <i class="ri-rainy-line text-blue-200"></i>
+                    {% elif weather.condition|lower == 'partly cloudy' %}
+                        <i class="ri-cloud-sun-line text-orange-300"></i>
+                    {% elif weather.condition|lower == 'thunderstorm' %}
+                        <i class="ri-settings-3-line"></i>
+                    {% else %}
+                        <i class="ri-cloud-line"></i>
                     {% endif %}
                 </div>
             </div>
+
+            <!-- Conditions Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-4 border border-white border-opacity-20 hover:bg-opacity-20 transition transform hover:scale-105">
+                    <p class="text-sm font-light opacity-75">Humidity</p>
+                    <p class="text-3xl font-bold mt-2">{{ weather.humidity|default:'N/A' }}{% if weather.humidity %}%{% endif %}</p>
+                </div>
+                <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-4 border border-white border-opacity-20 hover:bg-opacity-20 transition transform hover:scale-105">
+                    <p class="text-sm font-light opacity-75">Wind Speed</p>
+                    <p class="text-3xl font-bold mt-2">{{ weather.wind_speed|floatformat:1|default:'N/A' }}{% if weather.wind_speed %} m/s{% endif %}</p>
+                </div>
+                <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-4 border border-white border-opacity-20 hover:bg-opacity-20 transition transform hover:scale-105">
+                    <p class="text-sm font-light opacity-75">Feels Like</p>
+                    <p class="text-3xl font-bold mt-2">{{ weather.feels_like|floatformat:0|default:'N/A' }}{% if weather.feels_like %}°C{% endif %}</p>
+                </div>
+                <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-4 border border-white border-opacity-20 hover:bg-opacity-20 transition transform hover:scale-105">
+                    <p class="text-sm font-light opacity-75">Pressure</p>
+                    <p class="text-3xl font-bold mt-2">{{ weather.pressure|default:'N/A' }}{% if weather.pressure %} hPa{% endif %}</p>
+                </div>
+            </div>
         </div>
-        {% endfor %}
+    </div>
+
+    <!-- Forecast Cards with Animations -->
+    {% if weather.forecast %}
+    <div class="mb-10">
+        <h2 class="text-3xl font-bold text-white mb-6 drop-shadow-lg">5-Day Forecast</h2>
+        <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {% for item in weather.forecast %}
+            <div class="group cursor-pointer forecast-card">
+                <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg p-6 border border-slate-700 hover:border-blue-500 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl h-full">
+                    <p class="text-sm text-blue-300 font-semibold mb-4">
+                        {% if item.day %}
+                            {{ item.day|date:"D, M d" }}
+                        {% else %}
+                            Day {{ forloop.counter }}
+                        {% endif %}
+                    </p>
+                    
+                    <div class="text-5xl mb-4 text-center animate-bounce">
+                        {% if item.condition|lower == 'clear' or item.condition|lower == 'sunny' %}
+                            <i class="ri-sun-line text-yellow-400"></i>
+                        {% elif item.condition|lower == 'clouds' or item.condition|lower == 'cloudy' %}
+                            <i class="ri-cloud-line text-gray-300"></i>
+                        {% elif item.condition|lower == 'rain' or item.condition|lower == 'rainy' %}
+                            <i class="ri-rainy-line text-blue-400"></i>
+                        {% elif item.condition|lower == 'drizzle' %}
+                            <i class="ri-drizzle-line text-blue-300"></i>
+                        {% elif item.condition|lower == 'thunderstorm' %}
+                            <i class="ri-flashlight-line text-purple-400"></i>
+                        {% elif item.condition|lower == 'snow' %}
+                            <i class="ri-snow-line text-cyan-200"></i>
+                        {% else %}
+                            <i class="ri-cloud-line text-gray-300"></i>
+                        {% endif %}
+                    </div>
+                    
+                    <p class="text-white font-semibold text-center mb-3">{{ item.condition }}</p>
+                    <p class="text-xs text-gray-400 text-center mb-4">{{ item.description }}</p>
+                    
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between text-gray-300">
+                            <span>High</span>
+                            <span class="font-bold text-white">{{ item.temp_high|floatformat:0 }}°C</span>
+                        </div>
+                        <div class="flex justify-between text-gray-400">
+                            <span>Low</span>
+                            <span class="font-bold text-white">{{ item.temp_low|floatformat:0 }}°C</span>
+                        </div>
+                        <div class="flex justify-between text-gray-400 mt-3 pt-3 border-t border-gray-700">
+                            <span>Humidity</span>
+                            <span class="font-bold text-blue-300">{{ item.humidity|default:'N/A' }}%</span>
+                        </div>
+                        <div class="flex justify-between text-gray-400">
+                            <span>Wind</span>
+                            <span class="font-bold text-cyan-300">{{ item.wind_speed|floatformat:1 }} m/s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-blue-900 hover:bg-blue-800 border border-blue-700 rounded-xl p-8 text-center text-blue-100 mb-10 animate-pulse">
+        <i class="ri-cloud-line text-4xl mb-3"></i>
+        <p class="text-lg">{{ message|default:'Fetching weather forecast data...' }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Smart Recommendations -->
+    <div class="mb-10">
+        <h2 class="text-3xl font-bold text-white mb-6 drop-shadow-lg">Smart Recommendations</h2>
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Irrigation Recommendation -->
+            <div class="bg-gradient-to-br from-green-900 to-green-800 rounded-xl shadow-lg p-6 border border-green-700 transform hover:scale-105 transition">
+                <div class="flex items-start">
+                    <i class="ri-water-flash-line text-3xl text-green-300 mr-4"></i>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-2">Irrigation Schedule</h3>
+                        <p class="text-green-100 text-sm mb-3">
+                            {% if weather.condition|lower == 'rainy' or weather.condition|lower == 'rain' %}
+                                Rainfall expected - Skip irrigation today. Monitor soil moisture.
+                            {% elif weather.humidity > 70 %}
+                                High humidity detected. Reduce irrigation to prevent fungal diseases.
+                            {% else %}
+                                Optimal conditions for irrigation. Plan watering for early morning.
+                            {% endif %}
+                        </p>
+                        <a href="{% url 'core:irrigation' %}" class="inline-block bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-semibold mt-2">
+                            View Schedule →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pest Management Recommendation -->
+            <div class="bg-gradient-to-br from-orange-900 to-orange-800 rounded-xl shadow-lg p-6 border border-orange-700 transform hover:scale-105 transition">
+                <div class="flex items-start">
+                    <i class="ri-bug-2-line text-3xl text-orange-300 mr-4"></i>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-2">Pest Management</h3>
+                        <p class="text-orange-100 text-sm mb-3">
+                            {% if weather.humidity > 80 %}
+                                High humidity - High pest risk! Monitor for fungal infections.
+                            {% elif weather.temperature > 28 %}
+                                High temperature - Optimal conditions for pest activity. Check crops regularly.
+                            {% else %}
+                                Low pest risk. Continue regular monitoring practices.
+                            {% endif %}
+                        </p>
+                        <a href="{% url 'core:pest_detection' %}" class="inline-block bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition text-sm font-semibold mt-2">
+                            Check Pests →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Crop Protection Recommendation -->
+            <div class="bg-gradient-to-br from-red-900 to-red-800 rounded-xl shadow-lg p-6 border border-red-700 transform hover:scale-105 transition">
+                <div class="flex items-start">
+                    <i class="ri-shield-check-line text-3xl text-red-300 mr-4"></i>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-2">Crop Protection</h3>
+                        <p class="text-red-100 text-sm mb-3">
+                            {% if weather.wind_speed > 10 %}
+                                Strong winds expected! Secure stakes and supports for your crops.
+                            {% elif weather.temperature < 15 %}
+                                Low temperature alert - Cover sensitive crops to prevent frost damage.
+                            {% else %}
+                                Conditions are favorable for crop growth. Monitor for extreme weather.
+                            {% endif %}
+                        </p>
+                        <a href="{% url 'core:buy_insurance' %}" class="inline-block bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm font-semibold mt-2">
+                            Get Insurance →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Harvesting Recommendation -->
+            <div class="bg-gradient-to-br from-yellow-900 to-yellow-800 rounded-xl shadow-lg p-6 border border-yellow-700 transform hover:scale-105 transition">
+                <div class="flex items-start">
+                    <i class="ri-plant-line text-3xl text-yellow-300 mr-4"></i>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-2">Harvesting Window</h3>
+                        <p class="text-yellow-100 text-sm mb-3">
+                            {% if weather.humidity < 60 and weather.condition|lower == 'clear' %}
+                                Perfect harvesting weather! Dry conditions will help preserve crop quality.
+                            {% elif weather.condition|lower == 'rainy' or weather.condition|lower == 'rain' %}
+                                Avoid harvesting in rain. Wait for dry conditions.
+                            {% else %}
+                                Monitor ripeness. Mild conditions are good for harvesting.
+                            {% endif %}
+                        </p>
+                        <a href="{% url 'core:crop_list' %}" class="inline-block bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition text-sm font-semibold mt-2">
+                            View Crops →
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Alerts Section -->
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-xl font-bold mb-4 flex items-center">
-            <i class="ri-alert-line mr-2 text-yellow-500"></i>
-            Weather Alerts
+    <div class="bg-gradient-to-br from-red-950 to-orange-950 rounded-2xl shadow-2xl p-8 border border-red-700">
+        <h2 class="text-2xl font-bold text-white mb-6 flex items-center drop-shadow-lg">
+            <i class="ri-alert-line mr-3 text-red-400 text-3xl animate-pulse"></i>
+            Active Weather Alerts
         </h2>
-        <div class="space-y-3">
-            <div class="border-l-4 border-yellow-500 bg-yellow-50 p-4 rounded">
-                <p class="font-semibold text-yellow-800">Dry Spell Expected</p>
-                <p class="text-sm text-yellow-700">Plan irrigation for the next 5 days</p>
+        
+        {% if alerts %}
+            <div class="space-y-4">
+                {% for alert in alerts %}
+                <div class="animate-slideDown bg-red-900 bg-opacity-40 border-l-4 border-red-500 p-4 rounded-lg backdrop-blur-sm hover:bg-opacity-60 transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-red-200 text-lg">{{ alert.title }}</p>
+                            <p class="text-red-100 text-sm mt-1">{{ alert.message }}</p>
+                        </div>
+                        <span class="px-3 py-1 bg-red-600 text-white rounded-full text-xs font-bold">{{ alert.get_severity_display }}</span>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
-            <div class="border-l-4 border-blue-500 bg-blue-50 p-4 rounded">
-                <p class="font-semibold text-blue-800">Moderate Winds</p>
-                <p class="text-sm text-blue-700">Wind speeds expected to increase tomorrow</p>
+            <a href="{% url 'core:weather_alerts' %}" class="inline-block mt-6 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-semibold">
+                View All Alerts →
+            </a>
+        {% else %}
+            <div class="text-center py-6">
+                <i class="ri-check-double-line text-6xl text-green-400 mb-3"></i>
+                <p class="text-green-200 text-lg">No active alerts. Your farms are safe!</p>
             </div>
-        </div>
-    </div>
-</div>
-        </div>
-        <div class="text-right">
-            <div class="text-4xl font-bold">{{ current.temp }}°C</div>
-            <div class="text-gray-500">{{ current.condition }}</div>
-        </div>
+        {% endif %}
     </div>
 </div>
 
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
-    {% for day in forecast %}
-    <div class="bg-white rounded-xl shadow p-4 text-center">
-        <p class="font-bold">{{ day.day|date:"D" }}</p>
-        <p class="text-sm text-gray-500">{{ day.day|date:"M d" }}</p>
-        <i class="ri-{{ day.icon }}-line text-3xl my-2 {% if day.icon == 'sun' %}text-yellow-500{% elif day.icon == 'rainy' %}text-blue-500{% else %}text-gray-500{% endif %}"></i>
-        <p class="text-xl font-bold">{{ day.temp_high }}°</p>
-        <p class="text-sm text-gray-500">{{ day.temp_low }}°</p>
-        <p class="text-xs text-gray-400 mt-1">{{ day.condition }}</p>
-    </div>
-    {% endfor %}
+<!-- Animations -->
+<style>
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .animate-fadeIn {
+        animation: fadeIn 0.8s ease-in;
+    }
+
+    .animate-slideDown {
+        animation: slideDown 0.5s ease-out;
+    }
+
+    /* Forecast card staggered animation */
+    .forecast-card {
+        animation: slideUp 0.5s ease-out forwards;
+        opacity: 0;
+    }
+
+    .forecast-card:nth-child(1) {
+        animation-delay: 0s;
+    }
+
+    .forecast-card:nth-child(2) {
+        animation-delay: 0.1s;
+    }
+
+    .forecast-card:nth-child(3) {
+        animation-delay: 0.2s;
+    }
+
+    .forecast-card:nth-child(4) {
+        animation-delay: 0.3s;
+    }
+
+    .forecast-card:nth-child(5) {
+        animation-delay: 0.4s;
+    }
+
+    .card-hover:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .group:hover {
+        transform: scale(1.02);
+    }
+</style>
 </div>
 
-{% if alerts %}
-<div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-    <h3 class="font-bold text-yellow-800 flex items-center"><i class="ri-alert-line mr-2"></i> Weather Alerts</h3>
-    {% for alert in alerts %}
-    <div class="mt-2 text-sm text-yellow-700">{{ alert }}</div>
-    {% endfor %}
-</div>
-{% endif %}
-
-<div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
-    <h3 class="font-bold text-blue-800 flex items-center"><i class="ri-lightbulb-line mr-2"></i> Farming Tips</h3>
-    <ul class="mt-2 space-y-1 text-sm text-blue-700">
-        <li>• {% if forecast.0.condition == 'Rainy' %}Delay fertilizer application until after rain{% else %}Good time for fertilizer application{% endif %}</li>
-        <li>• Check soil moisture before irrigation planning</li>
-        <li>• Monitor for pest activity in warm, humid conditions</li>
-    </ul>
-</div>
 {% endblock %}

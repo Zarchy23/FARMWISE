@@ -9,9 +9,15 @@ from django.db.models import Sum, Count, Q, Avg
 from django.utils import timezone
 from django.http import JsonResponse
 from django.core.paginator import Paginator
+from datetime import timedelta
 from decimal import Decimal
 import json
 import requests
+import base64
+import re
+import openai
+from PIL import Image
+from io import BytesIO
 
 from .models import *
 from .forms import *
@@ -42,10 +48,6 @@ def register(request):
 @login_required
 def dashboard(request):
     """Main user dashboard - Role-based content"""
-    
-    # Admin dashboard redirect
-    if request.user.is_superuser or request.user.user_type == 'admin':
-        return redirect('core:admin_dashboard')
     
     # Regular user dashboard
     farms = Farm.objects.filter(owner=request.user)
@@ -95,12 +97,38 @@ def dashboard(request):
                 'created_at': harvest.created_at
             })
     
-    # Weather (mock - integrate with real API)
-    weather = {
-        'temp': 28,
-        'condition': 'Sunny',
-        'forecast': 'Clear skies expected for next 3 days'
-    }
+    # Weather - fetch from real data
+    weather = None
+    if farms.exists():
+        # Get weather from first farm (or implement farm selection)
+        farm = farms.first()
+        weather_data = WeatherData.objects.filter(farm=farm).first()
+        if weather_data:
+            weather = {
+                'temp': weather_data.temperature,
+                'feels_like': weather_data.feels_like,
+                'condition': weather_data.condition,
+                'description': weather_data.description,
+                'humidity': weather_data.humidity,
+                'wind_speed': weather_data.wind_speed,
+                'location': weather_data.location,
+                'last_updated': weather_data.last_updated,
+                'forecast': weather_data.forecast_data.get('forecast', [])
+            }
+        else:
+            weather = {
+                'temp': 'N/A',
+                'condition': 'No data',
+                'description': 'Weather data not available. Please ensure farm coordinates are set.',
+                'forecast': []
+            }
+    else:
+        weather = {
+            'temp': 'N/A',
+            'condition': 'No farms',
+            'description': 'Please create a farm first to see weather data.',
+            'forecast': []
+        }
     
     context = {
         'farms': farms,
@@ -114,81 +142,11 @@ def dashboard(request):
     return render(request, 'dashboard.html', context)
 
 
-@login_required
-def admin_dashboard(request):
-    """Admin dashboard - System overview and management"""
-    if not (request.user.is_superuser or request.user.user_type == 'admin'):
-        messages.error(request, 'You do not have permission to access the admin dashboard.')
-        return redirect('core:dashboard')
-    
-    # System statistics
-    total_users = User.objects.count()
-    total_farms = Farm.objects.count()
-    total_crops = CropSeason.objects.count()
-    total_animals = Animal.objects.count()
-    total_transactions = Transaction.objects.count()
-    
-    # User breakdown by type with percentages
-    user_breakdown = []
-    for user_type_code, user_type_name in User.USER_TYPES:
-        count = User.objects.filter(user_type=user_type_code).count()
-        percentage = (count * 100 // total_users) if total_users > 0 else 0
-        user_breakdown.append({
-            'name': user_type_name,
-            'count': count,
-            'percentage': percentage
-        })
-    
-    # Recent users
-    recent_users = User.objects.all().order_by('-date_joined')[:10]
-    
-    # Monthly transaction total
-    monthly_transactions = Transaction.objects.filter(
-        date__month=timezone.now().month
-    ).aggregate(total=Sum('amount'))['total'] or 0
-    
-    context = {
-        'total_users': total_users,
-        'total_farms': total_farms,
-        'total_crops': total_crops,
-        'total_animals': total_animals,
-        'total_transactions': total_transactions,
-        'monthly_transactions': monthly_transactions,
-        'user_breakdown': user_breakdown,
-        'recent_users': recent_users,
-    }
-    
-    return render(request, 'admin/dashboard.html', context)
+
 
 
 @login_required
-def user_management(request):
-    """Admin user management - View all users and their types"""
-    if not (request.user.is_superuser or request.user.user_type == 'admin'):
-        messages.error(request, 'You do not have permission to access user management.')
-        return redirect('core:dashboard')
-    
-    # Get all users with pagination
-    users = User.objects.all().order_by('-date_joined')
-    
-    # Filter by user type if specified
-    user_type_filter = request.GET.get('user_type', '')
-    if user_type_filter:
-        users = users.filter(user_type=user_type_filter)
-    
-    # Pagination
-    paginator = Paginator(users, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    context = {
-        'page_obj': page_obj,
-        'users': page_obj,
-        'user_types': User.USER_TYPES,
-        'selected_type': user_type_filter,
-    }
-    
-    return render(request, 'admin/user_management.html', context)
+
 
 
 @login_required
@@ -198,6 +156,7 @@ def profile(request):
 
 
 @login_required
+@login_required
 def profile_edit(request):
     """Edit user profile"""
     if request.method == 'POST':
@@ -206,6 +165,11 @@ def profile_edit(request):
             form.save()
             messages.success(request, 'Profile updated successfully!')
             return redirect('core:profile')
+        else:
+            # Log form errors for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Profile form errors: {form.errors}')
     else:
         form = UserProfileForm(instance=request.user)
     return render(request, 'accounts/profile_edit.html', {'form': form})
@@ -248,6 +212,121 @@ def change_password(request):
         return redirect('core:settings')
     
     return redirect('core:settings')
+
+
+# ============================================================
+# SYSTEM ADMIN WALLBOARD
+# ============================================================
+
+@login_required
+def wallboard(request):
+    """System admin wallboard with statistical data - Admin only"""
+    
+    # Check if user is system admin
+    if request.user.user_type != 'admin':
+        messages.error(request, 'Access denied. Only system administrators can view this page.')
+        return redirect('core:dashboard')
+    
+    # Gather system-wide statistics
+    
+    # User statistics
+    total_users = User.objects.count()
+    user_types = User.objects.values('user_type').annotate(count=Count('user_type')).order_by('-count')
+    active_users = User.objects.filter(last_active__gte=timezone.now() - timedelta(days=7)).count()
+    new_users_this_month = User.objects.filter(created_at__month=timezone.now().month).count()
+    
+    # Farm statistics
+    total_farms = Farm.objects.count()
+    farms_by_type = Farm.objects.values('farm_type').annotate(count=Count('farm_type')).order_by('-count')
+    
+    # Crop statistics
+    total_crops = CropSeason.objects.count()
+    active_crops = CropSeason.objects.filter(status__in=['planted', 'growing']).count()
+    completed_crops = CropSeason.objects.filter(status='harvested').count()
+    crop_types = CropSeason.objects.values('crop_type__name').annotate(count=Count('id')).order_by('-count')[:10]
+    total_harvest = Harvest.objects.aggregate(total=Sum('quantity_kg'))['total'] or 0
+    
+    # Livestock statistics
+    total_animals = Animal.objects.count()
+    alive_animals = Animal.objects.filter(status='alive').count()
+    animal_types = Animal.objects.values('animal_type').annotate(count=Count('id')).order_by('-count')
+    
+    # Transaction statistics
+    total_revenue = Transaction.objects.filter(transaction_type='income').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    total_expenses = Transaction.objects.filter(transaction_type='expense').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    this_month_revenue = Transaction.objects.filter(
+        transaction_type='income',
+        date__month=timezone.now().month,
+        date__year=timezone.now().year
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    
+    # Payroll statistics
+    total_workers = Worker.objects.count()
+    pending_payroll = Payroll.objects.filter(status='pending').count()
+    total_payroll_processed = Payroll.objects.filter(status='processed').aggregate(total=Sum('total_pay'))['total'] or Decimal('0.00')
+    
+    # Equipment statistics
+    total_equipment = Equipment.objects.count()
+    active_bookings = EquipmentBooking.objects.filter(status='approved').count()
+    
+    # Insurance statistics
+    total_policies = InsurancePolicy.objects.count()
+    active_policies = InsurancePolicy.objects.filter(status='active').count()
+    total_claims = InsuranceClaim.objects.count()
+    
+    # Pest detection statistics
+    total_pest_reports = PestReport.objects.count()
+    pest_types = PestReport.objects.values('ai_diagnosis').annotate(count=Count('id')).order_by('-count')[:5]
+    
+    # Recent activities
+    recent_activities = AuditLog.objects.select_related('user').order_by('-created_at')[:20]
+    
+    # System health
+    verification_rate = (User.objects.filter(is_verified=True).count() / max(total_users, 1)) * 100 if total_users > 0 else 0
+    email_verified_rate = (User.objects.filter(email_verified=True).count() / max(total_users, 1)) * 100 if total_users > 0 else 0
+    
+    # Top farms by activity
+    top_farms = Farm.objects.annotate(
+        crop_count=Count('fields__crops', distinct=True),
+        animal_count=Count('animals', distinct=True),
+        activity_count=Count('activities', distinct=True)
+    ).order_by('-activity_count')[:10]
+    
+    context = {
+        'total_users': total_users,
+        'user_types': list(user_types),
+        'active_users': active_users,
+        'new_users_this_month': new_users_this_month,
+        'total_farms': total_farms,
+        'farms_by_type': list(farms_by_type),
+        'total_crops': total_crops,
+        'active_crops': active_crops,
+        'completed_crops': completed_crops,
+        'crop_types': list(crop_types),
+        'total_harvest': total_harvest,
+        'total_animals': total_animals,
+        'alive_animals': alive_animals,
+        'animal_types': list(animal_types),
+        'total_revenue': total_revenue,
+        'total_expenses': total_expenses,
+        'this_month_revenue': this_month_revenue,
+        'total_workers': total_workers,
+        'pending_payroll': pending_payroll,
+        'total_payroll_processed': total_payroll_processed,
+        'total_equipment': total_equipment,
+        'active_bookings': active_bookings,
+        'total_policies': total_policies,
+        'active_policies': active_policies,
+        'total_claims': total_claims,
+        'total_pest_reports': total_pest_reports,
+        'pest_types': list(pest_types),
+        'recent_activities': recent_activities,
+        'verification_rate': verification_rate,
+        'email_verified_rate': email_verified_rate,
+        'top_farms': top_farms,
+    }
+    
+    return render(request, 'admin/wallboard.html', context)
 
 
 # ============================================================
@@ -389,11 +468,21 @@ def crop_list(request):
 def crop_plant(request):
     """Plant a new crop"""
     if request.method == 'POST':
-        form = CropSeasonForm(request.POST)
+        form = CropSeasonForm(request.POST, request.FILES)
         if form.is_valid():
             crop = form.save(commit=False)
             crop.created_by = request.user
             crop.save()
+            
+            # Create notification
+            Notification.objects.create(
+                user=request.user,
+                notification_type='success',
+                title=f'{crop.crop_type.name} Planted',
+                message=f'You have successfully planted {crop.crop_type.name} in {crop.field.name}.',
+                link=f'/crops/{crop.id}/'
+            )
+            
             messages.success(request, f'{crop.crop_type.name} planted successfully!')
             return redirect('core:crop_detail', pk=crop.pk)
     else:
@@ -422,7 +511,7 @@ def crop_edit(request, pk):
     """Edit crop details"""
     crop = get_object_or_404(CropSeason, pk=pk, field__farm__owner=request.user)
     if request.method == 'POST':
-        form = CropSeasonForm(request.POST, instance=crop)
+        form = CropSeasonForm(request.POST, request.FILES, instance=crop)
         if form.is_valid():
             form.save()
             messages.success(request, 'Crop updated successfully!')
@@ -511,7 +600,7 @@ def animal_list(request):
 def animal_add(request):
     """Add a new animal"""
     if request.method == 'POST':
-        form = AnimalForm(request.POST)
+        form = AnimalForm(request.POST, request.FILES)
         if form.is_valid():
             animal = form.save(commit=False)
             animal.save()
@@ -520,8 +609,28 @@ def animal_add(request):
     else:
         form = AnimalForm()
         form.fields['farm'].queryset = Farm.objects.filter(owner=request.user)
+        form.fields['animal_type'].queryset = AnimalType.objects.filter(is_active=True)
     
-    return render(request, 'livestock/add.html', {'form': form})
+    # Get farms and animal types for initial form context
+    farms = Farm.objects.filter(owner=request.user)
+    animal_types = AnimalType.objects.filter(is_active=True)
+    
+    # Check if there's a farm_id in the request to pre-select farm
+    farm_id = request.GET.get('farm_id')
+    initial = {}
+    if farm_id:
+        try:
+            farm = farms.get(id=farm_id)
+            initial['farm'] = farm
+        except Farm.DoesNotExist:
+            pass
+    
+    return render(request, 'livestock/add.html', {
+        'form': form,
+        'farms': farms,
+        'animal_types': animal_types,
+        'initial_farm_id': farm_id
+    })
 
 
 @login_required
@@ -545,7 +654,7 @@ def animal_edit(request, pk):
     """Edit animal details"""
     animal = get_object_or_404(Animal, pk=pk, farm__owner=request.user)
     if request.method == 'POST':
-        form = AnimalForm(request.POST, instance=animal)
+        form = AnimalForm(request.POST, request.FILES, instance=animal)
         if form.is_valid():
             form.save()
             messages.success(request, 'Animal updated successfully!')
@@ -641,6 +750,7 @@ def equipment_list(request):
 
 
 @login_required
+@login_required
 def equipment_add(request):
     """Add equipment for rent"""
     if request.method == 'POST':
@@ -651,6 +761,10 @@ def equipment_add(request):
             equipment.save()
             messages.success(request, 'Equipment listed for rent successfully!')
             return redirect('core:equipment_detail', pk=equipment.pk)
+        else:
+            # Log form errors for debugging
+            for field, errors in form.errors.items():
+                messages.error(request, f'{field}: {", ".join(errors)}')
     else:
         form = EquipmentForm()
     
@@ -696,6 +810,24 @@ def equipment_book(request, pk):
             equipment.status = 'rented'
             equipment.save()
             
+            # Create notifications
+            Notification.objects.create(
+                user=request.user,
+                notification_type='success',
+                title=f'Equipment Booked: {equipment.name}',
+                message=f'You have successfully booked {equipment.name} from {equipment.owner.get_full_name or equipment.owner.username}. Total cost: ${booking.total_cost}',
+                link=f'/equipment/bookings/{booking.id}/'
+            )
+            
+            # Notify equipment owner
+            Notification.objects.create(
+                user=equipment.owner,
+                notification_type='info',
+                title=f'Equipment Booked: {equipment.name}',
+                message=f'{request.user.get_full_name or request.user.username} has booked your {equipment.name}. Booking ID: {booking.id}',
+                link=f'/equipment/{equipment.id}/'
+            )
+            
             messages.success(request, f'Equipment booked successfully! Total: ${booking.total_cost}')
             return redirect('core:my_bookings')
     else:
@@ -736,19 +868,64 @@ def cancel_booking(request, pk):
 
 @login_required
 def marketplace_list(request):
-    """List all products for sale"""
+    """List all products for sale with search and filters"""
     listings = ProductListing.objects.filter(status='active').order_by('-created_at')
     
-    # Search
-    search_query = request.GET.get('q')
+    # Search - search by product name, description, or category
+    search_query = request.GET.get('q', '').strip()
     if search_query:
-        listings = listings.filter(product_name__icontains=search_query)
+        listings = listings.filter(
+            Q(product_name__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(category__icontains=search_query) |
+            Q(seller__farm_name__icontains=search_query)
+        )
     
+    # Filter by category
+    category = request.GET.get('category', '').strip()
+    if category:
+        listings = listings.filter(category__icontains=category)
+    
+    # Filter by organic
+    organic = request.GET.get('organic')
+    if organic == 'true':
+        listings = listings.filter(is_organic=True)
+    
+    # Filter by delivery available
+    delivery = request.GET.get('delivery')
+    if delivery == 'true':
+        listings = listings.filter(delivery_available=True)
+    
+    # Get unique categories for filter dropdown
+    all_categories = ProductListing.objects.filter(status='active').values_list('category', flat=True).distinct().order_by('category')
+    
+    # Pagination
     paginator = Paginator(listings, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'marketplace/list.html', {'listings': page_obj})
+    # Build query string for pagination
+    query_params = ''
+    if search_query:
+        query_params += f'&q={search_query}'
+    if category:
+        query_params += f'&category={category}'
+    if organic == 'true':
+        query_params += '&organic=true'
+    if delivery == 'true':
+        query_params += '&delivery=true'
+    
+    context = {
+        'listings': page_obj,
+        'search_query': search_query,
+        'categories': all_categories,
+        'selected_category': category,
+        'selected_organic': organic == 'true',
+        'selected_delivery': delivery == 'true',
+        'query_params': query_params
+    }
+    
+    return render(request, 'marketplace/list.html', context)
 
 
 @login_required
@@ -777,6 +954,47 @@ def listing_detail(request, pk):
     """Product listing details"""
     listing = get_object_or_404(ProductListing, pk=pk)
     return render(request, 'marketplace/detail.html', {'listing': listing})
+
+
+@login_required
+def edit_listing(request, pk):
+    """Edit a product listing"""
+    listing = get_object_or_404(ProductListing, pk=pk)
+    
+    # Check if user is the seller
+    if listing.seller.owner != request.user:
+        messages.error(request, 'You can only edit your own listings.')
+        return redirect('core:listing_detail', pk=pk)
+    
+    if request.method == 'POST':
+        form = ProductListingForm(request.POST, request.FILES, instance=listing, user=request.user)
+        if form.is_valid():
+            listing = form.save()
+            messages.success(request, 'Product listing updated successfully!')
+            return redirect('core:listing_detail', pk=listing.pk)
+    else:
+        form = ProductListingForm(instance=listing, user=request.user)
+    
+    return render(request, 'marketplace/edit.html', {'form': form, 'listing': listing})
+
+
+@login_required
+def delete_listing(request, pk):
+    """Delete a product listing"""
+    listing = get_object_or_404(ProductListing, pk=pk)
+    
+    # Check if user is the seller
+    if listing.seller.owner != request.user:
+        messages.error(request, 'You can only delete your own listings.')
+        return redirect('core:listing_detail', pk=pk)
+    
+    if request.method == 'POST':
+        listing.delete()
+        messages.success(request, 'Product listing deleted successfully!')
+        return redirect('core:my_listings')
+    
+    # If not POST, redirect back (shouldn't happen with normal flow)
+    return redirect('core:listing_detail', pk=pk)
 
 
 @login_required
@@ -825,41 +1043,315 @@ def my_orders(request):
 # PEST DETECTION
 # ============================================================
 
+import base64
+import openai
+from django.core.files.base import ContentFile
+from PIL import Image
+from io import BytesIO
+
 @login_required
 def pest_detection(request):
     """Pest detection page"""
-    return render(request, 'pest/detection.html')
+    recent_reports = PestReport.objects.filter(farmer=request.user).order_by('-created_at')[:5]
+    context = {'recent_reports': recent_reports}
+    return render(request, 'pest/detection.html', context)
+
+
+def encode_image_to_base64(image_file):
+    """Convert image file to base64 string"""
+    image_file.seek(0)
+    return base64.b64encode(image_file.read()).decode('utf-8')
+
+
+def analyze_pest_with_ai(image_file, image_name):
+    """Use OpenAI Vision API to analyze pest image"""
+    try:
+        # Get API key from settings
+        from django.conf import settings
+        api_key = settings.OPENAI_API_KEY
+        
+        # Check if API key is available
+        if not api_key or api_key.strip() == '':
+            return {
+                'pest_detected': False,
+                'pest_name': 'API Key Not Configured',
+                'confidence': 0,
+                'severity': 'low',
+                'affected_area': 0,
+                'explanation': 'OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file.',
+                'identification_details': 'API configuration required',
+                'immediate_action': 'Configure your API key first',
+                'treatment': 'API configuration required',
+                'organic_treatment': '',
+                'prevention': '',
+                'disease_cycle': '',
+                'environmental_factors': '',
+                'error': 'OpenAI API key not configured'
+            }
+        
+        # Encode image to base64
+        base64_image = encode_image_to_base64(image_file)
+        
+        # Get image format from filename
+        image_format = image_name.lower().split('.')[-1] if '.' in image_name else 'jpeg'
+        if image_format == 'jpg':
+            image_format = 'jpeg'
+        
+        media_type = f'image/{image_format}'
+        
+        # Call OpenAI Vision API
+        client = openai.OpenAI(api_key=api_key)
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",  # Current vision model (gpt-4-vision-preview is deprecated)
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{media_type};base64,{base64_image}"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": """You are an agricultural disease and pest expert. Analyze this crop image in detail for pests, diseases, or other issues. Provide a comprehensive JSON response with these exact keys:
+
+{
+    "pest_detected": true or false,
+    "pest_name": "Specific pest/disease name or 'Healthy Crop' if no issues found",
+    "confidence": 0-100 (your confidence level),
+    "severity": "none, low, medium, high, or severe",
+    "affected_area": 0-100 (percentage of crop affected),
+    "explanation": "Detailed 2-3 sentence explanation of what you observe in the image, what specific symptoms or signs indicate this condition, and why you're confident about this diagnosis",
+    "identification_details": "Specific visual indicators that led to this diagnosis (leaf color, spots, wilting, insects, etc.)",
+    "immediate_action": "What the farmer should do immediately if pest/disease is detected, or general care tips if healthy",
+    "treatment": "Detailed chemical treatment options with specific product names/dosages if applicable",
+    "organic_treatment": "Detailed organic alternatives including natural pesticides, companion planting, cultural practices",
+    "prevention": "Long-term prevention strategies to avoid this problem in the future",
+    "disease_cycle": "Brief explanation of how this pest/disease spreads and its life cycle",
+    "environmental_factors": "Conditions that favor this pest/disease development"
+}
+
+Be thorough, professional, and educational. Provide practical, actionable advice based on your observations."""
+                        }
+                    ]
+                }
+            ],
+            max_tokens=2000
+        )
+        
+        # Parse response
+        result_text = response.choices[0].message.content.strip()
+        
+        # Extract JSON from response
+        json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+        else:
+            result = json.loads(result_text)
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f'OpenAI analysis completed: {result.get("pest_name")}')
+        
+        return result
+    
+    except openai.APIError as e:
+        # OpenAI API error
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'OpenAI API error: {str(e)}')
+        
+        return {
+            'pest_detected': False,
+            'pest_name': 'API Error',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': f'OpenAI service error: {str(e)}',
+            'identification_details': 'API error occurred',
+            'immediate_action': 'Please try again later',
+            'treatment': f'API Error: {str(e)}',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': f'OpenAI API error: {str(e)}'
+        }
+    
+    except json.JSONDecodeError as e:
+        # JSON parsing error
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'JSON decode error: {str(e)}')
+        
+        return {
+            'pest_detected': False,
+            'pest_name': 'Analysis Failed',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': 'Unable to parse analysis results. Try uploading a clearer image.',
+            'identification_details': 'Image quality too low for detailed analysis',
+            'immediate_action': 'Try uploading another image with better lighting and focus',
+            'treatment': 'Image quality may be too low. Please try with a clearer image.',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': f'Analysis parsing error: {str(e)}'
+        }
+    
+    except Exception as e:
+        # General error
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Pest analysis error: {str(e)}', exc_info=True)
+        
+        return {
+            'pest_detected': False,
+            'pest_name': 'Error',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': f'Error analyzing image: {str(e)}',
+            'identification_details': 'Error occurred',
+            'immediate_action': 'Please try again',
+            'treatment': f'Error: {str(e)}',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': str(e)
+        }
 
 
 @login_required
 def pest_upload(request):
     """Upload and analyze pest image"""
     if request.method == 'POST' and request.FILES.get('image'):
-        image = request.FILES['image']
+        try:
+            image_file = request.FILES['image']
+            
+            # Check if file is provided
+            if not image_file:
+                messages.error(request, 'Please select an image file.')
+                return redirect('core:pest_detection')
+            
+            # Validate image format
+            try:
+                img = Image.open(image_file)
+                img.verify()
+                image_file.seek(0)
+            except Exception as img_err:
+                messages.error(request, f'Invalid image format: {str(img_err)}')
+                return redirect('core:pest_detection')
+            
+            # Check file size (max 10MB)
+            if image_file.size > 10 * 1024 * 1024:
+                messages.error(request, 'Image size too large. Maximum 10MB allowed.')
+                return redirect('core:pest_detection')
+            
+            # Get farm and field
+            farm = request.user.farms.first()
+            field = None
+            if farm:
+                field = Field.objects.filter(farm=farm).first()
+            
+            if not farm:
+                # Create a default farm if user doesn't have one
+                from django.utils import timezone
+                farm = Farm.objects.create(
+                    owner=request.user,
+                    name='My Farm',
+                    location='Default Location',
+                    size_hectares=0,
+                    soil_type='loamy'
+                )
+                messages.info(request, 'Created a default farm for you. Update your farm details in settings.')
+            
+            # Analyze image with AI
+            result = analyze_pest_with_ai(image_file, image_file.name)
+            
+            # Ensure result has all required fields
+            if not result:
+                result = {}
+            
+            # Set defaults for missing fields
+            defaults = {
+                'pest_detected': False,
+                'pest_name': 'Analysis Pending',
+                'confidence': 0,
+                'severity': 'low',
+                'affected_area': 0,
+                'explanation': 'Please try again.',
+                'identification_details': '',
+                'immediate_action': '',
+                'treatment': '',
+                'organic_treatment': '',
+                'prevention': '',
+                'disease_cycle': '',
+                'environmental_factors': ''
+            }
+            
+            for key, default_value in defaults.items():
+                if key not in result:
+                    result[key] = default_value
+            
+            # Create report
+            report = PestReport.objects.create(
+                farmer=request.user,
+                farm=farm,
+                field=field,
+                image=image_file,
+                ai_diagnosis=result.get('pest_name', 'Analysis Complete'),
+                confidence=Decimal(str(result.get('confidence', 0))),
+                severity=result.get('severity', 'low'),
+                affected_area_percentage=Decimal(str(result.get('affected_area', 0))),
+                treatment_recommended=result.get('treatment', ''),
+                prevention_tips=result.get('prevention', ''),
+                organic_options=result.get('organic_treatment', ''),
+                status='pending' if result.get('pest_detected') else 'healthy'
+            )
+            
+            # Create notification for pest detection
+            if result.get('pest_detected'):
+                Notification.objects.create(
+                    user=request.user,
+                    notification_type='alert',
+                    title=f'Pest Detected: {result.get("pest_name")}',
+                    message=f'A {result.get("severity", "unknown")} severity {result.get("pest_name")} was detected in your crop with {result.get("confidence")}% confidence.',
+                    link=f'/pest-detection/{report.id}/'
+                )
+            else:
+                Notification.objects.create(
+                    user=request.user,
+                    notification_type='success',
+                    title='Crop Analysis Complete',
+                    message='Your crop appears healthy with no major pest or disease detected.',
+                    link=f'/pest-detection/{report.id}/'
+                )
+            
+            # Add report ID to result
+            result['report_id'] = report.id
+            
+            # Log the analysis
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f'Pest analysis completed for user {request.user.id}: {result.get("pest_name")}')
+            
+            messages.success(request, 'Image analyzed successfully!')
+            return render(request, 'pest/results.html', {'result': result, 'report': report})
         
-        # Mock AI detection (integrate with actual AI service)
-        # In production, call OpenAI Vision API or custom model
-        
-        # Simulate detection result
-        result = {
-            'pest_name': 'Fall Armyworm',
-            'confidence': 94,
-            'treatment': 'Apply Emamectin benzoate at recommended dosage. Remove affected leaves.',
-            'severity': 'high'
-        }
-        
-        # Save report
-        report = PestReport.objects.create(
-            farmer=request.user,
-            farm=request.user.farms.first(),
-            image=image,
-            ai_diagnosis=result['pest_name'],
-            confidence=result['confidence'],
-            severity=result['severity'],
-            treatment_recommended=result['treatment']
-        )
-        
-        return render(request, 'pest/results.html', {'result': result, 'report': report})
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error in pest_upload: {str(e)}', exc_info=True)
+            
+            messages.error(request, f'Error analyzing image: {str(e)}')
+            return redirect('core:pest_detection')
     
     return redirect('core:pest_detection')
 
@@ -867,8 +1359,23 @@ def pest_upload(request):
 @login_required
 def pest_history(request):
     """View pest detection history"""
+    # Get all reports for current user
     reports = PestReport.objects.filter(farmer=request.user).order_by('-created_at')
-    return render(request, 'pest/history.html', {'reports': reports})
+    
+    # Pagination
+    paginator = Paginator(reports, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Statistics
+    stats = {
+        'total_reports': reports.count(),
+        'pending': reports.filter(status='pending').count(),
+        'verified': reports.filter(agronomist_verified=True).count(),
+        'healthy': reports.filter(status='healthy').count(),
+    }
+    
+    return render(request, 'pest/history.html', {'page_obj': page_obj, 'stats': stats})
 
 
 @login_required
@@ -884,17 +1391,66 @@ def pest_detail(request, pk):
 
 @login_required
 def weather_forecast(request):
-    """Weather forecast page"""
-    # Mock weather data (integrate with OpenWeatherMap API)
-    forecast = [
-        {'day': timezone.now().date(), 'temp_high': 28, 'temp_low': 18, 'condition': 'Sunny', 'icon': 'sun'},
-        {'day': timezone.now().date() + timezone.timedelta(days=1), 'temp_high': 27, 'temp_low': 17, 'condition': 'Partly Cloudy', 'icon': 'cloud-sun'},
-        {'day': timezone.now().date() + timezone.timedelta(days=2), 'temp_high': 25, 'temp_low': 16, 'condition': 'Rain', 'icon': 'rainy'},
-        {'day': timezone.now().date() + timezone.timedelta(days=3), 'temp_high': 26, 'temp_low': 17, 'condition': 'Cloudy', 'icon': 'cloudy'},
-        {'day': timezone.now().date() + timezone.timedelta(days=4), 'temp_high': 29, 'temp_low': 19, 'condition': 'Sunny', 'icon': 'sun'},
-    ]
+    """Weather forecast page with real data and alerts"""
+    farms = Farm.objects.filter(owner=request.user)
     
-    return render(request, 'weather/forecast.html', {'forecast': forecast})
+    weather = None
+    forecast = []
+    alerts = []
+    message = None
+    
+    if not farms.exists():
+        message = "Please create a farm first to see weather forecasts."
+    else:
+        # Get weather data from first farm
+        farm = farms.first()
+        weather_data = WeatherData.objects.filter(farm=farm).first()
+        
+        if weather_data:
+            weather = {
+                'temp': weather_data.temperature,
+                'feels_like': weather_data.feels_like,
+                'condition': weather_data.condition,
+                'description': weather_data.description,
+                'humidity': weather_data.humidity,
+                'pressure': weather_data.pressure,
+                'wind_speed': weather_data.wind_speed,
+                'wind_direction': weather_data.wind_direction,
+                'location': weather_data.location,
+                'last_updated': weather_data.last_updated,
+            }
+            
+            # Get forecast data
+            if weather_data.forecast_data.get('forecast'):
+                from datetime import datetime
+                forecast_raw = weather_data.forecast_data.get('forecast', [])
+                
+                for item in forecast_raw:
+                    forecast.append({
+                        'day': datetime.fromtimestamp(item['date']).date(),
+                        'temp_high': item.get('temp_high', 'N/A'),
+                        'temp_low': item.get('temp_low', 'N/A'),
+                        'condition': item.get('condition', 'Unknown'),
+                        'description': item.get('description', ''),
+                        'icon': item.get('icon', ''),
+                        'humidity': item.get('humidity', 'N/A'),
+                        'wind_speed': item.get('wind_speed', 'N/A'),
+                    })
+        else:
+            message = "Weather forecast data not available. The system will fetch data automatically every 30 minutes."
+        
+        # Get active alerts for user's farms
+        alerts = WeatherAlert.objects.filter(
+            farm__in=farms,
+            is_read=False
+        ).order_by('-severity', '-created_at')[:5]  # Top 5 unread alerts
+    
+    return render(request, 'weather/forecast.html', {
+        'weather': weather or {},
+        'forecast': forecast,
+        'alerts': alerts,
+        'message': message
+    })
 
 
 @login_required
@@ -920,17 +1476,57 @@ def mark_alert_read(request, pk):
 def irrigation_dashboard(request):
     """Irrigation management dashboard"""
     farms = Farm.objects.filter(owner=request.user)
+    
+    # Get upcoming schedules
     schedules = IrrigationSchedule.objects.filter(
         field__farm__in=farms,
         scheduled_date__gte=timezone.now().date()
     ).order_by('scheduled_date')[:10]
     
-    return render(request, 'irrigation/dashboard.html', {'schedules': schedules})
-
-
+    # Calculate statistics
+    # Total water used (completed irrigations)
+    completed_irrigations = IrrigationSchedule.objects.filter(
+        field__farm__in=farms,
+        status='completed'
+    )
+    # Calculate water: duration_hours * field_area_hectares * 1000 liters
+    total_water = sum(
+        irr.duration_hours * irr.field.area_hectares * 1000 
+        for irr in completed_irrigations
+    )
+    
+    # Hours this month (current month and year)
+    current_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    next_month_start = (current_month_start + timedelta(days=32)).replace(day=1)
+    
+    month_hours = IrrigationSchedule.objects.filter(
+        field__farm__in=farms,
+        scheduled_date__gte=current_month_start.date(),
+        scheduled_date__lt=next_month_start.date()
+    ).aggregate(total=Sum('duration_hours'))['total'] or 0
+    
+    # Next scheduled irrigation
+    next_scheduled = IrrigationSchedule.objects.filter(
+        field__farm__in=farms,
+        status='scheduled',
+        scheduled_date__gte=timezone.now().date()
+    ).order_by('scheduled_date').first()
+    
+    context = {
+        'schedules': schedules,
+        'total_water': round(total_water, 2),
+        'month_hours': month_hours,
+        'next_scheduled': next_scheduled,
+    }
+    
+    return render(request, 'irrigation/dashboard.html', context)
+@login_required
 @login_required
 def irrigation_schedule(request):
     """Schedule irrigation"""
+    # Get field_id from URL parameter if provided
+    field_id = request.GET.get('field_id', None)
+    
     if request.method == 'POST':
         form = IrrigationForm(request.POST)
         if form.is_valid():
@@ -938,8 +1534,22 @@ def irrigation_schedule(request):
             messages.success(request, f'Irrigation scheduled for {schedule.field.name} on {schedule.scheduled_date}')
             return redirect('core:irrigation')
     else:
+        # Get user's fields
+        user_fields = Field.objects.filter(farm__owner=request.user)
+        
         form = IrrigationForm()
-        form.fields['field'].queryset = Field.objects.filter(farm__owner=request.user)
+        form.fields['field'].queryset = user_fields
+        
+        # Auto-populate field if provided via URL parameter
+        if field_id:
+            try:
+                field = Field.objects.get(id=field_id, farm__owner=request.user)
+                form.fields['field'].initial = field
+            except Field.DoesNotExist:
+                pass
+        # Auto-select if only one field exists
+        elif user_fields.count() == 1:
+            form.fields['field'].initial = user_fields.first()
     
     return render(request, 'irrigation/schedule.html', {'form': form})
 
@@ -974,9 +1584,15 @@ def buy_insurance(request):
         if form.is_valid():
             policy = form.save(commit=False)
             policy.farmer = request.user
+            # Calculate premium as 5% of sum insured
+            policy.premium_paid = policy.sum_insured * Decimal('0.05')
             policy.save()
-            messages.success(request, f'Insurance policy {policy.policy_number} purchased!')
+            messages.success(request, f'Insurance policy {policy.policy_number} purchased successfully! Premium: ${policy.premium_paid:.2f}')
             return redirect('core:insurance')
+        else:
+            # Log form errors for debugging
+            for field, errors in form.errors.items():
+                messages.error(request, f'{field}: {", ".join(errors)}')
     else:
         form = InsuranceForm()
     
@@ -1044,14 +1660,58 @@ def add_worker(request):
     if request.method == 'POST':
         form = WorkerForm(request.POST)
         if form.is_valid():
+            # Check if new worker name was provided
+            new_worker_name = form.cleaned_data.get('new_worker_name')
+            worker_user = form.cleaned_data.get('worker')
+            
+            # If new worker name provided, create new user
+            if new_worker_name and not worker_user:
+                # Generate username from the name
+                username = new_worker_name.lower().replace(' ', '_')
+                # Ensure unique username
+                base_username = username
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                
+                # Generate unique placeholder phone number
+                phone_number = f"+255{username[:10]}"
+                counter = 1
+                while User.objects.filter(phone_number=phone_number).exists():
+                    phone_number = f"+255{username[:8]}{counter}"
+                    counter += 1
+                
+                # Create the user with a placeholder phone number
+                # Phone number will need to be updated later by the user
+                worker_user = User.objects.create_user(
+                    username=username,
+                    first_name=new_worker_name.split()[0],
+                    last_name=' '.join(new_worker_name.split()[1:]) if len(new_worker_name.split()) > 1 else '',
+                    user_type='labor',
+                    phone_number=phone_number
+                )
+                form.instance.worker = worker_user
+            
             worker = form.save()
             messages.success(request, f'Worker {worker.worker.get_full_name()} added!')
             return redirect('core:labor')
     else:
         form = WorkerForm()
+        # Filter farms to show only those owned by the logged-in user
         form.fields['farm'].queryset = Farm.objects.filter(owner=request.user)
+        # Filter worker dropdown to show only users not yet assigned as workers
+        form.fields['worker'].queryset = User.objects.exclude(
+            worker_profiles__farm__owner=request.user
+        ).filter(is_active=True)
     
-    return render(request, 'labor/add.html', {'form': form})
+    # Pass filtered querysets to template context
+    farms = Farm.objects.filter(owner=request.user)
+    workers = User.objects.exclude(
+        worker_profiles__farm__owner=request.user
+    ).filter(is_active=True)
+    
+    return render(request, 'labor/add.html', {'form': form, 'farms': farms, 'workers': workers})
 
 
 @login_required
@@ -1086,8 +1746,15 @@ def log_hours(request, worker_id):
             return redirect('core:labor')
     else:
         form = WorkShiftForm(initial={'date': timezone.now().date()})
+        # Filter fields to show only fields on the worker's farm
+        form.fields['field'].queryset = Field.objects.filter(farm=worker.farm)
+        # Make field optional as not all work is tied to a specific field
+        form.fields['field'].required = False
     
-    return render(request, 'labor/hours.html', {'form': form, 'worker': worker})
+    # Get fields for the worker's farm to pass to template
+    fields = Field.objects.filter(farm=worker.farm)
+    
+    return render(request, 'labor/hours.html', {'form': form, 'worker': worker, 'fields': fields})
 
 
 @login_required
@@ -1123,6 +1790,30 @@ def process_payroll(request, pk):
     
     messages.success(request, f'Payroll processed: ${total_pay} for {total_hours} hours')
     return redirect('core:payroll_list')
+
+
+@login_required
+def payroll_edit(request, pk):
+    """Edit a payroll record"""
+    payroll = get_object_or_404(Payroll, pk=pk, worker__farm__owner=request.user)
+    
+    if request.method == 'POST':
+        form = PayrollForm(request.POST, instance=payroll)
+        if form.is_valid():
+            form.save()
+            # Recalculate net_pay based on deductions
+            payroll.net_pay = payroll.total_pay - payroll.deductions
+            payroll.save()
+            messages.success(request, f'Payroll updated for {payroll.worker.worker.get_full_name()}')
+            return redirect('core:payroll_list')
+    else:
+        form = PayrollForm(instance=payroll)
+    
+    return render(request, 'labor/payroll_edit.html', {
+        'form': form,
+        'payroll': payroll,
+        'worker': payroll.worker,
+    })
 
 
 # ============================================================
@@ -1275,16 +1966,38 @@ def api_fields(request, farm_id):
 
 @login_required
 def api_weather(request, farm_id):
-    """API endpoint for weather"""
-    # Mock weather data
-    weather_data = {
-        'temperature': 28,
-        'condition': 'Sunny',
-        'humidity': 65,
-        'wind_speed': 12,
-        'forecast': 'Clear skies for next 3 days'
-    }
-    return JsonResponse(weather_data)
+    """API endpoint for real weather data"""
+    farm = get_object_or_404(Farm, pk=farm_id)
+    
+    # Check permissions
+    if farm.owner != request.user:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    weather_data = WeatherData.objects.filter(farm=farm).first()
+    
+    if weather_data:
+        weather_dict = {
+            'temperature': weather_data.temperature,
+            'feels_like': weather_data.feels_like,
+            'condition': weather_data.condition,
+            'description': weather_data.description,
+            'humidity': weather_data.humidity,
+            'pressure': weather_data.pressure,
+            'wind_speed': weather_data.wind_speed,
+            'wind_direction': weather_data.wind_direction,
+            'cloudiness': weather_data.cloudiness,
+            'location': weather_data.location,
+            'last_updated': weather_data.last_updated.isoformat(),
+            'is_stale': weather_data.is_stale(),
+            'forecast': weather_data.forecast_data.get('forecast', [])
+        }
+    else:
+        weather_dict = {
+            'error': 'No weather data available',
+            'message': 'Weather data is being fetched. Please ensure farm has coordinates set.'
+        }
+    
+    return JsonResponse(weather_dict)
 
 
 @login_required
@@ -1293,6 +2006,62 @@ def api_notifications(request):
     notifications = Notification.objects.filter(
         user=request.user,
         is_read=False
-    ).values('id', 'title', 'message', 'created_at')[:10]
+    ).order_by('-created_at')[:10]
     
-    return JsonResponse(list(notifications), safe=False)
+    data = [
+        {
+            'id': n.id,
+            'title': n.title,
+            'message': n.message,
+            'type': n.notification_type,
+            'link': n.link,
+            'created_at': n.created_at.isoformat()
+        }
+        for n in notifications
+    ]
+    
+    return JsonResponse(data, safe=False)
+
+
+@login_required
+def notification_list(request):
+    """View all notifications"""
+    page = request.GET.get('page', 1)
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+    
+    paginator = Paginator(notifications, 20)
+    page_obj = paginator.get_page(page)
+    
+    # Mark page notifications as read if not already
+    unread_ids = [n.id for n in page_obj if not n.is_read]
+    if unread_ids:
+        Notification.objects.filter(id__in=unread_ids).update(is_read=True)
+    
+    return render(request, 'notifications/list.html', {
+        'page_obj': page_obj,
+        'notifications': page_obj
+    })
+
+
+@login_required
+def mark_notification_read(request, pk):
+    """Mark a notification as read"""
+    notification = get_object_or_404(Notification, pk=pk, user=request.user)
+    notification.is_read = True
+    notification.save()
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'success'})
+    
+    return redirect('core:notification_list')
+
+
+@login_required
+def mark_all_notifications_read(request):
+    """Mark all notifications as read"""
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'success'})
+    
+    return redirect('core:notification_list')

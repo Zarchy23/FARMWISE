@@ -2,57 +2,293 @@
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Beautiful gradient background */
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite;
+        min-height: 100vh;
+    }
+
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* Slide in animation */
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    /* Container animations */
+    .dashboard-container {
+        animation: fadeIn 0.6s ease-out;
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 20px;
+    }
+
+    /* Card animations */
+    .stat-card {
+        animation: slideInUp 0.5s ease-out;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .stat-card:hover::before {
+        left: 100%;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        background: rgba(255, 255, 255, 0.98);
+    }
+
+    /* Numbered animation delays */
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+    /* Welcome banner animation */
+    .welcome-banner {
+        animation: slideInDown 0.6s ease-out;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .welcome-banner::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: spin 20s linear infinite;
+    }
+
+    @keyframes spin {
+        100% { transform: rotate(360deg); }
+    }
+
+    .welcome-banner > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Activity card animation */
+    .activity-item {
+        animation: slideInUp 0.5s ease-out backwards;
+        transition: all 0.3s ease;
+    }
+
+    .activity-item:hover {
+        background: rgba(34, 197, 94, 0.05);
+        padding-left: 12px;
+        border-left: 3px solid #22c55e;
+    }
+
+    .activity-item:nth-child(1) { animation-delay: 0.1s; }
+    .activity-item:nth-child(2) { animation-delay: 0.15s; }
+    .activity-item:nth-child(3) { animation-delay: 0.2s; }
+    .activity-item:nth-child(4) { animation-delay: 0.25s; }
+    .activity-item:nth-child(5) { animation-delay: 0.3s; }
+    .activity-item:nth-child(6) { animation-delay: 0.35s; }
+    .activity-item:nth-child(7) { animation-delay: 0.4s; }
+    .activity-item:nth-child(8) { animation-delay: 0.45s; }
+
+    /* Glass morphism effect */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        animation: slideInUp 0.6s ease-out;
+    }
+
+    /* Weather widget gradient */
+    .weather-widget {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        animation: slideInUp 0.6s ease-out 0.2s backwards;
+    }
+
+    /* Quick action buttons */
+    .quick-action-btn {
+        animation: slideInUp 0.5s ease-out backwards;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .quick-action-btn:nth-child(1) { animation-delay: 0.5s; }
+    .quick-action-btn:nth-child(2) { animation-delay: 0.55s; }
+    .quick-action-btn:nth-child(3) { animation-delay: 0.6s; }
+    .quick-action-btn:nth-child(4) { animation-delay: 0.65s; }
+
+    .quick-action-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .quick-action-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .quick-action-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3);
+    }
+
+    /* Icon animation */
+    .stat-icon {
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    .stat-card:hover .stat-icon {
+        animation: bounce 0.6s ease-in-out infinite;
+    }
+
+    /* Text gradient */
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* Responsive adjustments */
+    .md\:ml-64 {
+        background: rgba(255, 255, 255, 0.5);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div>
+<div class="dashboard-container">
     <!-- Welcome Banner -->
-    <div class="bg-gradient-to-r from-green-600 to-green-800 rounded-xl p-6 text-white mb-8">
-        <h2 class="text-2xl font-bold">Welcome back, {{ user.get_full_name|default:user.username }}!</h2>
-        <p class="mt-2">Here's what's happening on your farm today.</p>
-        <p class="text-sm mt-1 opacity-90">{{ user.farm_name|default:"Your Farm" }} • {{ user|length }} active farms</p>
+    <div class="welcome-banner rounded-2xl p-8 text-white mb-8 shadow-2xl">
+        <div class="flex items-center space-x-6">
+            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center overflow-hidden border-4 border-white flex-shrink-0 shadow-lg">
+                {% if user.profile_picture %}
+                <img src="{{ user.profile_picture.url }}" alt="{{ user.get_full_name }}" class="w-full h-full object-cover">
+                {% else %}
+                <i class="ri-user-line text-4xl text-purple-600"></i>
+                {% endif %}
+            </div>
+            <div>
+                <h2 class="text-3xl font-bold">Welcome back, {{ user.get_full_name|default:user.username }}! 👋</h2>
+                <p class="mt-2 text-lg opacity-95">Here's what's happening on your farm today.</p>
+                <p class="text-sm mt-2 opacity-85">{{ user.farm_name|default:"Your Farm" }} • {{ farms.count }} active farms</p>
+            </div>
+        </div>
     </div>
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white rounded-xl shadow p-6 card-hover">
-            <div class="flex justify-between items-center">
+        <div class="stat-card rounded-2xl shadow-lg p-6">
+            <div class="flex justify-between items-start">
                 <div>
-                    <p class="text-gray-500 text-sm">My Farms</p>
-                    <p class="text-3xl font-bold">{{ farms.count }}</p>
+                    <p class="text-gray-400 text-sm font-semibold tracking-wide">MY FARMS</p>
+                    <p class="text-5xl font-bold gradient-text mt-2">{{ farms.count }}</p>
+                    <a href="{% url 'core:farm_create' %}" class="text-green-600 text-sm mt-4 inline-block font-medium hover:text-green-700 transition">+ Add Farm</a>
                 </div>
-                <i class="ri-farm-line text-4xl text-green-600"></i>
+                <i class="ri-farm-line text-6xl text-green-500 stat-icon"></i>
             </div>
-            <a href="{% url 'core:farm_create' %}" class="text-green-600 text-sm mt-2 inline-block">+ Add Farm</a>
         </div>
         
-        <div class="bg-white rounded-xl shadow p-6 card-hover">
-            <div class="flex justify-between items-center">
+        <div class="stat-card rounded-2xl shadow-lg p-6">
+            <div class="flex justify-between items-start">
                 <div>
-                    <p class="text-gray-500 text-sm">Active Crops</p>
-                    <p class="text-3xl font-bold">{{ active_crops }}</p>
+                    <p class="text-gray-400 text-sm font-semibold tracking-wide">ACTIVE CROPS</p>
+                    <p class="text-5xl font-bold gradient-text mt-2">{{ active_crops }}</p>
+                    <a href="{% url 'core:crop_plant' %}" class="text-green-600 text-sm mt-4 inline-block font-medium hover:text-green-700 transition">+ Plant Crop</a>
                 </div>
-                <i class="ri-seedling-line text-4xl text-green-600"></i>
+                <i class="ri-seedling-line text-6xl text-emerald-500 stat-icon"></i>
             </div>
-            <a href="{% url 'core:crop_plant' %}" class="text-green-600 text-sm mt-2 inline-block">+ Plant Crop</a>
         </div>
         
-        <div class="bg-white rounded-xl shadow p-6 card-hover">
-            <div class="flex justify-between items-center">
+        <div class="stat-card rounded-2xl shadow-lg p-6">
+            <div class="flex justify-between items-start">
                 <div>
-                    <p class="text-gray-500 text-sm">Total Livestock</p>
-                    <p class="text-3xl font-bold">{{ total_animals }}</p>
+                    <p class="text-gray-400 text-sm font-semibold tracking-wide">TOTAL LIVESTOCK</p>
+                    <p class="text-5xl font-bold gradient-text mt-2">{{ total_animals }}</p>
+                    <a href="{% url 'core:animal_add' %}" class="text-green-600 text-sm mt-4 inline-block font-medium hover:text-green-700 transition">+ Add Animal</a>
                 </div>
-                <i class="ri-cow-line text-4xl text-green-600"></i>
+                <i class="ri-cow-line text-6xl text-amber-500 stat-icon"></i>
             </div>
-            <a href="{% url 'core:animal_add' %}" class="text-green-600 text-sm mt-2 inline-block">+ Add Animal</a>
         </div>
         
-        <div class="bg-white rounded-xl shadow p-6 card-hover">
-            <div class="flex justify-between items-center">
+        <div class="stat-card rounded-2xl shadow-lg p-6">
+            <div class="flex justify-between items-start">
                 <div>
-                    <p class="text-gray-500 text-sm">This Month Revenue</p>
-                    <p class="text-3xl font-bold text-green-600">${{ monthly_revenue|floatformat:2 }}</p>
+                    <p class="text-gray-400 text-sm font-semibold tracking-wide">MONTHLY REVENUE</p>
+                    <p class="text-5xl font-bold text-green-600 mt-2">${{ monthly_revenue|floatformat:2 }}</p>
+                    <p class="text-xs text-gray-400 mt-4">Total earnings this month</p>
                 </div>
-                <i class="ri-money-dollar-circle-line text-4xl text-green-600"></i>
+                <i class="ri-money-dollar-circle-line text-6xl text-green-500 stat-icon"></i>
             </div>
         </div>
     </div>
@@ -60,21 +296,25 @@
     <!-- Two Column Layout -->
     <div class="grid lg:grid-cols-2 gap-8">
         <!-- Recent Activities -->
-        <div class="bg-white rounded-xl shadow p-6">
-            <h2 class="text-xl font-bold mb-4 flex items-center"><i class="ri-history-line mr-2 text-green-600"></i> Recent Activities</h2>
-            <div class="space-y-3">
+        <div class="glass-card rounded-2xl shadow-lg p-6">
+            <h2 class="text-2xl font-bold mb-6 flex items-center"><i class="ri-history-line mr-3 text-green-600 text-2xl"></i> <span class="gradient-text">Recent Activities</span></h2>
+            <div class="space-y-2">
                 {% for activity in recent_activities|slice:":8" %}
-                <div class="flex items-center space-x-3 border-b pb-3">
-                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <i class="ri-notification-line text-green-600 text-sm"></i>
+                <div class="activity-item flex items-center space-x-4 border-l-4 border-transparent p-3 rounded-lg">
+                    <div class="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                        <i class="ri-notification-line text-white text-lg"></i>
                     </div>
-                    <div class="flex-1">
-                        <p class="text-sm">{{ activity.message }}</p>
-                        <p class="text-xs text-gray-400">{{ activity.created_at|timesince }} ago</p>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800">{{ activity.message }}</p>
+                        <p class="text-xs text-gray-400 mt-1">{{ activity.created_at|timesince }} ago</p>
                     </div>
                 </div>
                 {% empty %}
-                <p class="text-gray-500 text-center py-8">No recent activities. Start by adding a farm!</p>
+                <div class="text-center py-12">
+                    <i class="ri-inbox-archive-line text-6xl text-gray-300 mb-4 block"></i>
+                    <p class="text-gray-500 font-medium">No recent activities</p>
+                    <p class="text-gray-400 text-sm mt-1">Start by adding a farm!</p>
+                </div>
                 {% endfor %}
             </div>
         </div>
@@ -82,36 +322,97 @@
         <!-- Weather & Quick Actions -->
         <div class="space-y-6">
             <!-- Weather Widget -->
-            <div class="bg-white rounded-xl shadow p-6">
-                <h2 class="text-xl font-bold mb-4 flex items-center"><i class="ri-cloud-line mr-2 text-green-600"></i> Weather</h2>
-                <div class="flex items-center justify-between">
+            <div class="weather-widget rounded-2xl shadow-2xl p-6 text-white">
+                <h2 class="text-2xl font-bold mb-6 flex items-center"><i class="ri-cloud-line mr-3 text-2xl"></i> Weather Forecast</h2>
+                
+                <!-- Current Weather -->
+                <div class="flex items-center justify-between mb-6 pb-6 border-b border-white border-opacity-30">
                     <div>
-                        <div class="text-4xl font-bold">{{ weather.temp }}°C</div>
-                        <div class="text-gray-500">{{ weather.condition }}</div>
+                        <div class="text-6xl font-bold">{{ weather.temp }}°C</div>
+                        <div class="text-white text-lg mt-2 font-semibold">{{ weather.condition }}</div>
+                        <div class="text-sm text-white text-opacity-80 mt-1">{{ weather.description }}</div>
                     </div>
-                    <i class="ri-sun-line text-6xl text-yellow-500"></i>
+                    <div class="text-right">
+                        {% if weather.temp != 'N/A' %}
+                            {% if weather.condition == 'Rain' %}
+                            <i class="ri-rainy-line text-8xl animate-bounce"></i>
+                            {% elif weather.condition == 'Clouds' %}
+                            <i class="ri-cloudy-line text-8xl"></i>
+                            {% elif weather.condition == 'Clear' %}
+                            <i class="ri-sun-line text-8xl text-yellow-300"></i>
+                            {% elif weather.condition == 'Snow' %}
+                            <i class="ri-snow-line text-8xl"></i>
+                            {% else %}
+                            <i class="ri-cloud-wind-line text-8xl"></i>
+                            {% endif %}
+                        {% else %}
+                        <i class="ri-question-line text-8xl"></i>
+                        {% endif %}
+                    </div>
                 </div>
-                <p class="mt-3 text-sm text-gray-600">{{ weather.forecast }}</p>
+                
+                <!-- Weather Details -->
+                {% if weather.temp != 'N/A' %}
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white bg-opacity-20 rounded-xl p-4 backdrop-filter backdrop-blur-lg">
+                        <i class="ri-water-percent-line mr-2 text-xl"></i>
+                        <div class="text-sm text-white text-opacity-80 mt-1">Humidity</div>
+                        <div class="text-2xl font-bold mt-2">{{ weather.humidity }}%</div>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-xl p-4 backdrop-filter backdrop-blur-lg">
+                        <i class="ri-wind-line mr-2 text-xl"></i>
+                        <div class="text-sm text-white text-opacity-80 mt-1">Wind Speed</div>
+                        <div class="text-2xl font-bold mt-2">{{ weather.wind_speed }} m/s</div>
+                    </div>
+                </div>
+                
+                <!-- 5-Day Forecast -->
+                {% if weather.forecast %}
+                <div class="mt-6 pt-6 border-t border-white border-opacity-30">
+                    <div class="text-sm font-semibold mb-4">5-Day Forecast</div>
+                    <div class="grid grid-cols-5 gap-2">
+                        {% for day in weather.forecast|slice:":5" %}
+                        <div class="bg-white bg-opacity-20 rounded-lg p-2 text-center text-sm backdrop-filter backdrop-blur-lg hover:bg-opacity-30 transition">
+                            <div class="text-xs text-white text-opacity-80 mb-2 font-medium">
+                                Day {{ forloop.counter }}
+                            </div>
+                            <div class="font-bold text-lg">{{ day.temp_high|floatformat:0 }}°</div>
+                            <div class="text-xs text-white text-opacity-70">{{ day.temp_low|floatformat:0 }}°</div>
+                            <div class="text-xs mt-2 text-white text-opacity-80">{{ day.condition|truncatewords:1 }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="ri-cloud-off-line text-6xl text-white text-opacity-50 mb-4 block"></i>
+                    <p class="text-white text-opacity-90 font-medium">Weather data not available</p>
+                    <p class="text-xs text-white text-opacity-70 mt-2">System will fetch automatically every 30 minutes</p>
+                </div>
+                {% endif %}
+                
+                <div class="mt-4 text-xs text-white text-opacity-70 text-center">Last updated: {{ weather.last_updated|date:"M d, H:i" }}</div>
             </div>
 
             <!-- Quick Actions -->
-            <div class="bg-white rounded-xl shadow p-6">
-                <h2 class="text-xl font-bold mb-4 flex items-center"><i class="ri-flashlight-line mr-2 text-green-600"></i> Quick Actions</h2>
-                <div class="grid grid-cols-2 gap-3">
-                    <a href="{% url 'core:farm_create' %}" class="bg-green-50 text-green-700 p-3 rounded-lg text-center hover:bg-green-100 transition">
-                        <i class="ri-add-line block text-xl"></i>
+            <div class="glass-card rounded-2xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold mb-6 flex items-center"><i class="ri-flashlight-line mr-3 text-green-600 text-2xl"></i> <span class="gradient-text">Quick Actions</span></h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <a href="{% url 'core:farm_create' %}" class="quick-action-btn bg-gradient-to-br from-green-100 to-emerald-100 text-green-700 p-4 rounded-xl text-center font-semibold hover:shadow-lg">
+                        <i class="ri-add-line block text-3xl mb-2"></i>
                         <span class="text-sm">Add Farm</span>
                     </a>
-                    <a href="{% url 'core:crop_plant' %}" class="bg-green-50 text-green-700 p-3 rounded-lg text-center hover:bg-green-100 transition">
-                        <i class="ri-seedling-line block text-xl"></i>
+                    <a href="{% url 'core:crop_plant' %}" class="quick-action-btn bg-gradient-to-br from-blue-100 to-cyan-100 text-blue-700 p-4 rounded-xl text-center font-semibold hover:shadow-lg">
+                        <i class="ri-seedling-line block text-3xl mb-2"></i>
                         <span class="text-sm">Plant Crop</span>
                     </a>
-                    <a href="{% url 'core:animal_add' %}" class="bg-green-50 text-green-700 p-3 rounded-lg text-center hover:bg-green-100 transition">
-                        <i class="ri-cow-line block text-xl"></i>
+                    <a href="{% url 'core:animal_add' %}" class="quick-action-btn bg-gradient-to-br from-orange-100 to-yellow-100 text-orange-700 p-4 rounded-xl text-center font-semibold hover:shadow-lg">
+                        <i class="ri-cow-line block text-3xl mb-2"></i>
                         <span class="text-sm">Add Animal</span>
                     </a>
-                    <a href="{% url 'core:pest_detection' %}" class="bg-green-50 text-green-700 p-3 rounded-lg text-center hover:bg-green-100 transition">
-                        <i class="ri-camera-line block text-xl"></i>
+                    <a href="{% url 'core:pest_detection' %}" class="quick-action-btn bg-gradient-to-br from-purple-100 to-pink-100 text-purple-700 p-4 rounded-xl text-center font-semibold hover:shadow-lg">
+                        <i class="ri-camera-line block text-3xl mb-2"></i>
                         <span class="text-sm">Pest Scan</span>
                     </a>
                 </div>

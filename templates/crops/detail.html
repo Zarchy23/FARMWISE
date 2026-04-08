@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Header -->
+    <!-- Header with Photo -->
     <div class="bg-white rounded-xl shadow p-6">
-        <div class="flex justify-between items-start">
-            <div>
+        <div class="flex justify-between items-start flex-wrap gap-6">
+            <div class="flex-1">
                 <h1 class="text-2xl font-bold">{{ crop.crop_type.name }}</h1>
                 <p class="text-gray-500">{{ crop.field.farm.name }} - {{ crop.field.name }}</p>
                 <div class="flex items-center space-x-2 mt-2">
@@ -25,9 +25,14 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="flex space-x-2">
-                <a href="{% url 'core:crop_edit' crop.id %}" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition">Edit</a>
-                <a href="{% url 'core:crop_delete' crop.id %}" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">Delete</a>
+            {% if crop.photo %}
+            <div>
+                <img src="{{ crop.photo.url }}" alt="{{ crop.crop_type.name }}" class="w-32 h-32 object-cover rounded-lg shadow">
+            </div>
+            {% endif %}
+            <div class="flex flex-col space-y-2">
+                <a href="{% url 'core:crop_edit' crop.id %}" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition text-center">Edit</a>
+                <a href="{% url 'core:crop_delete' crop.id %}" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-center">Delete</a>
             </div>
         </div>
     </div>

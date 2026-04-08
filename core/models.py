@@ -10,6 +10,29 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 import uuid
+import os
+from datetime import datetime
+
+# ============================================================
+# HELPER FUNCTIONS
+# ============================================================
+
+def product_image_upload_path(instance, filename):
+    """
+    Generate organized upload path for product images.
+    Structure: marketplace/products/{year}/{month}/{seller_id}/{product_id}/{filename}
+    """
+    # Get extension
+    ext = os.path.splitext(filename)[1].lower()
+    
+    # Create clean filename: product_id_timestamp.ext
+    clean_filename = f"product_{instance.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
+    
+    # Organize by year/month/seller/product
+    path = datetime.now().strftime('marketplace/products/%Y/%m/')
+    path += f"seller_{instance.seller.id}/product_{instance.id}/"
+    
+    return path + clean_filename
 
 # ============================================================
 # SECTION 1: USER & ACCOUNT MANAGEMENT
@@ -40,7 +63,7 @@ class User(AbstractUser):
             message='Enter a valid phone number (e.g., +254712345678 or 0712345678)'
         )]
     )
-    profile_picture = models.ImageField(upload_to='profiles/%Y/%m/', null=True, blank=True)
+    profile_picture = models.ImageField(upload_to='profiles/', null=True, blank=True)
     preferred_language = models.CharField(max_length=10, default='en')
     accepts_sms = models.BooleanField(default=True)
     accepts_email = models.BooleanField(default=True)
@@ -142,6 +165,14 @@ class AuditLog(models.Model):
         ('login', 'Login'),
         ('logout', 'Logout'),
         ('export', 'Export'),
+        ('activity', 'Activity'),
+    ]
+    
+    SEVERITY_LEVELS = [
+        ('critical', 'Critical'),
+        ('high', 'High'),
+        ('normal', 'Normal'),
+        ('low', 'Low'),
     ]
     
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='audit_logs')
@@ -151,6 +182,9 @@ class AuditLog(models.Model):
     details = models.JSONField(default=dict)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
+    is_activity = models.BooleanField(default=False, help_text='Whether this is a timeline activity')
+    severity = models.CharField(max_length=20, choices=SEVERITY_LEVELS, default='normal')
+    farm = models.ForeignKey('Farm', on_delete=models.SET_NULL, null=True, blank=True, related_name='activities')
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -158,10 +192,125 @@ class AuditLog(models.Model):
         indexes = [
             models.Index(fields=['user', 'created_at']),
             models.Index(fields=['model_name', 'object_id']),
+            models.Index(fields=['farm', 'created_at']),
+            models.Index(fields=['severity', 'created_at']),
         ]
     
     def __str__(self):
         return f"{self.user} - {self.action} - {self.model_name} at {self.created_at}"
+
+
+# ============================================================
+# SECTION 1.5: VALIDATION & ACTIVITY LOGGING
+# ============================================================
+
+class ValidationRule(models.Model):
+    """Manage validation rules for data entry"""
+    
+    CATEGORIES = [
+        ('format', 'Format'),
+        ('range', 'Range'),
+        ('business_logic', 'Business Logic'),
+        ('relationship', 'Relationship'),
+        ('duplicate', 'Duplicate'),
+    ]
+    
+    field_name = models.CharField(max_length=255)
+    category = models.CharField(max_length=50, choices=CATEGORIES)
+    rule_code = models.CharField(max_length=100, unique=True)
+    message = models.TextField()
+    rule_config = models.JSONField(default=dict, blank=True, help_text='Configuration for the rule')
+    is_active = models.BooleanField(default=True)
+    applies_to_models = models.JSONField(default=list, blank=True, help_text='List of model names this rule applies to')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'validation_rules'
+    
+    def __str__(self):
+        return f"{self.rule_code} - {self.get_category_display()}"
+
+
+class ValidationLog(models.Model):
+    """Log all validation failures for audit trail"""
+    
+    SOURCES = [
+        ('form', 'Web Form'),
+        ('api', 'API'),
+        ('import', 'Bulk Import'),
+        ('mobile', 'Mobile'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='validation_logs')
+    field_name = models.CharField(max_length=255)
+    rule_code = models.CharField(max_length=100)
+    provided_value = models.TextField(blank=True)
+    expected_format = models.CharField(max_length=255, blank=True)
+    form_or_api = models.CharField(max_length=20, choices=SOURCES)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'validation_logs'
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['rule_code']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user} - {self.rule_code} - {self.created_at}"
+
+
+class UserHistory(models.Model):
+    """Track user field value history for auto-completion learning"""
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='field_history')
+    field_name = models.CharField(max_length=255)
+    field_value = models.TextField()
+    usage_count = models.IntegerField(default=1)
+    success_rate = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2, 
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    last_used = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'user_history'
+        indexes = [
+            models.Index(fields=['user', 'field_name']),
+            models.Index(fields=['user', 'last_used']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user} - {self.field_name} - {self.field_value}"
+
+
+class FarmHistory(models.Model):
+    """Track farm-level field value history for auto-completion learning"""
+    
+    farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='field_history')
+    field_name = models.CharField(max_length=255)
+    field_value = models.TextField()
+    usage_count = models.IntegerField(default=1)
+    success_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    last_used = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'farm_history'
+        indexes = [
+            models.Index(fields=['farm', 'field_name']),
+        ]
+    
+    def __str__(self):
+        return f"{self.farm.name} - {self.field_name} - {self.field_value}"
 
 
 # ============================================================
@@ -241,6 +390,20 @@ class Farm(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.owner.get_full_name()}"
+    
+    @property
+    def latitude(self):
+        """Extract latitude from location JSON field"""
+        if self.location and isinstance(self.location, dict):
+            return self.location.get('lat') or self.location.get('latitude')
+        return None
+    
+    @property
+    def longitude(self):
+        """Extract longitude from location JSON field"""
+        if self.location and isinstance(self.location, dict):
+            return self.location.get('lng') or self.location.get('longitude')
+        return None
     
     def save(self, *args, **kwargs):
         if not self.registration_number:
@@ -382,6 +545,7 @@ class CropSeason(models.Model):
     actual_yield_kg = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     estimated_revenue = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     actual_revenue = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    photo = models.ImageField(upload_to='crops/', null=True, blank=True, help_text="Crop photo (optional)")
     notes = models.TextField(blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_crops')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -574,6 +738,7 @@ class Animal(models.Model):
     mother = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='offspring')
     father = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     location = models.CharField(max_length=255, blank=True, help_text="Current pasture/shed")
+    photo = models.ImageField(upload_to='animals/', null=True, blank=True, help_text="Animal photo (optional)")
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -830,7 +995,7 @@ class ProductListing(models.Model):
     unit = models.CharField(max_length=20, choices=UNITS)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     total_price = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
-    images = models.FileField(upload_to='marketplace/products/', null=True, blank=True)
+    images = models.ImageField(upload_to=product_image_upload_path, null=True, blank=True)
     harvest_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
     is_organic = models.BooleanField(default=False)
@@ -931,6 +1096,7 @@ class PestReport(models.Model):
     affected_area_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     treatment_recommended = models.TextField(blank=True)
     prevention_tips = models.TextField(blank=True)
+    organic_options = models.TextField(blank=True, null=True)
     agronomist_verified = models.BooleanField(default=False)
     agronomist_notes = models.TextField(blank=True)
     verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='verified_reports')
@@ -996,6 +1162,44 @@ class WeatherAlert(models.Model):
     
     def __str__(self):
         return f"{self.get_alert_type_display()} - {self.farm.name}"
+
+
+class WeatherData(models.Model):
+    """Real-time weather data cached from OpenWeatherMap API"""
+    
+    farm = models.OneToOneField(Farm, on_delete=models.CASCADE, related_name='weather_data')
+    
+    # Current conditions
+    temperature = models.FloatField(help_text='Temperature in Celsius')
+    feels_like = models.FloatField(null=True, blank=True)
+    humidity = models.IntegerField(help_text='Humidity percentage')
+    pressure = models.IntegerField(help_text='Pressure in hPa', null=True, blank=True)
+    wind_speed = models.FloatField(help_text='Wind speed in m/s')
+    wind_direction = models.IntegerField(null=True, blank=True, help_text='Wind direction in degrees')
+    cloudiness = models.IntegerField(null=True, blank=True, help_text='Cloud percentage')
+    condition = models.CharField(max_length=100, help_text='Weather condition (e.g., "Sunny", "Rainy")')
+    description = models.CharField(max_length=255, help_text='Detailed condition description')
+    icon = models.CharField(max_length=50, null=True, blank=True, help_text='Weather icon code')
+    
+    # Forecast data (JSON stored as forecasts)
+    forecast_data = models.JSONField(default=dict, help_text='5-day forecast data')
+    
+    # Metadata
+    location = models.CharField(max_length=255, help_text='Location name/coordinates')
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'weather_data'
+        verbose_name_plural = 'Weather Data'
+        ordering = ['-last_updated']
+    
+    def __str__(self):
+        return f"Weather for {self.farm.name} - {self.condition}"
+    
+    def is_stale(self):
+        """Check if data is older than 30 minutes"""
+        from django.utils import timezone
+        return timezone.now() - self.last_updated > timezone.timedelta(minutes=30)
 
 
 class IrrigationSchedule(models.Model):
@@ -1134,7 +1338,7 @@ class Worker(models.Model):
     worker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='worker_profiles')
     farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='workers')
     hourly_wage = models.DecimalField(max_digits=8, decimal_places=2)
-    skills = models.JSONField(default=list, blank=True)
+    skills = models.JSONField(default=list, blank=True, null=True)
     hire_date = models.DateField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     emergency_contact = models.CharField(max_length=255, blank=True)
@@ -1321,3 +1525,416 @@ class Notification(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.title}"
+
+
+# ============================================================
+# SECTION 8: PHASE 2 - CONTEXTUAL HELP SYSTEM
+# ============================================================
+
+class HelpContent(models.Model):
+    """Contextual help system for user guidance"""
+    
+    TRIGGER_TYPES = [
+        ('first_time', 'First Time User'),
+        ('inactivity', 'Inactivity Alert'),
+        ('error_recovery', 'Error Recovery'),
+        ('opportunity', 'Opportunity-Based'),
+        ('manual_request', 'Manual Request'),
+    ]
+    
+    CONTENT_TYPES = [
+        ('text', 'Text'),
+        ('video', 'Video'),
+        ('guide', 'Step-by-Step Guide'),
+        ('faq', 'FAQ'),
+        ('tooltip', 'Tooltip'),
+    ]
+    
+    CATEGORIES = [
+        ('crops', 'Crops'),
+        ('livestock', 'Livestock'),
+        ('equipment', 'Equipment'),
+        ('market', 'Marketplace'),
+        ('financial', 'Financial'),
+        ('reporting', 'Reporting'),
+        ('general', 'General'),
+    ]
+    
+    category = models.CharField(max_length=50, choices=CATEGORIES)
+    trigger_type = models.CharField(max_length=50, choices=TRIGGER_TYPES)
+    content_type = models.CharField(max_length=50, choices=CONTENT_TYPES)
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    video_url = models.URLField(blank=True, null=True)
+    target_page = models.CharField(max_length=255, blank=True, help_text='e.g., /crops/create/')
+    target_element = models.CharField(max_length=255, blank=True, help_text='CSS selector for element to highlight')
+    priority = models.IntegerField(default=0, help_text='Higher number = shown first')
+    is_active = models.BooleanField(default=True)
+    view_count = models.IntegerField(default=0)
+    helpful_count = models.IntegerField(default=0)
+    not_helpful_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'help_content'
+        indexes = [
+            models.Index(fields=['category', 'trigger_type']),
+            models.Index(fields=['is_active', 'priority']),
+            models.Index(fields=['target_page']),
+        ]
+        ordering = ['-priority', '-created_at']
+    
+    def __str__(self):
+        return f"{self.category} - {self.title}"
+
+
+# ============================================================
+# SECTION 9: PHASE 3 - TEMPLATE LIBRARY & RECURRING ACTIONS
+# ============================================================
+
+class Template(models.Model):
+    """Save and reuse operations as templates"""
+    
+    CATEGORIES = [
+        ('crop_plan', 'Crop Plan'),
+        ('treatment', 'Treatment'),
+        ('equipment_listing', 'Equipment Listing'),
+        ('schedule', 'Schedule'),
+        ('report', 'Report'),
+    ]
+    
+    SHARE_LEVELS = [
+        ('private', 'Private'),
+        ('farm', 'Farm Only'),
+        ('cooperative', 'Cooperative'),
+        ('public', 'Public Marketplace'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='templates')
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, null=True, blank=True, related_name='templates')
+    name = models.CharField(max_length=255)
+    category = models.CharField(max_length=50, choices=CATEGORIES)
+    description = models.TextField(blank=True)
+    template_data = models.JSONField(help_text='Serialized template configuration')
+    share_level = models.CharField(max_length=20, choices=SHARE_LEVELS, default='private')
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Price if shared on marketplace')
+    is_active = models.BooleanField(default=True)
+    usage_count = models.IntegerField(default=0)
+    average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    total_ratings = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'templates'
+        indexes = [
+            models.Index(fields=['user', 'category']),
+            models.Index(fields=['share_level', 'is_active']),
+            models.Index(fields=['farm']),
+        ]
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return self.name
+
+
+class TemplateRating(models.Model):
+    """User ratings for shared templates"""
+    
+    template = models.ForeignKey(Template, on_delete=models.CASCADE, related_name='ratings')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    review = models.TextField(blank=True)
+    is_helpful = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'template_ratings'
+        unique_together = ['template', 'user']
+        indexes = [
+            models.Index(fields=['template']),
+            models.Index(fields=['rating']),
+        ]
+    
+    def __str__(self):
+        return f"{self.template.name} - {self.rating}★ by {self.user.username}"
+
+
+class RecurringAction(models.Model):
+    """Automated recurring farm tasks"""
+    
+    FREQUENCIES = [
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('seasonal', 'Seasonal'),
+        ('custom', 'Custom CRON'),
+    ]
+    
+    STATUS = [
+        ('active', 'Active'),
+        ('paused', 'Paused'),
+        ('completed', 'Completed'),
+        ('archived', 'Archived'),
+    ]
+    
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='recurring_actions')
+    action_name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    frequency = models.CharField(max_length=20, choices=FREQUENCIES)
+    cron_expression = models.CharField(max_length=255, help_text='CRON expression for scheduling')
+    action_config = models.JSONField(help_text='Action-specific configuration data')
+    assigned_to = models.ManyToManyField(User, blank=True, related_name='assigned_recurring_actions')
+    status = models.CharField(max_length=20, choices=STATUS, default='active')
+    next_due = models.DateTimeField(null=True, blank=True)
+    last_executed = models.DateTimeField(null=True, blank=True)
+    execution_count = models.IntegerField(default=0)
+    missed_count = models.IntegerField(default=0)
+    paused_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'recurring_actions'
+        indexes = [
+            models.Index(fields=['farm', 'status']),
+            models.Index(fields=['next_due']),
+            models.Index(fields=['frequency']),
+        ]
+        ordering = ['next_due', '-created_at']
+    
+    def __str__(self):
+        return f"{self.farm.name} - {self.action_name}"
+
+
+class RecurringActionLog(models.Model):
+    """Execution history for recurring actions"""
+    
+    STATUSES = [
+        ('pending', 'Pending'),
+        ('executed', 'Executed'),
+        ('missed', 'Missed'),
+        ('failed', 'Failed'),
+    ]
+    
+    action = models.ForeignKey(RecurringAction, on_delete=models.CASCADE, related_name='execution_logs')
+    scheduled_for = models.DateTimeField()
+    executed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    executed_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUSES, default='pending')
+    notes = models.TextField(blank=True)
+    result_data = models.JSONField(null=True, blank=True, help_text='Result or error details')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'recurring_action_logs'
+        indexes = [
+            models.Index(fields=['action', 'scheduled_for']),
+            models.Index(fields=['status']),
+        ]
+        ordering = ['-scheduled_for']
+    
+    def __str__(self):
+        return f"{self.action.action_name} - {self.scheduled_for}"
+
+
+class BatchOperation(models.Model):
+    """Batch operations on multiple records"""
+    
+    OPERATION_TYPES = [
+        ('crop_harvest', 'Bulk Crop Harvest'),
+        ('price_update', 'Price Update'),
+        ('status_change', 'Status Change'),
+        ('data_export', 'Data Export'),
+        ('field_update', 'Field Data Update'),
+    ]
+    
+    STATUS = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='batch_operations')
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='batch_operations')
+    operation_type = models.CharField(max_length=50, choices=OPERATION_TYPES)
+    description = models.CharField(max_length=255)
+    record_count = models.IntegerField()
+    record_ids = models.JSONField(help_text='List of affected record IDs')
+    parameters = models.JSONField(help_text='Operation-specific parameters')
+    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    progress_percent = models.IntegerField(default=0)
+    results = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'batch_operations'
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['farm', 'created_at']),
+        ]
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.get_operation_type_display()} - {self.record_count} records"
+
+
+# ============================================================
+# SECTION 10: PHASE 4 - SMART PREDICTIONS
+# ============================================================
+
+class Prediction(models.Model):
+    """AI/ML predictions for farm decisions"""
+    
+    PREDICTION_TYPES = [
+        ('harvest_date', 'Harvest Date'),
+        ('yield_estimate', 'Yield Estimate'),
+        ('pest_risk', 'Pest Risk'),
+        ('price_forecast', 'Price Forecast'),
+        ('maintenance_needed', 'Maintenance Needed'),
+        ('disease_risk', 'Disease Risk'),
+        ('water_requirement', 'Water Requirement'),
+    ]
+    
+    OBJECT_TYPES = [
+        ('crop', 'Crop'),
+        ('field', 'Field'),
+        ('animal', 'Animal'),
+        ('equipment', 'Equipment'),
+        ('market', 'Market Price'),
+    ]
+    
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='predictions')
+    prediction_type = models.CharField(max_length=50, choices=PREDICTION_TYPES)
+    object_type = models.CharField(max_length=50, choices=OBJECT_TYPES)
+    object_id = models.IntegerField(help_text='ID of the related object (crop, field, animal, etc.)')
+    predicted_value = models.CharField(max_length=255, help_text='The prediction result')
+    confidence_score = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(1)]
+    )
+    forecast_date = models.DateField(help_text='Date when prediction applies')
+    model_version = models.CharField(max_length=50, default='v1')
+    reasoning = models.TextField(blank=True, help_text='Explanation for the prediction')
+    factors_used = models.JSONField(default=list, help_text='List of factors used in prediction')
+    is_actionable = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'predictions'
+        indexes = [
+            models.Index(fields=['farm', 'prediction_type']),
+            models.Index(fields=['forecast_date']),
+            models.Index(fields=['confidence_score']),
+        ]
+        ordering = ['-forecast_date', '-confidence_score']
+    
+    def __str__(self):
+        return f"{self.farm.name} - {self.get_prediction_type_display()}"
+
+
+# ============================================================
+# SECTION 11: PHASE 5 - SCHEDULED EXPORTS
+# ============================================================
+
+class ScheduledExport(models.Model):
+    """Scheduled data exports"""
+    
+    EXPORT_TYPES = [
+        ('crops', 'Crop Data'),
+        ('livestock', 'Livestock Data'),
+        ('financial', 'Financial Summary'),
+        ('marketplace', 'Marketplace Activity'),
+        ('custom', 'Custom Report'),
+    ]
+    
+    FORMATS = [
+        ('csv', 'CSV'),
+        ('json', 'JSON'),
+        ('xlsx', 'Excel'),
+        ('pdf', 'PDF'),
+        ('html', 'HTML'),
+    ]
+    
+    FREQUENCIES = [
+        ('once', 'One-Time'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='scheduled_exports')
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, null=True, blank=True)
+    export_type = models.CharField(max_length=50, choices=EXPORT_TYPES)
+    file_format = models.CharField(max_length=20, choices=FORMATS)
+    frequency = models.CharField(max_length=20, choices=FREQUENCIES, default='once')
+    filters = models.JSONField(default=dict, blank=True, help_text='Export filters (date range, etc.)')
+    email_recipients = models.JSONField(default=list, help_text='List of email addresses')
+    include_summary = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    last_run = models.DateTimeField(null=True, blank=True)
+    next_run = models.DateTimeField(null=True, blank=True)
+    run_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'scheduled_exports'
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['farm', 'frequency']),
+            models.Index(fields=['next_run']),
+        ]
+        ordering = ['next_run', '-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_export_type_display()}"
+
+
+# ============================================================
+# SECTION 12: PHASE 6 - WORKSPACE PREFERENCES
+# ============================================================
+
+class WorkspacePreference(models.Model):
+    """User workspace switching preferences"""
+    
+    WORKSPACE_TYPES = [
+        ('farmer', 'Farmer View'),
+        ('agronomist', 'Agronomist View'),
+        ('coop_manager', 'Cooperative Manager'),
+        ('equipment_owner', 'Equipment Owner'),
+        ('trader', 'Market Trader'),
+        ('admin', 'Administrator'),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='workspace_preference')
+    primary_workspace = models.CharField(max_length=50, choices=WORKSPACE_TYPES)
+    secondary_workspaces = models.JSONField(default=list, help_text='List of secondary workspace types')
+    last_accessed_workspace = models.CharField(max_length=50, choices=WORKSPACE_TYPES)
+    last_accessed_at = models.DateTimeField(auto_now=True)
+    workspace_state = models.JSONField(default=dict, help_text='Saved state for each workspace (filters, views, etc.)')
+    default_farm = models.ForeignKey(Farm, on_delete=models.SET_NULL, null=True, blank=True)
+    quick_stats_layout = models.JSONField(default=dict, help_text='Dashboard widget configuration')
+    theme_preference = models.CharField(max_length=20, default='auto', choices=[('light', 'Light'), ('dark', 'Dark'), ('auto', 'Auto')])
+    notifications_enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'workspace_preferences'
+        indexes = [
+            models.Index(fields=['primary_workspace']),
+            models.Index(fields=['last_accessed_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.primary_workspace}"

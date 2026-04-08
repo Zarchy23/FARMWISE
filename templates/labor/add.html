@@ -10,51 +10,68 @@
         <form method="post">
             {% csrf_token %}
             
-            <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Select User Account</label>
-                <select name="worker" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="">-- Select User --</option>
-                    {% for user in users %}
-                    <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} ({{ user.email }})</option>
+            <!-- Display form validation errors -->
+            {% if form.non_field_errors %}
+            <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                <ul>
+                    {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
                     {% endfor %}
-                </select>
-                <p class="text-sm text-gray-500 mt-1">Workers must have a registered account</p>
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p class="text-blue-800 text-sm">Add a worker by selecting an existing user account below, OR enter the name of a new worker who is not yet in the system.</p>
             </div>
             
             <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Select Farm</label>
-                <select name="farm" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="">-- Select Farm --</option>
-                    {% for farm in farms %}
-                    <option value="{{ farm.id }}">{{ farm.name }}</option>
-                    {% endfor %}
-                </select>
+                <label class="block text-gray-700 font-medium mb-2">Existing Worker (Optional)</label>
+                {{ form.worker }}
+                {% if form.worker.errors %}<p class="text-red-600 text-sm mt-1">{{ form.worker.errors }}</p>{% endif %}
             </div>
             
             <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Hourly Wage ($)</label>
-                <input type="number" step="0.50" name="hourly_wage" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., 5.00">
+                <label class="block text-gray-700 font-medium mb-2">OR New Worker Name (Optional)</label>
+                {{ form.new_worker_name }}
+                {% if form.new_worker_name.errors %}<p class="text-red-600 text-sm mt-1">{{ form.new_worker_name.errors }}</p>{% endif %}
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Select Farm <span class="text-red-500">*</span></label>
+                {{ form.farm }}
+                {% if form.farm.errors %}<p class="text-red-600 text-sm mt-1">{{ form.farm.errors }}</p>{% endif %}
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Hourly Wage ($) <span class="text-red-500">*</span></label>
+                {{ form.hourly_wage }}
+                {% if form.hourly_wage.errors %}<p class="text-red-600 text-sm mt-1">{{ form.hourly_wage.errors }}</p>{% endif %}
             </div>
             
             <div class="mb-4">
                 <label class="block text-gray-700 font-medium mb-2">Skills</label>
-                <textarea name="skills" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Tractor driving, Harvesting, Irrigation, Pruning"></textarea>
+                {{ form.skills }}
+                {% if form.skills.errors %}<p class="text-red-600 text-sm mt-1">{{ form.skills.errors }}</p>{% endif %}
             </div>
             
             <div class="grid md:grid-cols-2 gap-4">
                 <div class="mb-4">
-                    <label class="block text-gray-700 font-medium mb-2">Emergency Contact Name</label>
-                    <input type="text" name="emergency_contact" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label class="block text-gray-700 font-medium mb-2">Emergency Contact Name (Optional)</label>
+                    {{ form.emergency_contact }}
+                    {% if form.emergency_contact.errors %}<p class="text-red-600 text-sm mt-1">{{ form.emergency_contact.errors }}</p>{% endif %}
                 </div>
                 <div class="mb-4">
-                    <label class="block text-gray-700 font-medium mb-2">Emergency Phone</label>
-                    <input type="tel" name="emergency_phone" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label class="block text-gray-700 font-medium mb-2">Emergency Phone (Optional)</label>
+                    {{ form.emergency_phone }}
+                    {% if form.emergency_phone.errors %}<p class="text-red-600 text-sm mt-1">{{ form.emergency_phone.errors }}</p>{% endif %}
                 </div>
             </div>
             
             <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Notes</label>
-                <textarea name="notes" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Additional information about the worker..."></textarea>
+                <label class="block text-gray-700 font-medium mb-2">Notes (Optional)</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}<p class="text-red-600 text-sm mt-1">{{ form.notes.errors }}</p>{% endif %}
             </div>
             
             <div class="flex space-x-3 mt-6">

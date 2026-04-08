@@ -11,23 +11,27 @@
             {% csrf_token %}
             
             <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Select Field</label>
-                <select name="field" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="">-- Select Field --</option>
-                    {% for field in fields %}
-                    <option value="{{ field.id }}">{{ field.farm.name }} - {{ field.name }} ({{ field.area_hectares }} ha)</option>
-                    {% endfor %}
-                </select>
+                <label class="block text-gray-700 font-medium mb-2">{{ form.field.label }}</label>
+                {{ form.field }}
+                {% if form.field.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.field.errors }}</div>
+                {% endif %}
             </div>
             
             <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Scheduled Date</label>
-                <input type="date" name="scheduled_date" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <label class="block text-gray-700 font-medium mb-2">{{ form.scheduled_date.label }}</label>
+                {{ form.scheduled_date }}
+                {% if form.scheduled_date.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.scheduled_date.errors }}</div>
+                {% endif %}
             </div>
             
             <div class="mb-4">
-                <label class="block text-gray-700 font-medium mb-2">Duration (hours)</label>
-                <input type="number" step="0.5" name="duration_hours" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., 2.5">
+                <label class="block text-gray-700 font-medium mb-2">{{ form.duration_hours.label }}</label>
+                {{ form.duration_hours }}
+                {% if form.duration_hours.errors %}
+                    <div class="text-red-600 text-sm mt-1">{{ form.duration_hours.errors }}</div>
+                {% endif %}
             </div>
             
             <div class="bg-blue-50 rounded-lg p-4 mb-6">
@@ -55,11 +59,17 @@
     const durationInput = document.querySelector('input[name="duration_hours"]');
     const waterSpan = document.getElementById('waterEstimate');
     
-    const fieldAreas = {
-        {% for field in fields %}
-        "{{ field.id }}": {{ field.area_hectares }},
-        {% endfor %}
-    };
+    // Get field areas from data attributes
+    const fieldAreas = {};
+    document.querySelectorAll('select[name="field"] option[value]').forEach(option => {
+        if (option.value) {
+            // Extract area from option text (format: "Farm - Field (X ha)")
+            const match = option.textContent.match(/\(([0-9.]+)\s*ha\)/);
+            if (match) {
+                fieldAreas[option.value] = parseFloat(match[1]);
+            }
+        }
+    });
     
     function updateWaterEstimate() {
         const fieldId = fieldSelect.value;
@@ -72,6 +82,15 @@
     fieldSelect.addEventListener('change', updateWaterEstimate);
     durationInput.addEventListener('input', updateWaterEstimate);
     
-    document.querySelector('input[name="scheduled_date"]').value = new Date().toISOString().split('T')[0];
+    // Set default date to today
+    const dateInput = document.querySelector('input[name="scheduled_date"]');
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // Trigger initial water estimate calculation if field is pre-selected
+    if (fieldSelect.value) {
+        updateWaterEstimate();
+    }
 </script>
 {% endblock %}

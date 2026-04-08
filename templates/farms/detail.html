@@ -219,6 +219,31 @@
             </div>
         </div>
     </div>
+
+    <!-- Livestock Section -->
+    <div class="bg-white rounded-xl shadow p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold flex items-center">
+                <i class="ri-livestock-line mr-2 text-orange-600"></i>Livestock
+            </h2>
+            <a href="{% url 'core:animal_add' %}?farm_id={{ farm.id }}" class="bg-orange-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-orange-700 transition">+ Add Animal</a>
+        </div>
+        <div class="space-y-3">
+            {% for animal in farm.animals.all|dictsort:"status" %}
+            <div class="border-b pb-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-medium">{{ animal.name|default:animal.tag_number }} - {{ animal.animal_type.breed }}</span>
+                        <p class="text-xs text-gray-500">{{ animal.get_gender_display }} | {{ animal.get_status_display }}</p>
+                    </div>
+                    <a href="{% url 'core:animal_detail' animal.id %}" class="text-blue-600 hover:text-blue-800"><i class="ri-eye-line"></i></a>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-gray-500 text-center py-4">No livestock added yet</p>
+            {% endfor %}
+        </div>
+    </div>
 </div>
 
 <script>

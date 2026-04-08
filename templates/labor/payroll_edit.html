@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% block title %}Edit Payroll - {{ worker.worker.get_full_name }}{% endblock %}
+{% block page_title %}Edit Payroll{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Edit Payroll</h1>
+            <p class="text-gray-500 mt-1">{{ worker.worker.get_full_name }}</p>
+        </div>
+        <a href="{% url 'core:payroll_list' %}" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="grid md:grid-cols-3 gap-6">
+        <!-- Form Section -->
+        <div class="md:col-span-2">
+            <div class="bg-white rounded-xl shadow p-6">
+                <form method="POST" class="space-y-6">
+                    {% csrf_token %}
+
+                    <!-- Period Info (Read-only) -->
+                    <div class="grid md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Period Start</label>
+                            <div class="text-lg font-semibold text-gray-900">{{ payroll.period_start|date:"M d, Y" }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Period End</label>
+                            <div class="text-lg font-semibold text-gray-900">{{ payroll.period_end|date:"M d, Y" }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Hours & Pay Summary (Read-only) -->
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Total Hours</label>
+                            <div class="text-2xl font-bold text-blue-600">{{ payroll.total_hours|floatformat:1 }} hrs</div>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Gross Pay</label>
+                            <div class="text-2xl font-bold text-green-600">${{ payroll.total_pay|floatformat:2 }}</div>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Deductions</label>
+                            <div class="text-2xl font-bold text-purple-600" id="deductionsDisplay">${{ payroll.deductions|floatformat:2 }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Net Pay Calculation (Auto-calculated) -->
+                    <div class="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-300">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Net Pay (Auto-calculated)</label>
+                        <div class="text-3xl font-bold text-yellow-600" id="netPayDisplay">${{ payroll.net_pay|floatformat:2 }}</div>
+                    </div>
+
+                    <!-- Editable Fields -->
+                    <div class="border-t pt-6">
+                        <h2 class="text-lg font-bold text-gray-900 mb-4">Payment Details</h2>
+
+                        <div class="space-y-4">
+                            <!-- Deductions -->
+                            <div>
+                                <label for="id_deductions" class="block text-sm font-medium text-gray-700 mb-2">Deductions</label>
+                                {{ form.deductions }}
+                                {% if form.deductions.errors %}
+                                    <p class="text-red-600 text-sm mt-1">{{ form.deductions.errors.0 }}</p>
+                                {% endif %}
+                                <p class="text-gray-500 text-sm mt-1">Any deductions (taxes, insurance, etc.)</p>
+                            </div>
+
+                            <!-- Status -->
+                            <div>
+                                <label for="id_status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                <select name="status" id="id_status" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    {% for value, label in form.status.field.choices %}
+                                        <option value="{{ value }}" {% if payroll.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.status.errors %}
+                                    <p class="text-red-600 text-sm mt-1">{{ form.status.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Payment Method -->
+                            <div>
+                                <label for="id_payment_method" class="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                                <select name="payment_method" id="id_payment_method" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <option value="">-- Select payment method --</option>
+                                    <option value="cash" {% if payroll.payment_method == 'cash' %}selected{% endif %}>Cash</option>
+                                    <option value="bank_transfer" {% if payroll.payment_method == 'bank_transfer' %}selected{% endif %}>Bank Transfer</option>
+                                    <option value="mobile_money" {% if payroll.payment_method == 'mobile_money' %}selected{% endif %}>Mobile Money</option>
+                                    <option value="check" {% if payroll.payment_method == 'check' %}selected{% endif %}>Check</option>
+                                    <option value="other" {% if payroll.payment_method == 'other' %}selected{% endif %}>Other</option>
+                                </select>
+                                {% if form.payment_method.errors %}
+                                    <p class="text-red-600 text-sm mt-1">{{ form.payment_method.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Payment Date -->
+                            <div>
+                                <label for="id_payment_date" class="block text-sm font-medium text-gray-700 mb-2">Payment Date</label>
+                                {{ form.payment_date }}
+                                {% if form.payment_date.errors %}
+                                    <p class="text-red-600 text-sm mt-1">{{ form.payment_date.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Transaction ID -->
+                            <div>
+                                <label for="id_transaction_id" class="block text-sm font-medium text-gray-700 mb-2">Transaction ID</label>
+                                {{ form.transaction_id }}
+                                {% if form.transaction_id.errors %}
+                                    <p class="text-red-600 text-sm mt-1">{{ form.transaction_id.errors.0 }}</p>
+                                {% endif %}
+                                <p class="text-gray-500 text-sm mt-1">Reference number for tracking (e.g., check number, transfer ID)</p>
+                            </div>
+
+                            <!-- Notes -->
+                            <div>
+                                <label for="id_notes" class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                    <p class="text-red-600 text-sm mt-1">{{ form.notes.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-3 pt-6 border-t">
+                        <button type="submit" class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Save Changes
+                        </button>
+                        <a href="{% url 'core:payroll_list' %}" class="flex-1 bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-400 transition text-center">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar - Summary -->
+        <div>
+            <div class="bg-white rounded-xl shadow p-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Worker Details</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-gray-500">Name</div>
+                        <div class="font-semibold text-gray-900">{{ worker.worker.get_full_name }}</div>
+                    </div>
+                    
+                    <div>
+                        <div class="text-sm text-gray-500">Contact</div>
+                        <div class="font-semibold text-gray-900">{{ worker.worker.phone_number }}</div>
+                    </div>
+                    
+                    <div>
+                        <div class="text-sm text-gray-500">Hourly Rate</div>
+                        <div class="font-semibold text-gray-900">${{ worker.hourly_wage|floatformat:2 }}/hr</div>
+                    </div>
+
+                    <div>
+                        <div class="text-sm text-gray-500">Status</div>
+                        <div class="font-semibold">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold
+                                {% if worker.status == 'active' %}bg-green-100 text-green-700
+                                {% elif worker.status == 'on_leave' %}bg-yellow-100 text-yellow-700
+                                {% else %}bg-red-100 text-red-700{% endif %}">
+                                {{ worker.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t">
+                        <div class="text-sm text-gray-500">Current Status</div>
+                        <div class="font-semibold mt-2">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold
+                                {% if payroll.status == 'paid' %}bg-green-100 text-green-700
+                                {% elif payroll.status == 'pending' %}bg-yellow-100 text-yellow-700
+                                {% elif payroll.status == 'processed' %}bg-blue-100 text-blue-700
+                                {% else %}bg-red-100 text-red-700{% endif %}">
+                                {{ payroll.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="mt-6 space-y-3">
+                <a href="{% url 'core:payroll_list' %}" class="block bg-gray-100 hover:bg-gray-200 text-gray-800 text-center font-semibold px-4 py-3 rounded-lg transition">
+                    Back to Payroll
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-calculate Net Pay -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deductionsInput = document.getElementById('id_deductions');
+    const grossPay = {{ payroll.total_pay|floatformat:2 }};
+    
+    function updateNetPay() {
+        const deductions = parseFloat(deductionsInput.value) || 0;
+        const netPay = grossPay - deductions;
+        document.getElementById('netPayDisplay').textContent = '$' + netPay.toFixed(2);
+        document.getElementById('deductionsDisplay').textContent = '$' + deductions.toFixed(2);
+    }
+    
+    if (deductionsInput) {
+        deductionsInput.addEventListener('input', updateNetPay);
+        updateNetPay(); // Initial calculation
+    }
+});
+</script>
+{% endblock %}

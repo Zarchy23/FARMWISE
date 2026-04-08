@@ -201,6 +201,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'core.tasks.send_weather_alerts',
         'schedule': timedelta(hours=6),  # Every 6 hours
     },
+    'fetch-weather-data': {
+        'task': 'core.tasks.fetch_weather_data',
+        'schedule': timedelta(minutes=30),  # Every 30 minutes
+    },
     'generate-daily-reports': {
         'task': 'core.tasks.generate_daily_reports',
         'schedule': timedelta(hours=24),  # Daily at midnight
@@ -295,7 +299,7 @@ PASSWORD_HASHERS = [
 # ============================================================
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = config('TIME_ZONE', default='UTC')
+TIME_ZONE = config('TIME_ZONE', default='Africa/Harare')
 USE_I18N = True
 USE_TZ = True
 
@@ -388,7 +392,7 @@ REST_FRAMEWORK = {
         'user': '1000/day',
         'burst': '60/minute',
     },
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.openapi.AutoSchema',
     'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
 }
 
@@ -468,6 +472,7 @@ STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 GOOGLE_VISION_API_KEY = config('GOOGLE_VISION_API_KEY', default='')
 PEST_DETECTION_API_URL = config('PEST_DETECTION_API_URL', default='')
+OPENWEATHER_API_KEY = config('OPENWEATHER_API_KEY', default='')
 
 # ============================================================
 # Map Configuration (Leaflet)

@@ -86,7 +86,7 @@ class UserProfileForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email', 'phone_number', 'profile_picture', 
+        fields = ['first_name', 'last_name', 'email', 'profile_picture', 
                   'preferred_language', 'accepts_sms', 'accepts_email']
         widgets = {
             'first_name': forms.TextInput(attrs={
@@ -96,9 +96,6 @@ class UserProfileForm(forms.ModelForm):
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
             }),
             'email': forms.EmailInput(attrs={
-                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
-            }),
-            'phone_number': forms.TextInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
             }),
             'profile_picture': forms.FileInput(attrs={
@@ -225,7 +222,7 @@ class CropSeasonForm(forms.ModelForm):
     class Meta:
         model = CropSeason
         fields = ['field', 'crop_type', 'variety', 'season', 'planting_date', 'expected_harvest_date', 
-                  'estimated_yield_kg', 'notes']
+                  'estimated_yield_kg', 'photo', 'notes']
         widgets = {
             'field': forms.Select(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
@@ -252,6 +249,11 @@ class CropSeasonForm(forms.ModelForm):
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'step': '0.01',
                 'placeholder': 'Estimated yield in kilograms'
+            }),
+            'photo': forms.FileInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'accept': 'image/*',
+                'placeholder': 'Upload crop photo (optional)'
             }),
             'notes': forms.Textarea(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
@@ -365,7 +367,7 @@ class AnimalForm(forms.ModelForm):
     class Meta:
         model = Animal
         fields = ['farm', 'animal_type', 'tag_number', 'name', 'gender', 'birth_date', 
-                  'purchase_date', 'purchase_price', 'weight_kg', 'location', 'notes']
+                  'purchase_date', 'purchase_price', 'weight_kg', 'photo', 'location', 'notes']
         widgets = {
             'farm': forms.Select(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
@@ -403,6 +405,11 @@ class AnimalForm(forms.ModelForm):
                 'step': '0.1',
                 'min': '0',
                 'placeholder': 'Weight in kilograms'
+            }),
+            'photo': forms.FileInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'accept': 'image/*',
+                'placeholder': 'Upload animal photo (optional)'
             }),
             'location': forms.TextInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
@@ -561,7 +568,7 @@ class EquipmentForm(forms.ModelForm):
     class Meta:
         model = Equipment
         fields = ['name', 'category', 'description', 'hourly_rate', 'daily_rate', 
-                  'weekly_rate', 'monthly_rate', 'deposit_amount', 'location', 'images', 'specifications']
+                  'weekly_rate', 'monthly_rate', 'deposit_amount', 'location', 'specifications']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
@@ -609,13 +616,10 @@ class EquipmentForm(forms.ModelForm):
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'placeholder': 'Equipment location'
             }),
-            'images': forms.ClearableFileInput(attrs={
-                'class': 'w-full border rounded-lg px-3 py-2',
-            }),
             'specifications': forms.Textarea(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'rows': 2,
-                'placeholder': 'Specifications in JSON format or plain text'
+                'placeholder': 'Engine details, horsepower, year, etc.'
             }),
         }
 
@@ -686,14 +690,13 @@ class ProductListingForm(forms.ModelForm):
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'placeholder': 'Product name'
             }),
-            'category': forms.TextInput(attrs={
-                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
-                'placeholder': 'e.g., Vegetables, Fruits, Grains'
+            'category': forms.Select(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
             }),
             'description': forms.Textarea(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'rows': 3,
-                'placeholder': 'Describe your product...'
+                'placeholder': 'Describe your product in detail...'
             }),
             'quantity': forms.NumberInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
@@ -712,6 +715,8 @@ class ProductListingForm(forms.ModelForm):
             }),
             'images': forms.ClearableFileInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2',
+                'accept': 'image/*',
+                'help_text': 'Upload an image for your product'
             }),
             'harvest_date': forms.DateInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
@@ -738,9 +743,26 @@ class ProductListingForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        # Set the farm queryset based on user's farms
         if user:
             self.fields['seller'].queryset = Farm.objects.filter(owner=user)
+        
+        # Set category as a dropdown with predefined options
+        PRODUCT_CATEGORIES = [
+            ('Vegetables', 'Vegetables'),
+            ('Fruits', 'Fruits'),
+            ('Grains & Cereals', 'Grains & Cereals'),
+            ('Legumes', 'Legumes'),
+            ('Dairy Products', 'Dairy Products'),
+            ('Meat & Poultry', 'Meat & Poultry'),
+            ('Eggs', 'Eggs'),
+            ('Honey & Bee Products', 'Honey & Bee Products'),
+            ('Herbs & Spices', 'Herbs & Spices'),
+            ('Organic Products', 'Organic Products'),
+            ('Other', 'Other'),
+        ]
+        self.fields['category'].widget = forms.Select(attrs={
+            'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
+        }, choices=PRODUCT_CATEGORIES)
 
 
 class OrderForm(forms.ModelForm):
@@ -884,14 +906,28 @@ class ClaimForm(forms.ModelForm):
 
 class WorkerForm(forms.ModelForm):
     """Form for adding workers"""
+    new_worker_name = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+            'placeholder': 'Enter name if worker is not in the system'
+        })
+    )
+    
+    worker = forms.ModelChoiceField(
+        queryset=User.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
+        }),
+        empty_label="-- Select from existing users --"
+    )
     
     class Meta:
         model = Worker
         fields = ['worker', 'farm', 'hourly_wage', 'skills', 'emergency_contact', 'emergency_phone', 'notes']
         widgets = {
-            'worker': forms.Select(attrs={
-                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
-            }),
             'farm': forms.Select(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
             }),
@@ -908,18 +944,34 @@ class WorkerForm(forms.ModelForm):
             }),
             'emergency_contact': forms.TextInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
-                'placeholder': 'Emergency contact name'
+                'placeholder': 'Emergency contact name',
+                'required': False
             }),
             'emergency_phone': forms.TextInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
-                'placeholder': 'Emergency contact phone'
+                'placeholder': 'Emergency contact phone',
+                'required': False
             }),
             'notes': forms.Textarea(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'rows': 2,
-                'placeholder': 'Additional notes'
+                'placeholder': 'Additional notes',
+                'required': False
             }),
         }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        worker = cleaned_data.get('worker')
+        new_worker_name = cleaned_data.get('new_worker_name')
+        
+        # Validation: Either select an existing worker OR provide a new worker name
+        if not worker and not new_worker_name:
+            raise forms.ValidationError(
+                'Please either select an existing worker or enter a new worker name.'
+            )
+        
+        return cleaned_data
 
 
 class WorkShiftForm(forms.ModelForm):
@@ -951,6 +1003,11 @@ class WorkShiftForm(forms.ModelForm):
                 'placeholder': 'Task details or notes'
             }),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make field optional
+        self.fields['field'].required = False
 
 
 # ============================================================
@@ -1038,5 +1095,51 @@ class TransactionForm(forms.ModelForm):
             }),
             'related_animal': forms.Select(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
+            }),
+        }
+
+
+# ============================================================
+# SECTION 11: PAYROLL FORMS
+# ============================================================
+
+class PayrollForm(forms.ModelForm):
+    """Form for editing payroll records"""
+    
+    class Meta:
+        model = Payroll
+        fields = ['deductions', 'status', 'payment_date', 'payment_method', 'transaction_id', 'notes']
+        widgets = {
+            'deductions': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Deductions amount'
+            }),
+            'status': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'payment_date': forms.DateInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'type': 'date'
+            }),
+            'payment_method': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }, choices=[
+                ('', '-- Select payment method --'),
+                ('cash', 'Cash'),
+                ('bank_transfer', 'Bank Transfer'),
+                ('mobile_money', 'Mobile Money'),
+                ('check', 'Check'),
+                ('other', 'Other'),
+            ]),
+            'transaction_id': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Transaction ID (optional)'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Additional notes (optional)',
+                'rows': 3
             }),
         }

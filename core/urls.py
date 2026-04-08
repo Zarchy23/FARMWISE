@@ -1,19 +1,62 @@
 # core/urls.py
 # All FarmWise application URLs
 
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
+from . import views_api
 
 app_name = 'core'
 
+# Setup DRF router for API viewsets
+router = DefaultRouter()
+
+# Phase 1: Validation & Activity
+router.register(r'validation-rules', views_api.ValidationRuleViewSet, basename='validation-rule')
+router.register(r'validation-logs', views_api.ValidationLogViewSet, basename='validation-log')
+router.register(r'activities', views_api.ActivityTimelineViewSet, basename='activity')
+router.register(r'user-history', views_api.UserHistoryViewSet, basename='user-history')
+router.register(r'farm-history', views_api.FarmHistoryViewSet, basename='farm-history')
+
+# Phase 2: Help System
+router.register(r'help-content', views_api.HelpContentViewSet, basename='help-content')
+
+# Phase 3: Templates, Recurring Actions, Batch Ops
+router.register(r'templates', views_api.TemplateViewSet, basename='template')
+router.register(r'template-ratings', views_api.TemplateRatingViewSet, basename='template-rating')
+router.register(r'recurring-actions', views_api.RecurringActionViewSet, basename='recurring-action')
+router.register(r'recurring-action-logs', views_api.RecurringActionLogViewSet, basename='recurring-action-log')
+router.register(r'batch-operations', views_api.BatchOperationViewSet, basename='batch-operation')
+
+# Phase 4: Predictions
+router.register(r'predictions', views_api.PredictionViewSet, basename='prediction')
+
+# Phase 5: Scheduled Exports
+router.register(r'scheduled-exports', views_api.ScheduledExportViewSet, basename='scheduled-export')
+
+# Phase 6: Workspace Preferences
+router.register(r'workspace-preferences', views_api.WorkspacePreferenceViewSet, basename='workspace-preference')
+
+# Validation API (custom methods)
+validation_api = views_api.ValidateDataAPIView.as_view({
+    'post': 'crop'
+})
+
 urlpatterns = [
+    # ============================================================
+    # API ROUTES (DRF)
+    # ============================================================
+    path('api/', include(router.urls)),
+    path('api/validate/crop/', views_api.ValidateDataAPIView.as_view({'post': 'crop'}), name='api_validate_crop'),
+    path('api/validate/livestock/', views_api.ValidateDataAPIView.as_view({'post': 'livestock'}), name='api_validate_livestock'),
+    path('api/validate/marketplace/', views_api.ValidateDataAPIView.as_view({'post': 'marketplace'}), name='api_validate_marketplace'),
+    
     # ============================================================
     # HOME & DASHBOARD
     # ============================================================
     path('', views.home, name='home'),
     path('dashboard/', views.dashboard, name='dashboard'),
-    path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
-    path('admin/users/', views.user_management, name='user_management'),
+    path('wallboard/', views.wallboard, name='wallboard'),
     path('register/', views.register, name='register'),
     path('profile/', views.profile, name='profile'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
@@ -71,6 +114,8 @@ urlpatterns = [
     # ============================================================
     path('marketplace/', views.marketplace_list, name='marketplace'),
     path('marketplace/sell/', views.create_listing, name='create_listing'),
+    path('marketplace/<int:pk>/edit/', views.edit_listing, name='edit_listing'),
+    path('marketplace/<int:pk>/delete/', views.delete_listing, name='delete_listing'),
     path('marketplace/<int:pk>/', views.listing_detail, name='listing_detail'),
     path('marketplace/<int:pk>/buy/', views.buy_product, name='buy_product'),
     path('marketplace/my-listings/', views.my_listings, name='my_listings'),
@@ -116,6 +161,7 @@ urlpatterns = [
     path('labor/workers/<int:worker_id>/hours/', views.log_hours, name='log_hours'),
     path('labor/payroll/', views.payroll_list, name='payroll_list'),
     path('labor/payroll/<int:pk>/process/', views.process_payroll, name='process_payroll'),
+    path('labor/payroll/<int:pk>/edit/', views.payroll_edit, name='payroll_edit'),
     
     # ============================================================
     # REPORTS
@@ -127,7 +173,14 @@ urlpatterns = [
     path('reports/export/<str:report_type>/', views.export_report, name='export_report'),
     
     # ============================================================
-    # API ENDPOINTS (for AJAX/JavaScript)
+    # NOTIFICATIONS
+    # ============================================================
+    path('notifications/', views.notification_list, name='notification_list'),
+    path('notifications/<int:pk>/read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
+    
+    # ============================================================
+    # LEGACY API ENDPOINTS (for AJAX/JavaScript)
     # ============================================================
     path('api/farms/', views.api_farms, name='api_farms'),
     path('api/fields/<int:farm_id>/', views.api_fields, name='api_fields'),

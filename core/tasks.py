@@ -619,6 +619,273 @@ def vacuum_analyze():
 
 
 # ============================================================
+# WEATHER DATA TASKS
+# ============================================================
+
+@shared_task(bind=True, max_retries=3)
+def fetch_weather_data(self):
+    """Fetch real-time weather data from OpenWeatherMap API every 30 minutes"""
+    import requests
+    from django.conf import settings
+    
+    api_key = settings.OPENWEATHER_API_KEY
+    if not api_key:
+        logger.error("OpenWeatherMap API key not configured")
+        return "Weather API key missing"
+    
+    farms = Farm.objects.all()
+    updated_count = 0
+    errors = []
+    
+    for farm in farms:
+        try:
+            # Use farm latitude/longitude if available, otherwise skip
+            if not (farm.latitude and farm.longitude):
+                logger.warning(f"Farm {farm.name} missing coordinates")
+                continue
+            
+            # Call OpenWeatherMap API
+            url = f"https://api.openweathermap.org/data/2.5/forecast?lat={farm.latitude}&lon={farm.longitude}&appid={api_key}&units=metric"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Parse current weather (first forecast entry is closest to current)
+            if data.get('list') and len(data['list']) > 0:
+                current = data['list'][0]
+                main = current['main']
+                weather = current['weather'][0]
+                wind = current.get('wind', {})
+                clouds = current.get('clouds', {})
+                
+                # Prepare forecast data (next 5 days)
+                forecast_list = []
+                for i in range(0, min(40, len(data['list'])), 8):  # Every 24 hours
+                    forecast_entry = data['list'][i]
+                    forecast_list.append({
+                        'date': forecast_entry['dt'],
+                        'temp_high': forecast_entry['main']['temp_max'],
+                        'temp_low': forecast_entry['main']['temp_min'],
+                        'condition': forecast_entry['weather'][0]['main'],
+                        'description': forecast_entry['weather'][0]['description'],
+                        'icon': forecast_entry['weather'][0]['icon'],
+                        'humidity': forecast_entry['main']['humidity'],
+                        'wind_speed': forecast_entry['wind'].get('speed', 0),
+                    })
+                
+                # Update or create WeatherData
+                weather_obj, created = WeatherData.objects.update_or_create(
+                    farm=farm,
+                    defaults={
+                        'temperature': main['temp'],
+                        'feels_like': main.get('feels_like'),
+                        'humidity': main['humidity'],
+                        'pressure': main.get('pressure'),
+                        'wind_speed': wind.get('speed', 0),
+                        'wind_direction': wind.get('deg'),
+                        'cloudiness': clouds.get('all'),
+                        'condition': weather['main'],
+                        'description': weather['description'],
+                        'icon': weather['icon'],
+                        'forecast_data': {'forecast': forecast_list},
+                        'location': f"{data['city']['name']}, {data['city']['country']}",
+                    }
+                )
+                updated_count += 1
+                
+                # Generate alerts based on weather data
+                generate_weather_alerts.delay(farm.id)
+                
+                logger.info(f"Updated weather for {farm.name}: {weather['main']}")
+        
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Failed to fetch weather for {farm.name}: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+            # Retry with exponential backoff
+            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+        except Exception as e:
+            error_msg = f"Error processing weather data for {farm.name}: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+    
+    result = f"Updated weather for {updated_count} farms"
+    if errors:
+        result += f" (with {len(errors)} errors)"
+    
+    logger.info(result)
+    return result
+
+
+@shared_task
+def generate_weather_alerts(farm_id):
+    """Generate weather alerts based on current conditions"""
+    from django.utils import timezone
+    
+    try:
+        farm = Farm.objects.get(id=farm_id)
+        weather_data = WeatherData.objects.filter(farm=farm).first()
+        
+        if not weather_data:
+            return f"No weather data for farm {farm_id}"
+        
+        # Delete previous alerts from this farm (to avoid duplicates)
+        WeatherAlert.objects.filter(
+            farm=farm,
+            created_at__gte=timezone.now() - timedelta(minutes=35)
+        ).delete()
+        
+        now = timezone.now()
+        alerts_created = 0
+        
+        # HIGH TEMPERATURE ALERT
+        if weather_data.temperature > 35:
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='heatwave',
+                severity='alert',
+                title='Extreme Heat Alert',
+                message=f'Temperature reached {weather_data.temperature}°C. High risk of crop stress and animal heat stress. Ensure proper irrigation and shade for livestock.',
+                start_date=now,
+                end_date=now + timedelta(hours=6)
+            )
+            alerts_created += 1
+        elif weather_data.temperature > 32:
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='heatwave',
+                severity='warning',
+                title='High Temperature Warning',
+                message=f'Temperature at {weather_data.temperature}°C. Monitor crops for water stress and provide adequate irrigation.',
+                start_date=now,
+                end_date=now + timedelta(hours=12)
+            )
+            alerts_created += 1
+        
+        # LOW TEMPERATURE ALERT (FROST)
+        if weather_data.temperature < 0:
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='frost',
+                severity='emergency',
+                title='Frost Warning - Crop Damage Risk',
+                message=f'Temperature dropped to {weather_data.temperature}°C. Cover sensitive crops immediately to prevent frost damage.',
+                start_date=now,
+                end_date=now + timedelta(hours=8)
+            )
+            alerts_created += 1
+        elif weather_data.temperature < 5:
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='frost',
+                severity='warning',
+                title='Frost Alert',
+                message=f'Low temperature of {weather_data.temperature}°C expected. Protect sensitive crops.',
+                start_date=now,
+                end_date=now + timedelta(hours=12)
+            )
+            alerts_created += 1
+        
+        # HIGH HUMIDITY ALERT (Fungal Diseases)
+        if weather_data.humidity > 90:
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='storm',
+                severity='warning',
+                title='Very High Humidity - Disease Risk',
+                message=f'Humidity at {weather_data.humidity}%. Fungal diseases are likely. Apply fungicides and ensure proper crop ventilation.',
+                start_date=now,
+                end_date=now + timedelta(hours=12)
+            )
+            alerts_created += 1
+        elif weather_data.humidity > 75:
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='storm',
+                severity='info',
+                title='Humidity Advisory',
+                message=f'Humidity at {weather_data.humidity}%. Monitor crops for fungal infections and ensure proper spacing.',
+                start_date=now,
+                end_date=now + timedelta(hours=24)
+            )
+            alerts_created += 1
+        
+        # HIGH WIND ALERT
+        if weather_data.wind_speed > 15:
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='high_wind',
+                severity='alert',
+                title='Strong Wind Alert',
+                message=f'Wind speed at {weather_data.wind_speed:.1f} m/s. Secure loose structures and support taller crops.',
+                start_date=now,
+                end_date=now + timedelta(hours=8)
+            )
+            alerts_created += 1
+        elif weather_data.wind_speed > 10:
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='high_wind',
+                severity='warning',
+                title='Moderate Wind Advisory',
+                message=f'Wind speed at {weather_data.wind_speed:.1f} m/s. Be cautious when applying pesticides.',
+                start_date=now,
+                end_date=now + timedelta(hours=12)
+            )
+            alerts_created += 1
+        
+        # RAINY CONDITIONS ALERT
+        if 'rain' in weather_data.condition.lower() or 'thunderstorm' in weather_data.condition.lower():
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='heavy_rain',
+                severity='warning',
+                title='Rainfall Expected - Operational Impact',
+                message=f'{weather_data.condition} expected. Avoid spraying pesticides, harvesting may be delayed. Prepare drainage for waterlogged areas.',
+                start_date=now,
+                end_date=now + timedelta(hours=12)
+            )
+            alerts_created += 1
+            
+            if 'thunderstorm' in weather_data.condition.lower():
+                WeatherAlert.objects.create(
+                    farm=farm,
+                    alert_type='storm',
+                    severity='emergency',
+                    title='Thunderstorm Warning',
+                    message='Thunderstorm approaching. Secure livestock, move equipment to shelter, and avoid outdoor activities.',
+                    start_date=now,
+                    end_date=now + timedelta(hours=6)
+                )
+                alerts_created += 1
+        
+        # DRY CONDITIONS ALERT
+        if weather_data.humidity < 30 and 'rain' not in weather_data.condition.lower():
+            WeatherAlert.objects.create(
+                farm=farm,
+                alert_type='drought',
+                severity='warning',
+                title='Dry Conditions - Irrigation Recommended',
+                message=f'Low humidity ({weather_data.humidity}%) and no rainfall expected. Plan irrigation to prevent drought stress.',
+                start_date=now,
+                end_date=now + timedelta(hours=24)
+            )
+            alerts_created += 1
+        
+        logger.info(f"Generated {alerts_created} weather alerts for farm {farm.name}")
+        return f"Generated {alerts_created} alerts for {farm.name}"
+    
+    except Farm.DoesNotExist:
+        logger.error(f"Farm {farm_id} not found")
+        return f"Farm {farm_id} not found"
+    except Exception as e:
+        logger.error(f"Error generating weather alerts: {str(e)}")
+        return f"Error generating alerts: {str(e)}"
+
+
+
+# ============================================================
 # EXPORT TASKS
 # ============================================================
 

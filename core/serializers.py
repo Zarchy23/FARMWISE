@@ -475,3 +475,77 @@ class DashboardStatsSerializer(serializers.Serializer):
     monthly_revenue = serializers.DecimalField(max_digits=12, decimal_places=2)
     monthly_expenses = serializers.DecimalField(max_digits=12, decimal_places=2)
     monthly_profit = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+# ============================================================
+# SECTION 14: VALIDATION & ACTIVITY SERIALIZERS
+# ============================================================
+
+class ValidationRuleSerializer(serializers.ModelSerializer):
+    """Validation rule serializer"""
+    
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    
+    class Meta:
+        model = ValidationRule
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ValidationLogSerializer(serializers.ModelSerializer):
+    """Validation log serializer"""
+    
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    source_display = serializers.CharField(source='get_form_or_api_display', read_only=True)
+    
+    class Meta:
+        model = ValidationLog
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at']
+
+
+class UserHistorySerializer(serializers.ModelSerializer):
+    """User history serializer"""
+    
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = UserHistory
+        fields = '__all__'
+        read_only_fields = ['id', 'first_used', 'last_used']
+
+
+class FarmHistorySerializer(serializers.ModelSerializer):
+    """Farm history serializer"""
+    
+    farm_name = serializers.CharField(source='farm.name', read_only=True)
+    
+    class Meta:
+        model = FarmHistory
+        fields = '__all__'
+        read_only_fields = ['id', 'first_used', 'last_used']
+
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    """Activity log serializer for timeline"""
+    
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    farm_name = serializers.CharField(read_only=True)
+    icon = serializers.SerializerMethodField()
+    title = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = AuditLog
+        fields = ['id', 'timestamp', 'user_name', 'farm_name', 'icon', 'title', 
+                  'description', 'severity', 'model_name', 'details', 'created_at']
+        read_only_fields = ['id', 'created_at', 'timestamp']
+    
+    def get_icon(self, obj):
+        return obj.details.get('icon', '📋') if obj.details else '📋'
+    
+    def get_title(self, obj):
+        return obj.details.get('title', obj.model_name) if obj.details else obj.model_name
+    
+    def get_description(self, obj):
+        return obj.details.get('description', '') if obj.details else ''

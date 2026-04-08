@@ -21,9 +21,13 @@
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for animal in animals %}
         <div class="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden card-hover">
+            {% if animal.photo %}
+            <img src="{{ animal.photo.url }}" alt="{{ animal.tag_number }}" class="w-full h-32 object-cover">
+            {% else %}
             <div class="h-32 bg-gradient-to-r from-orange-400 to-yellow-400 flex items-center justify-center">
                 <i class="ri-cow-line text-5xl text-white"></i>
             </div>
+            {% endif %}
             <div class="p-4">
                 <div class="flex justify-between items-start mb-2">
                     <div>
@@ -58,54 +62,5 @@
         <a href="{% url 'core:animal_add' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition inline-block">Add Animal</a>
     </div>
     {% endif %}
-</div>
-<div class="flex justify-between items-center mb-6">
-    <div>
-        <h1 class="text-2xl font-bold">My Livestock</h1>
-        <p class="text-gray-500">Manage all your animals</p>
-    </div>
-    <a href="{% url 'core:animal_add' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
-        <i class="ri-add-line"></i>
-        <span>Add Animal</span>
-    </a>
-</div>
-
-<div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-    {% for animal in animals %}
-    <div class="bg-white rounded-xl shadow overflow-hidden card-hover">
-        <div class="h-32 bg-gradient-to-r from-green-400 to-green-600 flex items-center justify-center">
-            <i class="ri-cow-line text-5xl text-white"></i>
-        </div>
-        <div class="p-4">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="font-bold text-lg">{{ animal.animal_type.breed }}</h3>
-                    <p class="text-sm text-gray-500">Tag: {{ animal.tag_number }}</p>
-                </div>
-                <span class="px-2 py-1 rounded-full text-xs font-semibold 
-                    {% if animal.status == 'alive' %}bg-green-100 text-green-700
-                    {% elif animal.status == 'sold' %}bg-blue-100 text-blue-700
-                    {% else %}bg-red-100 text-red-700{% endif %}">
-                    {{ animal.get_status_display }}
-                </span>
-            </div>
-            <div class="mt-3 space-y-1 text-sm">
-                <p><i class="ri-gender-line text-gray-400"></i> {{ animal.get_gender_display }}</p>
-                <p><i class="ri-calendar-line text-gray-400"></i> {{ animal.age_months|default:"?" }} months old</p>
-                <p><i class="ri-scale-line text-gray-400"></i> {{ animal.weight_kg|default:"?" }} kg</p>
-            </div>
-            <div class="mt-4 flex space-x-2">
-                <a href="{% url 'core:animal_detail' animal.id %}" class="flex-1 bg-blue-600 text-white px-3 py-1 rounded text-center hover:bg-blue-700 transition text-sm">View</a>
-                <a href="{% url 'core:health_record_add' animal.id %}" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"><i class="ri-heart-line"></i></a>
-            </div>
-        </div>
-    </div>
-    {% empty %}
-    <div class="col-span-full text-center py-12 bg-white rounded-xl">
-        <i class="ri-cow-line text-6xl text-gray-300 mb-4"></i>
-        <p class="text-gray-500">No animals yet.</p>
-        <a href="{% url 'core:animal_add' %}" class="text-green-600 hover:underline mt-2 inline-block">Add your first animal</a>
-    </div>
-    {% endfor %}
 </div>
 {% endblock %}

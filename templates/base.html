@@ -70,6 +70,20 @@
                 <i class="ri-dashboard-line"></i><span>Dashboard</span>
             </a>
 
+            <!-- Wallboard (System Admins Only) -->
+            {% if user.user_type == 'admin' %}
+            <a href="{% url 'core:wallboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-red-600 transition bg-red-500 text-white font-bold">
+                <i class="ri-dashboard-3-line"></i><span>Admin Wallboard</span>
+            </a>
+            {% endif %}
+            
+            <!-- Django Admin (Superusers Only) -->
+            {% if user.is_superuser %}
+            <a href="/admin/" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-yellow-600 transition bg-yellow-500 text-white font-bold">
+                <i class="ri-shield-admin-line"></i><span>Django Admin</span>
+            </a>
+            {% endif %}
+
             <!-- My Farms (if user has farm access) -->
             {% if user|has_module_permission:"farms.view_own" or user|has_module_permission:"farms.view_coop" or user|has_module_permission:"farms.view_assigned" %}
             <a href="{% url 'core:farm_list' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
@@ -214,6 +228,7 @@
                     {% if user|has_module_permission:"labor.create" %}
                     <a href="{% url 'core:add_worker' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Worker</a>
                     <a href="{% url 'core:payroll_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Payroll</a>
+                    <a href="#" onclick="alert('Click on a payroll item to edit');" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Edit Payroll</a>
                     {% endif %}
                 </div>
             </div>
@@ -261,27 +276,38 @@
                             {% endif %}
                         </button>
                         <div x-show="notificationsOpen" @click.away="notificationsOpen = false" x-cloak class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-20">
-                            <div class="p-3 border-b"><h3 class="font-semibold">Notifications</h3></div>
+                            <div class="p-3 border-b flex justify-between items-center">
+                                <h3 class="font-semibold">Notifications</h3>
+                                {% if unread_notifications > 0 %}
+                                <button onclick="fetch('{% url 'core:mark_all_notifications_read' %}', {method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''}}).then(() => location.reload())" class="text-xs text-green-600 hover:text-green-700">Mark all read</button>
+                                {% endif %}
+                            </div>
                             <div class="max-h-96 overflow-y-auto">
                                 {% for notification in recent_notifications %}
-                                <div class="p-3 border-b hover:bg-gray-50 cursor-pointer">
+                                <a href="{% url 'core:mark_notification_read' notification.pk %}" class="block p-3 border-b hover:bg-gray-50 cursor-pointer transition">
                                     <p class="text-sm font-medium">{{ notification.title }}</p>
                                     <p class="text-xs text-gray-500">{{ notification.message|truncatechars:50 }}</p>
                                     <p class="text-xs text-gray-400 mt-1">{{ notification.created_at|timesince }} ago</p>
-                                </div>
+                                </a>
                                 {% empty %}
                                 <div class="p-3 text-center text-gray-500">No notifications</div>
                                 {% endfor %}
                             </div>
-                            <div class="p-2 border-t text-center"><a href="#" class="text-sm text-green-600">View all</a></div>
+                            <div class="p-2 border-t text-center"><a href="{% url 'core:notification_list' %}" class="text-sm text-green-600 hover:text-green-700">View all</a></div>
                         </div>
                     </div>
                     
                     <!-- User Menu -->
                     <div class="relative">
                         <button @click="userMenuOpen = !userMenuOpen" class="flex items-center space-x-2">
-                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                <i class="ri-user-line text-green-600"></i>
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border-2 border-green-600">
+                                {% if user.profile_picture %}
+                                <img src="{{ user.profile_picture.url }}" alt="{{ user.get_full_name }}" class="w-full h-full object-cover">
+                                {% else %}
+                                <div class="w-full h-full bg-green-100 flex items-center justify-center">
+                                    <i class="ri-user-line text-green-600 text-sm"></i>
+                                </div>
+                                {% endif %}
                             </div>
                             <span class="hidden md:inline text-gray-700">{{ user.get_full_name|default:user.username }}</span>
                             <i class="ri-arrow-down-s-line text-gray-500"></i>
