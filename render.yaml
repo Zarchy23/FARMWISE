@@ -10,6 +10,16 @@ services:
         value: "False"
       - key: ALLOWED_HOSTS
         value: "*"
+      - key: OPENAI_API_KEY
+        fromBuild: true
+      - key: OPENWEATHER_API_KEY
+        fromBuild: true
+      - key: WEATHER_API_KEY
+        fromBuild: true
+      - key: GOOGLE_VISION_API_KEY
+        fromBuild: true
+      - key: SENDGRID_API_KEY
+        fromBuild: true
 
 databases:
   - name: farmwise_db
