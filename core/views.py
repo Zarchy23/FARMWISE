@@ -1065,22 +1065,32 @@ def encode_image_to_base64(image_file):
 
 def analyze_pest_with_ai(image_file, image_name):
     """Use OpenAI Vision API to analyze pest image"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         # Get API key from settings
         from django.conf import settings
         api_key = settings.OPENAI_API_KEY
         
+        # Log the API key status (first 10 chars only for security)
+        logger.info(f'OPENAI_API_KEY status: {"SET" if api_key else "NOT SET"}')
+        if api_key:
+            logger.info(f'API key preview: {api_key[:10]}...')
+        
         # Check if API key is available
         if not api_key or api_key.strip() == '':
+            error_msg = 'OpenAI API key is not configured. Please add OPENAI_API_KEY to Render environment variables.'
+            logger.error(error_msg)
             return {
                 'pest_detected': False,
                 'pest_name': 'API Key Not Configured',
                 'confidence': 0,
                 'severity': 'low',
                 'affected_area': 0,
-                'explanation': 'OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file.',
+                'explanation': error_msg,
                 'identification_details': 'API configuration required',
-                'immediate_action': 'Configure your API key first',
+                'immediate_action': 'Configure your API key in Render dashboard first',
                 'treatment': 'API configuration required',
                 'organic_treatment': '',
                 'prevention': '',
