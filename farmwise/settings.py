@@ -470,6 +470,7 @@ STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 # ============================================================
 
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+TOGETHER_API_KEY = config('TOGETHER_API_KEY', default='')
 GOOGLE_VISION_API_KEY = config('GOOGLE_VISION_API_KEY', default='')
 PEST_DETECTION_API_URL = config('PEST_DETECTION_API_URL', default='')
 OPENWEATHER_API_KEY = config('OPENWEATHER_API_KEY', default='')

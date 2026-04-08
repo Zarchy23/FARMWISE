@@ -1083,40 +1083,16 @@ def encode_image_to_base64(image_file):
 
 
 def analyze_pest_with_ai(image_file, image_name):
-    """Use OpenAI Vision API to analyze pest image"""
+    """Use AI Vision API to analyze pest image - supports Together.ai (for Render) and OpenAI fallback"""
     import logging
     logger = logging.getLogger(__name__)
     
     try:
-        # Get API key from settings
         from django.conf import settings
-        api_key = settings.OPENAI_API_KEY
         
-        # Log the API key status (first 10 chars only for security)
-        logger.info(f'OPENAI_API_KEY status: {"SET" if api_key else "NOT SET"}')
-        if api_key:
-            logger.info(f'API key preview: {api_key[:10]}...')
-        
-        # Check if API key is available
-        if not api_key or api_key.strip() == '':
-            error_msg = 'OpenAI API key is not configured. Please add OPENAI_API_KEY to Render environment variables.'
-            logger.error(error_msg)
-            return {
-                'pest_detected': False,
-                'pest_name': 'API Key Not Configured',
-                'confidence': 0,
-                'severity': 'low',
-                'affected_area': 0,
-                'explanation': error_msg,
-                'identification_details': 'API configuration required',
-                'immediate_action': 'Configure your API key in Render dashboard first',
-                'treatment': 'API configuration required',
-                'organic_treatment': '',
-                'prevention': '',
-                'disease_cycle': '',
-                'environmental_factors': '',
-                'error': 'OpenAI API key not configured'
-            }
+        # Try Together.ai first (works better with Render)
+        together_api_key = settings.TOGETHER_API_KEY if hasattr(settings, 'TOGETHER_API_KEY') else None
+        openai_api_key = settings.OPENAI_API_KEY
         
         # Encode image to base64
         base64_image = encode_image_to_base64(image_file)
@@ -1127,6 +1103,264 @@ def analyze_pest_with_ai(image_file, image_name):
             image_format = 'jpeg'
         
         media_type = f'image/{image_format}'
+        
+        # Try Together.ai first
+        if together_api_key and together_api_key.strip():
+            logger.info('Using Together.ai for pest detection')
+            return analyze_pest_with_together(base64_image, media_type, together_api_key, logger)
+        
+        # Fallback to OpenAI
+        if openai_api_key and openai_api_key.strip():
+            logger.info('Using OpenAI for pest detection')
+            return analyze_pest_with_openai(base64_image, media_type, openai_api_key, logger)
+        
+        # No API key available
+        error_msg = 'No AI API key configured. Please add TOGETHER_API_KEY or OPENAI_API_KEY to Render environment variables.'
+        logger.error(error_msg)
+        return {
+            'pest_detected': False,
+            'pest_name': 'API Key Not Configured',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': error_msg,
+            'identification_details': 'API configuration required',
+            'immediate_action': 'Configure your API key in Render dashboard first',
+            'treatment': 'API configuration required',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': 'No API key configured'
+        }
+    
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Pest analysis error: {str(e)}')
+        logger.error(f'Error type: {type(e).__name__}')
+        logger.error(f'Full error: {repr(e)}', exc_info=True)
+        
+        return {
+            'pest_detected': False,
+            'pest_name': 'Error',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': f'Error analyzing image: {str(e)}',
+            'identification_details': 'Error occurred',
+            'immediate_action': 'Please try again',
+            'treatment': f'Error: {str(e)}',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': f'System error: {str(e)}'
+        }
+
+
+def analyze_pest_with_together(base64_image, media_type, api_key, logger):
+    """Analyze pest using Together.ai API (works with Render)"""
+    try:
+        url = "https://api.together.xyz/v1/chat/completions"
+        
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": "meta-llama/Llama-Vision-Free",  # Free vision model
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{media_type};base64,{base64_image}"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": """You are an agricultural disease and pest expert. Analyze this crop image in detail for pests, diseases, or other issues. Provide a comprehensive JSON response with these exact keys:
+
+{
+    "pest_detected": true or false,
+    "pest_name": "Specific pest/disease name or 'Healthy Crop' if no issues found",
+    "confidence": 0-100 (your confidence level),
+    "severity": "none, low, medium, high, or severe",
+    "affected_area": 0-100 (percentage of crop affected),
+    "explanation": "Detailed 2-3 sentence explanation of what you observe",
+    "identification_details": "Specific visual indicators that led to diagnosis",
+    "immediate_action": "What the farmer should do immediately",
+    "treatment": "Detailed treatment options",
+    "organic_treatment": "Organic alternatives",
+    "prevention": "Long-term prevention strategies",
+    "disease_cycle": "Brief explanation of disease lifecycle",
+    "environmental_factors": "Conditions that favor this pest/disease"
+}
+
+Be thorough, professional, and educational."""
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": 1024,
+            "temperature": 0.7
+        }
+        
+        logger.info('Sending request to Together.ai...')
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        result_data = response.json()
+        result_text = result_data['choices'][0]['message']['content'].strip()
+        
+        # Extract JSON from response
+        json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+        else:
+            result = json.loads(result_text)
+        
+        logger.info(f'Together.ai analysis completed: {result.get("pest_name")}')
+        return result
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f'Together.ai request error: {str(e)}')
+        logger.error(f'Error type: {type(e).__name__}')
+        return {
+            'pest_detected': False,
+            'pest_name': 'API Error',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': f'Together.ai service error: {str(e)}',
+            'identification_details': 'API error occurred',
+            'immediate_action': 'Please try again later',
+            'treatment': f'API Error: {str(e)}',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': f'Together.ai API error: {str(e)}'
+        }
+    
+    except Exception as e:
+        logger.error(f'Together.ai error: {str(e)}')
+        logger.error(f'Error type: {type(e).__name__}', exc_info=True)
+        return {
+            'pest_detected': False,
+            'pest_name': 'Error',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': f'Error: {str(e)}',
+            'identification_details': 'Error occurred',
+            'immediate_action': 'Please try again',
+            'treatment': f'Error: {str(e)}',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': f'Error: {str(e)}'
+        }
+
+
+def analyze_pest_with_openai(base64_image, media_type, api_key, logger):
+    """Analyze pest using OpenAI API (fallback)"""
+    try:
+        client = openai.OpenAI(api_key=api_key)
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{media_type};base64,{base64_image}"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": """You are an agricultural disease and pest expert. Analyze this crop image in detail for pests, diseases, or other issues. Provide a comprehensive JSON response with these exact keys:
+
+{
+    "pest_detected": true or false,
+    "pest_name": "Specific pest/disease name or 'Healthy Crop' if no issues found",
+    "confidence": 0-100,
+    "severity": "none, low, medium, high, or severe",
+    "affected_area": 0-100,
+    "explanation": "Detailed explanation",
+    "identification_details": "Visual indicators",
+    "immediate_action": "What the farmer should do",
+    "treatment": "Treatment options",
+    "organic_treatment": "Organic alternatives",
+    "prevention": "Prevention strategies",
+    "disease_cycle": "Disease lifecycle",
+    "environmental_factors": "Conditions that favor this"
+}"""
+                        }
+                    ]
+                }
+            ],
+            max_tokens=2000
+        )
+        
+        result_text = response.choices[0].message.content.strip()
+        json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
+        
+        if json_match:
+            result = json.loads(json_match.group())
+        else:
+            result = json.loads(result_text)
+        
+        logger.info(f'OpenAI analysis completed: {result.get("pest_name")}')
+        return result
+    
+    except openai.APIError as e:
+        logger.error(f'OpenAI API error: {str(e)}')
+        logger.error(f'Error type: {type(e).__name__}')
+        return {
+            'pest_detected': False,
+            'pest_name': 'API Error',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': f'OpenAI service error: {str(e)}',
+            'identification_details': 'API error occurred',
+            'immediate_action': 'Please try again later',
+            'treatment': f'API Error: {str(e)}',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': f'OpenAI API error: {str(e)}'
+        }
+    
+    except Exception as e:
+        logger.error(f'OpenAI error: {str(e)}')
+        logger.error(f'Error type: {type(e).__name__}', exc_info=True)
+        return {
+            'pest_detected': False,
+            'pest_name': 'Error',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': f'Error: {str(e)}',
+            'identification_details': 'Error occurred',
+            'immediate_action': 'Please try again',
+            'treatment': f'Error: {str(e)}',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': f'Error: {str(e)}'
+        }
         
         # Call OpenAI Vision API
         client = openai.OpenAI(api_key=api_key)
