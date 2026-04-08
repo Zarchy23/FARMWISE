@@ -219,6 +219,25 @@ def change_password(request):
 # ============================================================
 
 @login_required
+def api_keys_debug(request):
+    """DEBUG: Check if API keys are loaded (Admin only)"""
+    if request.user.user_type != 'admin':
+        return JsonResponse({'error': 'Admin only'}, status=403)
+    
+    from django.conf import settings
+    
+    return JsonResponse({
+        'openai_api_key_loaded': bool(settings.OPENAI_API_KEY),
+        'openai_api_key_preview': f"{settings.OPENAI_API_KEY[:20]}..." if settings.OPENAI_API_KEY else "NOT SET",
+        'openweather_api_key_loaded': bool(settings.OPENWEATHER_API_KEY),
+        'openweather_api_key_preview': f"{settings.OPENWEATHER_API_KEY[:20]}..." if settings.OPENWEATHER_API_KEY else "NOT SET",
+        'weather_api_key_loaded': bool(settings.WEATHER_API_KEY),
+        'weather_api_key_preview': f"{settings.WEATHER_API_KEY[:20]}..." if settings.WEATHER_API_KEY else "NOT SET",
+        'debug_mode': settings.DEBUG,
+    })
+
+
+@login_required
 def wallboard(request):
     """System admin wallboard with statistical data - Admin only"""
     
