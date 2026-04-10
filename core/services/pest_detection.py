@@ -11,14 +11,26 @@ from decouple import config
 
 logger = logging.getLogger(__name__)
 
-# Production settings
-DISABLE_GEMINI_ON_PRODUCTION = config('DISABLE_GEMINI_ON_PRODUCTION', default='False') == 'True'
-IS_PRODUCTION = config('IS_PRODUCTION', default='False') == 'True'
+# Production settings - Read from Django settings if available, fallback to environment
+try:
+    from django.conf import settings
+    IS_PRODUCTION = getattr(settings, 'IS_PRODUCTION', False)
+    DISABLE_GEMINI_ON_PRODUCTION = getattr(settings, 'DISABLE_GEMINI_ON_PRODUCTION', False)
+    DEBUG_MODE = getattr(settings, 'DEBUG', True)
+except ImportError:
+    # Fallback if Django settings not available
+    DEBUG_MODE = config('DEBUG', default='True') == 'True'
+    IS_PRODUCTION = not DEBUG_MODE  # Infer from DEBUG
+    DISABLE_GEMINI_ON_PRODUCTION = config('DISABLE_GEMINI_ON_PRODUCTION', default='True' if IS_PRODUCTION else 'False') == 'True'
+
+logger.info(f"[PEST_DETECTION INIT] DEBUG={DEBUG_MODE}, IS_PRODUCTION={IS_PRODUCTION}, DISABLE_GEMINI={DISABLE_GEMINI_ON_PRODUCTION}")
 
 if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
-    logger.warning("[PEST_DETECTION] ⚠️ GEMINI DISABLED ON PRODUCTION - Using fallback only")
+    logger.warning("[PEST_DETECTION] 🚫 PRODUCTION MODE DETECTED - GEMINI DISABLED - Using fallback only")
+elif IS_PRODUCTION:
+    logger.warning("[PEST_DETECTION] Production mode with Gemini ENABLED (rate limiting active)")
 else:
-    logger.info("[PEST_DETECTION] Gemini enabled")
+    logger.info("[PEST_DETECTION] Development mode - Gemini enabled")
 
 
 class GeminiPestDetector:
@@ -80,15 +92,17 @@ class GeminiPestDetector:
         Analyze crop image for pests and diseases
         Returns: pest name, confidence, treatment recommendations
         """
-        # PRODUCTION SAFETY: Disable Gemini on production to prevent rate limiting
-        if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
-            logger.warning("[PEST_DETECTION] Production mode - Gemini disabled, using fallback")
-            return RuleBasedPestDetector.get_fallback_response("Using fallback detection on production")
+        # CRITICAL: Check production flag BEFORE making any API calls
+        logger.info(f"[DETECT_PEST] Checking production safety: IS_PRODUCTION={IS_PRODUCTION}, DISABLE_GEMINI={DISABLE_GEMINI_ON_PRODUCTION}")
         
-        logger.info(f"[GEMINI] available={self.available}, model={self.model}")
+        if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
+            logger.warning("[DETECT_PEST] 🚫 PRODUCTION MODE - GEMINI DISABLED - Returning fallback immediately")
+            return RuleBasedPestDetector.get_fallback_response("Production environment: Using offline detection")
+        
+        logger.info(f"[GEMINI] Gemini check: available={self.available}, model={self.model}")
         
         if not self.available or not self.model:
-            logger.warning("[GEMINI] not available, using fallback")
+            logger.warning("[GEMINI] Gemini not available, using fallback")
             return RuleBasedPestDetector.get_fallback_response("Gemini API not available")
         
         try:
@@ -430,10 +444,20 @@ class PestDetectionService:
     def detect_from_image(self, image_file) -> Dict:
         """Detect pest from image using best available method"""
         logger.info(f"=== PEST DETECTION START ===")
+        logger.info(f"Production safety check: IS_PRODUCTION={IS_PRODUCTION}, DISABLE_GEMINI={DISABLE_GEMINI_ON_PRODUCTION}")
+        
+        # CRITICAL: If Gemini is disabled on production, skip straight to fallback
+        if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
+            logger.warning("🚫 PRODUCTION MODE - GEMINI DISABLED - Using fallback only")
+            logger.info("=== PEST DETECTION COMPLETE (FALLBACK - PRODUCTION) ===")
+            return RuleBasedPestDetector.get_fallback_response(
+                "Production environment: Using offline analysis. Please provide clear photos showing: affected leaves, whole plant, and any visible insects"
+            )
+        
         logger.info(f"Gemini detector available: {self.gemini_detector is not None and self.gemini_detector.available}")
         logger.info(f"Groq detector available: {self.groq_detector is not None and self.groq_detector.available}")
         
-        # Try Gemini first
+        # Try Gemini first (only if not disabled on production)
         if self.gemini_detector and self.gemini_detector.available:
             logger.info("→ Attempting Gemini AI detection...")
             result = self.gemini_detector.detect_pest(image_file)
