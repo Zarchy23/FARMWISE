@@ -1,0 +1,372 @@
+{# templates/pest/verification_detail.html #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Pest Detection Verification - {{ report.ai_diagnosis }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <!-- Header -->
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-900">
+                        <i class="fas fa-leaf text-emerald-600 mr-3"></i>Pest Detection Review
+                    </h1>
+                    <p class="text-slate-600 mt-1">Verify and make decisions on farmer's pest detection report</p>
+                </div>
+                <a href="{% url 'core:agronomist_pest_dashboard' %}" class="inline-flex items-center px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left Column: Report Details & AI Analysis (2 cols) -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Farmer & Farm Info Card -->
+                <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden hover:shadow-lg transition">
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                        <h2 class="text-lg font-bold text-white flex items-center">
+                            <i class="fas fa-user-circle mr-3"></i>Farmer Information
+                        </h2>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Farmer</p>
+                                <p class="text-lg font-bold text-slate-900 mt-1">{{ report.farmer.get_full_name }}</p>
+                                <p class="text-sm text-slate-500 mt-1">📱 {{ report.farmer.phone_number }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide">User Type</p>
+                                <span class="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                                    {{ report.farmer.get_user_type_display }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="border-t border-slate-100 pt-4">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Farm</p>
+                                    <p class="text-lg font-bold text-slate-900 mt-1">{{ report.farm.name }}</p>
+                                    <p class="text-sm text-slate-500 mt-1">📍 {{ report.farm.location }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Field</p>
+                                    {% if report.field %}
+                                        <p class="text-lg font-bold text-slate-900 mt-1">{{ report.field.name }}</p>
+                                        <p class="text-sm text-slate-500 mt-1">📐 {{ report.field.area_hectares }} ha</p>
+                                    {% else %}
+                                        <p class="text-slate-400 italic mt-2">Not specified</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="border-t border-slate-100 pt-4">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Crop</p>
+                                    {% if report.crop %}
+                                        <p class="text-lg font-bold text-slate-900 mt-1">{{ report.crop.crop_type.name }}</p>
+                                        <p class="text-sm text-slate-500 mt-1">🌱 Planted: {{ report.crop.planting_date|date:"M d, Y" }}</p>
+                                    {% else %}
+                                        <p class="text-slate-400 italic mt-2">Not specified</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Report Date</p>
+                                    <p class="text-lg font-bold text-slate-900 mt-1">{{ report.created_at|date:"M d, Y" }}</p>
+                                    <p class="text-sm text-slate-500 mt-1">⏰ {{ report.created_at|time:"H:i" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Analysis Card -->
+                <div class="bg-white rounded-xl shadow-md border-2 border-amber-200 overflow-hidden hover:shadow-lg transition">
+                    <div class="bg-gradient-to-r from-amber-600 to-amber-700 px-6 py-4">
+                        <h2 class="text-lg font-bold text-white flex items-center">
+                            <i class="fas fa-brain mr-3"></i>AI Analysis & Diagnosis
+                        </h2>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <!-- Pest Name -->
+                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-200">
+                            <p class="text-sm font-semibold text-amber-700 uppercase tracking-wide">Detected Pest</p>
+                            <h3 class="text-2xl font-bold text-amber-900 mt-2">🐛 {{ report.ai_diagnosis }}</h3>
+                        </div>
+
+                        <!-- Confidence & Severity -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-2">Confidence Level</p>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1 bg-slate-200 rounded-full h-3 overflow-hidden">
+                                        <div class="bg-gradient-to-r {% if report.confidence >= 80 %}from-emerald-400 to-emerald-600{% elif report.confidence >= 60 %}from-blue-400 to-blue-600{% elif report.confidence >= 40 %}from-amber-400 to-amber-600{% else %}from-red-400 to-red-600{% endif %} h-full transition-all" style="width: {{ report.confidence }}%"></div>
+                                    </div>
+                                    <span class="font-bold text-slate-900 text-lg min-w-fit">{{ report.confidence|floatformat:0 }}%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-2">Severity</p>
+                                <span class="inline-block px-4 py-2 rounded-full font-bold text-white {% if report.severity == 'severe' %}bg-red-600{% elif report.severity == 'high' %}bg-orange-600{% elif report.severity == 'medium' %}bg-amber-600{% else %}bg-green-600{% endif %}">
+                                    {% if report.severity == 'severe' %}🔴{% elif report.severity == 'high' %}🟠{% elif report.severity == 'medium' %}🟡{% else %}🟢{% endif %}
+                                    {{ report.get_severity_display }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {% if report.affected_area_percentage %}
+                        <div>
+                            <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-2">Affected Area</p>
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
+                                    <div class="bg-gradient-to-r from-red-400 to-red-600 h-full transition-all" style="width: {{ report.affected_area_percentage }}%"></div>
+                                </div>
+                                <span class="font-semibold text-slate-900 min-w-fit">{{ report.affected_area_percentage|floatformat:0 }}%</span>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Detailed Analysis -->
+                        {% if report.analysis_description %}
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                            <p class="text-sm font-semibold text-blue-700 mb-2">📋 Detailed Analysis</p>
+                            <p class="text-slate-700 leading-relaxed text-sm">{{ report.analysis_description }}</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Treatment & Prevention -->
+                        <div class="grid grid-cols-1 gap-3 pt-2">
+                            {% if report.treatment_recommended %}
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                                <p class="text-sm font-semibold text-green-700 mb-1">💊 Recommended Treatment</p>
+                                <p class="text-slate-700 text-sm">{{ report.treatment_recommended }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if report.organic_options %}
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                                <p class="text-sm font-semibold text-emerald-700 mb-1">🌿 Organic Options</p>
+                                <p class="text-slate-700 text-sm">{{ report.organic_options }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if report.prevention_tips %}
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                                <p class="text-sm font-semibold text-purple-700 mb-1">🛡️ Prevention Tips</p>
+                                <p class="text-slate-700 text-sm">{{ report.prevention_tips }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pest Image -->
+                {% if report.image %}
+                <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden hover:shadow-lg transition">
+                    <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4">
+                        <h2 class="text-lg font-bold text-white flex items-center">
+                            <i class="fas fa-image mr-3"></i>Uploaded Image
+                        </h2>
+                    </div>
+                    <div class="p-6 text-center bg-slate-50">
+                        <img src="{{ report.image.url }}" alt="Pest Detection Image" class="w-full max-h-96 object-cover rounded-lg shadow-md">
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Column: Status & Actions (1 col) -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Current Status Card (Sticky) -->
+                <div class="bg-white rounded-xl shadow-md border-2 border-blue-200 overflow-hidden sticky top-24">
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                        <h2 class="text-lg font-bold text-white flex items-center">
+                            <i class="fas fa-info-circle mr-3"></i>Status
+                        </h2>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3">Current Review Status</p>
+                            {% if report.status == 'pending' %}
+                                <span class="inline-block px-4 py-2 rounded-full bg-amber-100 text-amber-800 font-bold text-sm">
+                                    ⏳ Pending Review
+                                </span>
+                            {% elif report.status == 'approved' %}
+                                <span class="inline-block px-4 py-2 rounded-full bg-green-100 text-green-800 font-bold text-sm">
+                                    ✅ Approved
+                                </span>
+                                <p class="text-xs text-slate-600 mt-2">by <strong>{{ report.verified_by.get_full_name }}</strong></p>
+                            {% elif report.status == 'rejected' %}
+                                <span class="inline-block px-4 py-2 rounded-full bg-red-100 text-red-800 font-bold text-sm">
+                                    ❌ Rejected
+                                </span>
+                                <p class="text-xs text-slate-600 mt-2">by <strong>{{ report.verified_by.get_full_name }}</strong></p>
+                            {% elif report.status == 'needs_revision' %}
+                                <span class="inline-block px-4 py-2 rounded-full bg-orange-100 text-orange-800 font-bold text-sm">
+                                    🔄 Needs Revision
+                                </span>
+                                <p class="text-xs text-slate-600 mt-2">by <strong>{{ report.verified_by.get_full_name }}</strong></p>
+                            {% endif %}
+                        </div>
+                        <div class="border-t border-slate-100 pt-4">
+                            <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-2">Verification</p>
+                            {% if report.agronomist_verified %}
+                                <div class="flex items-center gap-2">
+                                    <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+                                    <span class="text-slate-700 font-medium text-sm">Verified</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2">{{ report.updated_at|date:"M d, Y \a\t H:i" }}</p>
+                            {% else %}
+                                <div class="flex items-center gap-2">
+                                    <span class="inline-block w-3 h-3 rounded-full bg-slate-400"></span>
+                                    <span class="text-slate-700 font-medium text-sm">Pending</span>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {% if report.agronomist_notes %}
+                        <div class="border-t border-slate-100 pt-4">
+                            <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-2">Notes</p>
+                            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 max-h-40 overflow-y-auto">
+                                <p class="text-slate-700 text-xs leading-relaxed">{{ report.agronomist_notes|linebreaks }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Action Cards -->
+                {% if can_edit %}
+                
+                <!-- Approve Card -->
+                <div class="bg-white rounded-xl shadow-md border-2 border-green-200 overflow-hidden hover:shadow-lg transition">
+                    <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
+                        <h3 class="text-lg font-bold text-white flex items-center">
+                            <i class="fas fa-check-circle mr-3"></i>Approve Report
+                        </h3>
+                    </div>
+                    <form method="post" class="p-6 space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="approve">
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Decision</label>
+                            {{ approval_form.decision }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Your Professional Notes</label>
+                            {{ approval_form.agronomist_notes }}
+                            <p class="text-xs text-slate-500 mt-1">Share your assessment with the farmer</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Severity Adjustment</label>
+                            {{ approval_form.severity_adjustment }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Additional Treatment</label>
+                            {{ approval_form.additional_treatment }}
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-3 px-4 rounded-lg transition transition flex items-center justify-center gap-2">
+                            <i class="fas fa-check"></i>Approve Report
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Reject Card -->
+                <div class="bg-white rounded-xl shadow-md border-2 border-red-200 overflow-hidden hover:shadow-lg transition">
+                    <div class="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4">
+                        <h3 class="text-lg font-bold text-white flex items-center">
+                            <i class="fas fa-times-circle mr-3"></i>Reject Report
+                        </h3>
+                    </div>
+                    <form method="post" class="p-6 space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reject">
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Reason for Rejection</label>
+                            {{ rejection_form.rejection_reason }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Suggested Action</label>
+                            {{ rejection_form.suggested_action }}
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            {{ rejection_form.send_for_revision }}
+                            <label class="text-sm text-slate-700">
+                                {{ rejection_form.send_for_revision.label }}
+                            </label>
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                            <i class="fas fa-times"></i>Reject Report
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Request Revision Card -->
+                <div class="bg-white rounded-xl shadow-md border-2 border-orange-200 overflow-hidden hover:shadow-lg transition">
+                    <div class="bg-gradient-to-r from-orange-600 to-orange-700 px-6 py-4">
+                        <h3 class="text-lg font-bold text-white flex items-center">
+                            <i class="fas fa-redo-alt mr-3"></i>Request Revision
+                        </h3>
+                    </div>
+                    <form method="post" class="p-6 space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="request_revision">
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Revision Notes</label>
+                            {{ revision_form.revision_notes }}
+                            <p class="text-xs text-slate-500 mt-1">{{ revision_form.revision_notes.help_text }}</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Reference Links</label>
+                            {{ revision_form.reference_links }}
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                            <i class="fas fa-redo"></i>Request Revision
+                        </button>
+                    </form>
+                </div>
+
+                {% else %}
+                <div class="bg-blue-50 border-l-4 border-blue-600 rounded-lg p-4">
+                    <p class="text-blue-900 text-sm">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <strong>This report has already been reviewed and verified.</strong> You cannot make further changes.
+                    </p>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Tailwind form styling */
+    .form-control, textarea, select {
+        @apply w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 bg-white;
+    }
+</style>
+
+{% endblock %}

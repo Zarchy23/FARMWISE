@@ -419,5 +419,123 @@
             </div>
         </div>
     </div>
+
+    <!-- New Features Section - Features 10-14 -->
+    <div class="mt-12 mb-8">
+        <h2 class="text-3xl font-bold mb-8 flex items-center gradient-text"><i class="ri-stars-line mr-3 text-green-600"></i> Advanced Features</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Feature 10: Farmer Network & Knowledge Sharing -->
+            <div class="stat-card rounded-2xl shadow-lg p-6 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold tracking-wide">COMMUNITY</p>
+                        <h3 class="text-xl font-bold text-blue-800 mt-2">Farmer Network</h3>
+                    </div>
+                    <i class="ri-group-line text-4xl text-blue-500"></i>
+                </div>
+                <p class="text-gray-700 text-sm mb-4">Connect with other farmers, share knowledge, and participate in group buying initiatives.</p>
+                <div class="flex gap-2">
+                    <a href="{% url 'core:forum_list' %}" class="flex-1 text-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">Forums</a>
+                    <a href="{% url 'core:group_buying_list' %}" class="flex-1 text-center px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition">Group Buy</a>
+                </div>
+            </div>
+
+            <!-- Feature 11: Carbon Footprint Tracker -->
+            <div class="stat-card rounded-2xl shadow-lg p-6 bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold tracking-wide">ENVIRONMENT</p>
+                        <h3 class="text-xl font-bold text-green-800 mt-2">Carbon Tracker</h3>
+                    </div>
+                    <i class="ri-leaf-line text-4xl text-green-600"></i>
+                </div>
+                <p class="text-gray-700 text-sm mb-4">Monitor your farm's carbon footprint and track environmental impact.</p>
+                <div class="flex gap-2">
+                    <a href="{% url 'core:carbon_tracker' %}" class="flex-1 text-center px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition">Tracker</a>
+                    <a href="{% url 'core:carbon_report' %}" class="flex-1 text-center px-3 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition">Report</a>
+                </div>
+            </div>
+
+            <!-- Feature 12: Farm Mapping & Geofencing -->
+            <div class="stat-card rounded-2xl shadow-lg p-6 bg-gradient-to-br from-orange-50 to-amber-100 border border-orange-200">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold tracking-wide">LOCATION</p>
+                        <h3 class="text-xl font-bold text-orange-800 mt-2">Farm Mapping</h3>
+                    </div>
+                    <i class="ri-map-pin-line text-4xl text-orange-600"></i>
+                </div>
+                <p class="text-gray-700 text-sm mb-4">View your farm on interactive maps and track livestock with geofencing.</p>
+                <div class="flex gap-2">
+                    <a href="{% url 'core:farm_map' %}" class="flex-1 text-center px-3 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition">Map</a>
+                    <a href="{% url 'core:livestock_tracking' %}" class="flex-1 text-center px-3 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition">GPS</a>
+                </div>
+            </div>
+
+            <!-- Feature 13: Offline Sync & Data Management -->
+            <div class="stat-card rounded-2xl shadow-lg p-6 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold tracking-wide">SYNC & DATA</p>
+                        <h3 class="text-xl font-bold text-purple-800 mt-2">Data Management</h3>
+                    </div>
+                    <i class="ri-refresh-line text-4xl text-purple-600"></i>
+                </div>
+                <p class="text-gray-700 text-sm mb-4">Sync data offline and manage conflicts when reconnected.</p>
+                <div class="flex gap-2">
+                    <a href="{% url 'core:sync_queue' %}" class="flex-1 text-center px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition">Sync</a>
+                    <a href="{% url 'core:sync_conflicts' %}" class="flex-1 text-center px-3 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 transition">Resolve</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Stats Row -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <!-- Community Stats -->
+        <div class="glass-card rounded-2xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Active Forums</p>
+                    <p class="text-3xl font-bold gradient-text mt-2">{{ forum_count|default:"0" }}</p>
+                </div>
+                <i class="ri-group-line text-5xl text-blue-400 opacity-50"></i>
+            </div>
+        </div>
+
+        <!-- Carbon Stats -->
+        <div class="glass-card rounded-2xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Carbon Reports</p>
+                    <p class="text-3xl font-bold gradient-text mt-2">{{ carbon_reports|default:"0" }}</p>
+                </div>
+                <i class="ri-leaf-line text-5xl text-green-400 opacity-50"></i>
+            </div>
+        </div>
+
+        <!-- Geofence Stats -->
+        <div class="glass-card rounded-2xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Active Geofences</p>
+                    <p class="text-3xl font-bold gradient-text mt-2">{{ geofence_count|default:"0" }}</p>
+                </div>
+                <i class="ri-map-pin-line text-5xl text-orange-400 opacity-50"></i>
+            </div>
+        </div>
+
+        <!-- Pending Syncs -->
+        <div class="glass-card rounded-2xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Pending Syncs</p>
+                    <p class="text-3xl font-bold gradient-text mt-2">{{ pending_syncs|default:"0" }}</p>
+                </div>
+                <i class="ri-refresh-line text-5xl text-purple-400 opacity-50"></i>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

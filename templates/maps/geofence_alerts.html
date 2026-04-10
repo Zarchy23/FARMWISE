@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Geofence Alerts - FarmWise{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Geofence Alerts</h1>
+            <p class="text-muted">{{ geofence.name }} - View and manage boundary breach alerts</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'geofence_edit' geofence.id %}" class="btn btn-outline-primary">Edit Geofence</a>
+            <a href="{% url 'farm_map' %}" class="btn btn-outline-secondary">Back to Map</a>
+        </div>
+    </div>
+
+    <!-- Alert Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Total Alerts</h6>
+                    <h3>{{ total_alerts }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Unresolved</h6>
+                    <h3 class="text-danger">{{ unresolved_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Exit Alerts</h6>
+                    <h3>{{ exit_alerts_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Entry Alerts</h6>
+                    <h3>{{ entry_alerts_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="mb-3">
+        <div class="btn-group" role="group">
+            <a href="{% url 'geofence_alerts' geofence.id %}" class="btn btn-outline-primary">All</a>
+            <a href="?status=unresolved" class="btn btn-outline-danger">Unresolved</a>
+            <a href="?type=exit" class="btn btn-outline-warning">Exit Alerts</a>
+            <a href="?type=entry" class="btn btn-outline-info">Entry Alerts</a>
+        </div>
+    </div>
+
+    <!-- Alerts Table -->
+    {% if alerts %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr class="table-light">
+                    <th>Date/Time</th>
+                    <th>Livestock</th>
+                    <th>Type</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alert in alerts %}
+                <tr>
+                    <td>
+                        <strong>{{ alert.alert_time|date:"M d, Y" }}</strong><br>
+                        <small class="text-muted">{{ alert.alert_time|date:"H:i:s" }}</small>
+                    </td>
+                    <td>
+                        <strong>{{ alert.livestock.name }}</strong><br>
+                        <small class="text-muted">{{ alert.livestock.get_type_display }}</small>
+                    </td>
+                    <td>
+                        {% if alert.alert_type == 'exit' %}
+                        <span class="badge bg-danger">EXIT</span>
+                        {% else %}
+                        <span class="badge bg-info">ENTRY</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small class="text-muted">
+                            {{ alert.latitude|floatformat:4 }}<br>
+                            {{ alert.longitude|floatformat:4 }}
+                        </small>
+                    </td>
+                    <td>
+                        {% if alert.is_resolved %}
+                        <span class="badge bg-success">Resolved</span><br>
+                        <small class="text-muted">{{ alert.resolved_at|date:"M d H:i" }}</small>
+                        {% else %}
+                        <span class="badge bg-warning">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not alert.is_resolved %}
+                        <button class="btn btn-sm btn-outline-success" onclick="resolveAlert({{ alert.id }})">
+                            Mark Resolved
+                        </button>
+                        {% endif %}
+                        <a href="{% url 'geofence_alert_detail' alert.id %}" class="btn btn-sm btn-outline-primary">
+                            Details
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <h4 class="alert-heading">No Alerts</h4>
+        <p>Great! No boundary breaches detected for this geofence.</p>
+    </div>
+    {% endif %}
+
+    <!-- Alert Details Modal (if viewing single alert) -->
+    {% if selected_alert %}
+    <div class="card mt-4 border-warning">
+        <div class="card-header bg-warning bg-opacity-20">
+            <h5 class="mb-0">Alert Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <dl class="row">
+                        <dt class="col-sm-5">Livestock:</dt>
+                        <dd class="col-sm-7">{{ selected_alert.livestock.name }}</dd>
+
+                        <dt class="col-sm-5">Geofence:</dt>
+                        <dd class="col-sm-7">{{ selected_alert.geofence.name }}</dd>
+
+                        <dt class="col-sm-5">Alert Type:</dt>
+                        <dd class="col-sm-7">{{ selected_alert.get_alert_type_display }}</dd>
+
+                        <dt class="col-sm-5">Alert Time:</dt>
+                        <dd class="col-sm-7">{{ selected_alert.alert_time|date:"M d, Y H:i:s" }}</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <dl class="row">
+                        <dt class="col-sm-5">Latitude:</dt>
+                        <dd class="col-sm-7">{{ selected_alert.latitude }}</dd>
+
+                        <dt class="col-sm-5">Longitude:</dt>
+                        <dd class="col-sm-7">{{ selected_alert.longitude }}</dd>
+
+                        <dt class="col-sm-5">Status:</dt>
+                        <dd class="col-sm-7">
+                            {% if selected_alert.is_resolved %}
+                            <span class="badge bg-success">Resolved {{ selected_alert.resolved_at|date:"M d H:i" }}</span>
+                            {% else %}
+                            <span class="badge bg-danger">Unresolved</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            {% if selected_alert.resolution_notes %}
+            <div class="mt-3">
+                <h6>Resolution Notes</h6>
+                <p>{{ selected_alert.resolution_notes }}</p>
+            </div>
+            {% endif %}
+
+            {% if not selected_alert.is_resolved %}
+            <form method="post" action="{% url 'resolve_geofence_alert' selected_alert.id %}" class="mt-3">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="resolution_notes" class="form-label">Resolution Notes</label>
+                    <textarea class="form-control" id="resolution_notes" name="resolution_notes" rows="3" 
+                              placeholder="Describe the action taken..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">Mark as Resolved</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function resolveAlert(alertId) {
+        if (confirm('Mark this alert as resolved?')) {
+            // Would trigger AJAX or form submission
+            console.log('Resolving alert:', alertId);
+        }
+    }
+</script>
+{% endblock %}

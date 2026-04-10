@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reminders - FarmWise{% endblock %}
+{% block page_title %}Farm Activity Reminders{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Reminders</h1>
+            <p class="text-gray-600">Manage farm activity reminders and due dates</p>
+        </div>
+        <a href="{% url 'core:reminder_create' %}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+            <i class="ri-add-line"></i> New Reminder
+        </a>
+    </div>
+
+    <!-- Status Filters -->
+    <div class="mb-6 flex gap-2 flex-wrap">
+        <a href="{% url 'core:reminder_list' %}?status=active" class="px-4 py-2 rounded-lg {% if status == 'active' %}bg-green-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+            <i class="ri-check-line"></i> Active
+        </a>
+        <a href="{% url 'core:reminder_list' %}?status=pending" class="px-4 py-2 rounded-lg {% if status == 'pending' %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+            <i class="ri-time-line"></i> Pending
+        </a>
+        <a href="{% url 'core:reminder_list' %}?status=overdue" class="px-4 py-2 rounded-lg {% if status == 'overdue' %}bg-red-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+            <i class="ri-alert-line"></i> Overdue
+        </a>
+        <a href="{% url 'core:reminder_list' %}?status=completed" class="px-4 py-2 rounded-lg {% if status == 'completed' %}bg-purple-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+            <i class="ri-checkbox-circle-line"></i> Completed
+        </a>
+    </div>
+
+    <!-- Reminders Grid -->
+    {% if reminders %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for reminder in reminders %}
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 {% if reminder.is_completed %}border-gray-400{% elif reminder.due_date < today %}border-red-600{% else %}border-green-600{% endif %} hover:shadow-lg transition">
+            <!-- Type Icon & Title -->
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-800">{{ reminder.title }}</h3>
+                    <p class="text-sm text-gray-500">
+                        {% if reminder.reminder_type == 'vaccination' %}💉 Vaccination
+                        {% elif reminder.reminder_type == 'medication' %}💊 Medication
+                        {% elif reminder.reminder_type == 'breeding' %}🧬 Breeding
+                        {% elif reminder.reminder_type == 'maintenance' %}🔧 Maintenance
+                        {% elif reminder.reminder_type == 'breeding_check' %}🐄 Breeding Check
+                        {% elif reminder.reminder_type == 'feed_order' %}🌾 Feed Order
+                        {% elif reminder.reminder_type == 'pasture_rotation' %}🌱 Pasture Rotation
+                        {% elif reminder.reminder_type == 'inspection' %}📋 Inspection
+                        {% else %}📝 General
+                        {% endif %}
+                    </p>
+                </div>
+                {% if reminder.is_completed %}
+                <span class="text-2xl">✅</span>
+                {% elif reminder.due_date < today %}
+                <span class="text-2xl">🔴</span>
+                {% else %}
+                <span class="text-2xl">⏰</span>
+                {% endif %}
+            </div>
+
+            <!-- Farm Info -->
+            <div class="text-sm text-gray-600 mb-3">
+                <i class="ri-bank-line"></i> {{ reminder.farm.name }}
+            </div>
+
+            <!-- Due Date -->
+            <div class="mb-4">
+                <p class="text-sm font-semibold text-gray-700">Due Date:</p>
+                <p class="text-lg {% if reminder.due_date < today and not reminder.is_completed %}text-red-600 font-bold{% else %}text-gray-800{% endif %}">
+                    {{ reminder.due_date|date:"M d, Y" }}
+                </p>
+                {% if reminder.due_date < today and not reminder.is_completed %}
+                <p class="text-xs text-red-600 mt-1">⚠️ Overdue!</p>
+                {% endif %}
+            </div>
+
+            <!-- Status & Recurrence -->
+            <div class="flex gap-2 mb-4">
+                {% if reminder.is_recurring %}
+                <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">🔁 Recurring</span>
+                {% endif %}
+                {% if reminder.is_completed %}
+                <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">✓ Completed</span>
+                {% else %}
+                <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">⏳ Active</span>
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-2">
+                <a href="{% url 'core:reminder_detail' reminder.pk %}" class="flex-1 text-center px-3 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm font-medium">
+                    View
+                </a>
+                <a href="{% url 'core:reminder_edit' reminder.pk %}" class="flex-1 text-center px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium">
+                    Edit
+                </a>
+                {% if not reminder.is_completed %}
+                <a href="{% url 'core:reminder_complete' reminder.pk %}" class="flex-1 text-center px-3 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200 text-sm font-medium" onclick="return confirm('Mark as completed?')">
+                    ✓ Done
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if reminders.has_other_pages %}
+    <div class="mt-8 flex justify-center gap-2">
+        {% if reminders.has_previous %}
+        <a href="?page=1&status={{ status }}" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">First</a>
+        <a href="?page={{ reminders.previous_page_number }}&status={{ status }}" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">← Previous</a>
+        {% endif %}
+
+        <span class="px-3 py-2">Page {{ reminders.number }} of {{ reminders.paginator.num_pages }}</span>
+
+        {% if reminders.has_next %}
+        <a href="?page={{ reminders.next_page_number }}&status={{ status }}" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">Next →</a>
+        <a href="?page={{ reminders.paginator.num_pages }}&status={{ status }}" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">Last</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-lg shadow-md p-12 text-center">
+        <i class="ri-alarm-line text-6xl text-gray-300 mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-600 mb-2">No Reminders Found</h3>
+        <p class="text-gray-500 mb-6">Create your first reminder to get started</p>
+        <a href="{% url 'core:reminder_create' %}" class="inline-block bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+            Create Reminder
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

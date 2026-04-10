@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}Carbon Footprint Tracker - FarmWise{% endblock %}
+
+{% block content %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(16, 185, 129, 0.2);
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        margin-bottom: 1.5rem;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+    
+    .metric-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-value {
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-red { color: #ef4444; }
+    .metric-red .metric-icon { color: #dc2626; }
+    .metric-red-bg { background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%); }
+    
+    .metric-green { color: #10b981; }
+    .metric-green .metric-icon { color: #059669; }
+    .metric-green-bg { background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%); }
+    
+    .metric-blue { color: #3b82f6; }
+    .metric-blue .metric-icon { color: #1d4ed8; }
+    .metric-blue-bg { background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(29, 78, 216, 0.05) 100%); }
+    
+    .metric-purple { color: #8b5cf6; }
+    .metric-purple .metric-icon { color: #7c3aed; }
+    .metric-purple-bg { background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%); }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .btn-vibrant {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .btn-primary-vibrant {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .btn-primary-vibrant:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+    
+    .btn-secondary-vibrant {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+    }
+    
+    .btn-secondary-vibrant:hover {
+        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+        color: white;
+    }
+    
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f3f4f6;
+    }
+    
+    .section-title {
+        font-size: 1.375rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .section-subtitle {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    
+    .item-card {
+        background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid #10b981;
+        transition: all 0.3s ease;
+    }
+    
+    .item-card:hover {
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        transform: translateX(4px);
+    }
+    
+    .item-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+    
+    .item-meta {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .badge-vibrant {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #6b7280;
+    }
+    
+    .empty-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.6;
+    }
+    
+    .table-custom {
+        border-collapse: collapse;
+    }
+    
+    .table-custom thead th {
+        background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        font-weight: 600;
+        color: #374151;
+        padding: 1rem;
+        border-bottom: 2px solid #e5e7eb;
+        text-align: left;
+    }
+    
+    .table-custom tbody tr {
+        border-bottom: 1px solid #e5e7eb;
+        transition: background 0.2s ease;
+    }
+    
+    .table-custom tbody tr:hover {
+        background: #f9fafb;
+    }
+    
+    .table-custom td {
+        padding: 1rem;
+    }
+    
+    .emission-badge {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.1) 100%);
+        color: #dc2626;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+</style>
+
+<div class="container-fluid py-5" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">
+                        ♻️ Carbon Footprint Tracker
+                    </h1>
+                    <p style="font-size: 1.125rem; opacity: 0.95;">
+                        Monitor and reduce your farm's environmental impact with precision tracking
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="action-buttons justify-content-end">
+                        <a href="{% url 'core:emission_record_create' %}" class="btn btn-vibrant btn-primary-vibrant">
+                            📊 Log Emission
+                        </a>
+                        <a href="{% url 'core:carbon_report' %}" class="btn btn-vibrant btn-secondary-vibrant">
+                            📈 View Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Key Metrics Cards -->
+        <div class="row">
+            <div class="col-lg-3 col-md-6">
+                <div class="metric-card metric-red-bg">
+                    <div class="metric-icon">💨</div>
+                    <div class="metric-label">Total Emissions</div>
+                    <div class="metric-value metric-red">{{ total_emissions|default:"0" }}</div>
+                    <div style="font-size: 0.875rem; color: #666;">kg CO₂e (This Year)</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="metric-card metric-green-bg">
+                    <div class="metric-icon">🌱</div>
+                    <div class="metric-label">Sequestration</div>
+                    <div class="metric-value metric-green">{{ total_sequestration|default:"0" }}</div>
+                    <div style="font-size: 0.875rem; color: #666;">kg CO₂e (This Year)</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="metric-card metric-blue-bg">
+                    <div class="metric-icon">🎯</div>
+                    <div class="metric-label">Net Footprint</div>
+                    <div class="metric-value metric-blue">{{ net_footprint|default:"0" }}</div>
+                    <div style="font-size: 0.875rem; color: #666;">kg CO₂e</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="metric-card metric-purple-bg">
+                    <div class="metric-icon">📍</div>
+                    <div class="metric-label">Per Hectare</div>
+                    <div class="metric-value metric-purple">{{ per_hectare|default:"0" }}</div>
+                    <div style="font-size: 0.875rem; color: #666;">kg CO₂e/ha</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emission Sources & Sequestration Section -->
+        <div class="row mt-4">
+            <div class="col-lg-6">
+                <div class="section-card">
+                    <div class="section-header">
+                        <span style="font-size: 1.5rem;">🏭</span>
+                        <div>
+                            <h3 class="section-title">Emission Sources</h3>
+                            <p class="section-subtitle">Tracked emission sources on your farm</p>
+                        </div>
+                    </div>
+                    
+                    {% if emission_sources %}
+                    <div>
+                        {% for source in emission_sources %}
+                        <div class="item-card">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <div class="item-name">{{ source.get_source_type_display }}</div>
+                                    <div class="item-meta">{{ source.name }} • {{ source.unit }}</div>
+                                </div>
+                                <span class="badge-vibrant">Factor: {{ source.emission_factor }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <p><strong>No emission sources yet</strong></p>
+                        <p>Start tracking by adding your first emission source</p>
+                    </div>
+                    {% endif %}
+                    
+                    <a href="{% url 'core:emission_source_create' %}" class="btn btn-vibrant btn-primary-vibrant w-100 mt-3">
+                        ➕ Add New Emission Source
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="section-card">
+                    <div class="section-header">
+                        <span style="font-size: 1.5rem;">🌿</span>
+                        <div>
+                            <h3 class="section-title">Sequestration Activities</h3>
+                            <p class="section-subtitle">Carbon offset activities</p>
+                        </div>
+                    </div>
+                    
+                    {% if sequestration_activities %}
+                    <div>
+                        {% for activity in sequestration_activities %}
+                        <div class="item-card" style="border-left-color: #10b981;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <div class="item-name">{{ activity.get_activity_type_display }}</div>
+                                    <div class="item-meta">{{ activity.name }}</div>
+                                </div>
+                                <span class="badge-vibrant" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                                    +{{ activity.annual_sequestration_kg_co2e }} kg/year
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">🌳</div>
+                        <p><strong>No sequestration activities yet</strong></p>
+                        <p>Add activities to offset your carbon footprint</p>
+                    </div>
+                    {% endif %}
+                    
+                    <a href="{% url 'core:sequestration_create' %}" class="btn btn-vibrant btn-primary-vibrant w-100 mt-3">
+                        ➕ Add Sequestration Activity
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Emission Records Table -->
+        <div class="section-card mt-4">
+            <div class="section-header">
+                <span style="font-size: 1.5rem;">📋</span>
+                <div>
+                    <h3 class="section-title">Recent Emission Records</h3>
+                    <p class="section-subtitle">Last recorded emissions from your farm</p>
+                </div>
+            </div>
+            
+            {% if recent_records %}
+            <div class="table-responsive">
+                <table class="table-custom w-100">
+                    <thead>
+                        <tr>
+                            <th>📅 Date</th>
+                            <th>📊 Source</th>
+                            <th>📦 Quantity</th>
+                            <th>💨 Emissions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in recent_records %}
+                        <tr>
+                            <td>{{ record.record_date|date:"M d, Y" }}</td>
+                            <td><strong>{{ record.source.name }}</strong></td>
+                            <td>{{ record.quantity_used }} {{ record.source.unit }}</td>
+                            <td><span class="emission-badge">{{ record.calculated_emissions_kg_co2e }} kg CO₂e</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📊</div>
+                <p><strong>No emission records yet</strong></p>
+                <p>Start tracking your farm's emissions to see records here</p>
+                <a href="{% url 'core:emission_record_create' %}" class="btn btn-vibrant btn-primary-vibrant mt-3">
+                    📊 Log Your First Emission
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

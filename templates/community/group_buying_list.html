@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Group Buying Initiatives - FarmWise{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header Section -->
+        <div class="mb-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-2">
+                        <i class="ri-shopping-basket-2-line text-green-600"></i> Group Buying Initiatives
+                    </h1>
+                    <p class="text-gray-600 mt-2">Save money by buying together with other farmers</p>
+                </div>
+                <a href="{% url 'core:group_buying_create' %}" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                    <i class="ri-add-line"></i> Start Initiative
+                </a>
+            </div>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-8">
+            <p class="text-sm text-gray-600 font-semibold mb-3">Filter by Status:</p>
+            <div class="flex flex-wrap gap-3">
+                <a href="{% url 'core:group_buying_list' %}" class="px-4 py-2 rounded-lg font-semibold transition-all bg-green-100 text-green-800 hover:bg-green-200">
+                    <i class="ri-checkbox-circle-line mr-1"></i> All Initiatives
+                </a>
+                <a href="?status=open" class="px-4 py-2 rounded-lg font-semibold transition-all bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-green-800">
+                    <i class="ri-time-line mr-1"></i> Open
+                </a>
+                <a href="?status=closed" class="px-4 py-2 rounded-lg font-semibold transition-all bg-gray-100 text-gray-700 hover:bg-orange-100 hover:text-orange-800">
+                    <i class="ri-lock-line mr-1"></i> Closed
+                </a>
+                <a href="?status=completed" class="px-4 py-2 rounded-lg font-semibold transition-all bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-800">
+                    <i class="ri-checkbox-multiple-mark-line mr-1"></i> Completed
+                </a>
+            </div>
+        </div>
+
+        <!-- Initiatives Grid -->
+        {% if initiatives %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for initiative in initiatives %}
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border-t-4 {% if initiative.status == 'open' %}border-green-500{% elif initiative.status == 'closed' %}border-orange-500{% else %}border-blue-500{% endif %}">
+                <!-- Status Badge -->
+                <div class="absolute top-3 right-3 z-10">
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold 
+                        {% if initiative.status == 'open' %}bg-green-100 text-green-800
+                        {% elif initiative.status == 'closed' %}bg-orange-100 text-orange-800
+                        {% elif initiative.status == 'completed' %}bg-blue-100 text-blue-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        <i class="ri-circle-fill mr-1" style="font-size: 0.5rem;"></i>
+                        {{ initiative.get_status_display }}
+                    </span>
+                </div>
+
+                <div class="p-6">
+                    <!-- Product Icon -->
+                    <div class="text-4xl mb-3">
+                        {% if initiative.product_type == 'fertilizer' %}
+                            🌾
+                        {% elif initiative.product_type == 'seeds' %}
+                            🌱
+                        {% elif initiative.product_type == 'pesticide' %}
+                            🐛
+                        {% elif initiative.product_type == 'equipment' %}
+                            🚜
+                        {% else %}
+                            📦
+                        {% endif %}
+                    </div>
+
+                    <!-- Initiative Title -->
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ initiative.title }}</h3>
+                    
+                    <!-- Description -->
+                    <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{ initiative.description }}</p>
+
+                    <!-- Product & Discount Info -->
+                    <div class="bg-green-50 p-4 rounded-lg mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-sm text-gray-600">
+                                <span class="font-semibold">Product:</span> {{ initiative.product_type|title }}
+                            </p>
+                            {% if initiative.discount_percent > 0 %}
+                            <span class="bg-red-100 text-red-800 text-sm font-bold px-2 py-1 rounded">
+                                {{ initiative.discount_percent }}% OFF
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <p class="text-sm text-gray-600">
+                                <span class="font-semibold">Price:</span>
+                                <del class="text-gray-400">${{ initiative.unit_price_without_group }}</del>
+                                <span class="text-green-600 font-bold">${{ initiative.unit_price_with_group }}</span>
+                            </p>
+                            <p class="text-sm text-gray-600">
+                                <span class="font-semibold">Unit:</span> {{ initiative.quantity_unit }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div class="border-t mb-4 pt-4">
+                        <p class="text-sm text-gray-600 flex items-center gap-2">
+                            <i class="ri-calendar-line text-green-600"></i>
+                            <span class="font-semibold">Deadline:</span>
+                            <span>{{ initiative.end_date|date:'M d, Y' }}</span>
+                        </p>
+                    </div>
+
+                    <!-- Participants Stats -->
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="text-center bg-gray-50 p-3 rounded-lg">
+                            <p class="text-2xl font-bold text-green-600">{{ initiative.farmers_joined|default:0 }}</p>
+                            <p class="text-xs text-gray-600">Farmers Joined</p>
+                        </div>
+                        <div class="text-center bg-gray-50 p-3 rounded-lg">
+                            <p class="text-2xl font-bold text-blue-600">{{ initiative.total_quantity_pledged|default:0 }}</p>
+                            <p class="text-xs text-gray-600">{{ initiative.quantity_unit }} Pledged</p>
+                        </div>
+                    </div>
+
+                    <!-- View Button -->
+                    <a href="{% url 'core:group_buying_detail' initiative.id %}" class="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        View Details
+                        <i class="ri-arrow-right-line ml-1"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-lg shadow-md p-12 text-center">
+            <i class="ri-shopping-cart-line text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">No Initiatives Yet</h3>
+            <p class="text-gray-600 mb-6">Be the first to create a group buying initiative!</p>
+            <a href="{% url 'core:group_buying_create' %}" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                <i class="ri-add-line"></i> Create Initiative
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

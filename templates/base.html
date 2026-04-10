@@ -71,16 +71,9 @@
             </a>
 
             <!-- Wallboard (System Admins Only) -->
-            {% if user.user_type == 'admin' %}
+            {% if user.user_type == 'admin' or user.is_superuser %}
             <a href="{% url 'core:wallboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-red-600 transition bg-red-500 text-white font-bold">
-                <i class="ri-dashboard-3-line"></i><span>Admin Wallboard</span>
-            </a>
-            {% endif %}
-            
-            <!-- Django Admin (Superusers Only) -->
-            {% if user.is_superuser %}
-            <a href="/admin/" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-yellow-600 transition bg-yellow-500 text-white font-bold">
-                <i class="ri-shield-admin-line"></i><span>Django Admin</span>
+                <i class="ri-dashboard-3-line"></i><span>Wallboard</span>
             </a>
             {% endif %}
 
@@ -121,9 +114,51 @@
                     {% if user|has_module_permission:"livestock.create" %}
                     <a href="{% url 'core:animal_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add</a>
                     {% endif %}
+                    <a href="{% url 'core:animal_list' %}?filter=health" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Health Records</a>
                 </div>
             </div>
             {% endif %}
+
+            <!-- Breeding Programs -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'breeding' ? null : 'breeding'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-dna-line"></i><span>Breeding Programs</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'breeding' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'breeding'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:animal_list' %}?filter=breeding" class="block px-3 py-2 text-sm rounded hover:bg-green-700">All Programs</a>
+                    <a href="#" onclick="alert('Select an animal to add breeding record')" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Record</a>
+                </div>
+            </div>
+
+            <!-- Dosing Programs -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'dosing' ? null : 'dosing'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-capsule-line"></i><span>Dosing Programs</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'dosing' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'dosing'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:animal_list' %}?filter=medication" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Schedules</a>
+                    <a href="{% url 'core:animal_list' %}?filter=vaccination" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Vaccinations</a>
+                    <a href="{% url 'core:animal_list' %}?filter=treatments" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Treatments</a>
+                </div>
+            </div>
+
+            <!-- Reminders -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'reminders' ? null : 'reminders'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-alarm-line"></i><span>Reminders</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'reminders' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'reminders'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:reminder_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="{% url 'core:reminder_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">All Reminders</a>
+                    <a href="{% url 'core:reminder_create' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Create</a>
+                </div>
+            </div>
 
             <!-- Equipment (if user can access equipment) -->
             {% if user|has_module_permission:"equipment.view_own" or user|has_module_permission:"equipment.view_all" or user|has_module_permission:"equipment.view_coop" %}
@@ -178,8 +213,21 @@
                     <a href="{% url 'core:pest_upload' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Upload</a>
                     {% endif %}
                     <a href="{% url 'core:pest_history' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">History</a>
+                    <!-- Agronomist Verification Dashboard (AGRONOMIST ONLY) -->
+                    {% if user.user_type == 'agronomist' %}
+                    <a href="{% url 'core:agronomist_pest_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold border-l-2 border-yellow-400 pl-2">
+                        <i class="ri-check-double-line"></i> Verification Dashboard
+                    </a>
+                    {% endif %}
                 </div>
             </div>
+            {% endif %}
+
+            <!-- Pest Verification Dashboard (AGRONOMIST ONLY - Prominent Placement) -->
+            {% if user.user_type == 'agronomist' %}
+            <a href="{% url 'core:agronomist_pest_dashboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-yellow-600 transition bg-yellow-500 text-white font-semibold">
+                <i class="ri-check-double-line"></i><span>Pest Verification</span>
+            </a>
             {% endif %}
 
             <!-- Weather (if user has weather access - most roles do) -->
@@ -252,6 +300,66 @@
                 </div>
             </div>
             {% endif %}
+
+            <!-- Farmer Network (Feature 10) - Knowledge Sharing & Group Buying -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'community' ? null : 'community'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-group-line"></i><span>Community</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'community' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'community'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:forum_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Forums</a>
+                    <a href="{% url 'core:group_buying_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Group Buying</a>
+                </div>
+            </div>
+
+            <!-- Carbon Footprint (Feature 11) - Environmental Tracking -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'carbon' ? null : 'carbon'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-leaf-line"></i><span>Carbon Footprint</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'carbon' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'carbon'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:carbon_tracker' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Tracker</a>
+                    <a href="{% url 'core:carbon_report' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Reports</a>
+                </div>
+            </div>
+
+            <!-- Farm Mapping & Geofencing (Feature 12) - Location Services -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'maps' ? null : 'maps'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-map-pin-line"></i><span>Farm Mapping</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'maps' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'maps'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:farm_map' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Farm Map</a>
+                    <a href="{% url 'core:geofence_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Geofences</a>
+                    <a href="{% url 'core:livestock_tracking' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Livestock GPS</a>
+                </div>
+            </div>
+
+            <!-- Offline Sync (Feature 13) - Data Management -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'sync' ? null : 'sync'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-cloud-sync-line"></i><span>Data Sync Manager</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'sync' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'sync'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:sync_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 flex items-center gap-2">
+                        <i class="ri-dashboard-line text-xs"></i> Dashboard
+                    </a>
+                    <a href="{% url 'core:sync_queue' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 flex items-center gap-2">
+                        <i class="ri-list-check-line text-xs"></i> Sync Status
+                    </a>
+                    <a href="{% url 'core:sync_conflicts' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 flex items-center gap-2">
+                        <i class="ri-alert-line text-xs"></i> Conflicts
+                    </a>
+                </div>
+            </div>
         </nav>
     </aside>
 

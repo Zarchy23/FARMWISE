@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create Group Buying Initiative - FarmWise{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <a href="{% url 'core:group_buying_list' %}" class="inline-flex items-center gap-2 text-green-600 hover:text-green-700 font-semibold mb-4">
+                <i class="ri-arrow-left-line"></i> Back to Initiatives
+            </a>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-2">
+                <i class="ri-add-circle-line text-green-600"></i> Create Group Buying Initiative
+            </h1>
+            <p class="text-gray-600 mt-2">Organize bulk purchasing with your farming community</p>
+        </div>
+
+        <!-- Form Card -->
+        <div class="bg-white rounded-lg shadow-lg p-8 border-t-4 border-green-500">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <!-- Title Field -->
+                <div>
+                    <label for="title" class="block text-lg font-semibold text-gray-900 mb-2">
+                        <i class="ri-text-line text-green-600 mr-2"></i>Initiative Title
+                    </label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        name="title" 
+                        placeholder="e.g., Bulk Fertilizer Purchase - Spring Season" 
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                    />
+                    <p class="text-sm text-gray-500 mt-1">Give your initiative a clear, descriptive name</p>
+                </div>
+
+                <!-- Description Field -->
+                <div>
+                    <label for="description" class="block text-lg font-semibold text-gray-900 mb-2">
+                        <i class="ri-file-text-line text-green-600 mr-2"></i>Description
+                    </label>
+                    <textarea 
+                        id="description" 
+                        name="description" 
+                        placeholder="Describe what product you're buying, why it's a good deal, and any other relevant details..." 
+                        rows="5"
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors resize-vertical"
+                    ></textarea>
+                </div>
+
+                <!-- Grid: Product Type & Discount -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="product_type" class="block text-lg font-semibold text-gray-900 mb-2">
+                            <i class="ri-shopping-bag-2-line text-green-600 mr-2"></i>Product Type
+                        </label>
+                        <select 
+                            id="product_type" 
+                            name="product_type" 
+                            required
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                        >
+                            <option value="">-- Select Product --</option>
+                            <option value="fertilizer">Fertilizer</option>
+                            <option value="seeds">Seeds</option>
+                            <option value="pesticide">Pesticide</option>
+                            <option value="equipment">Equipment</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="discount_percent" class="block text-lg font-semibold text-gray-900 mb-2">
+                            <i class="ri-percent-line text-green-600 mr-2"></i>Discount Percentage
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="number" 
+                                id="discount_percent" 
+                                name="discount_percent" 
+                                placeholder="e.g., 15" 
+                                min="0" 
+                                max="100"
+                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                            />
+                            <span class="absolute right-4 top-3 text-gray-500 font-semibold">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid: Prices -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="unit_price_without_group" class="block text-lg font-semibold text-gray-900 mb-2">
+                            <i class="ri-price-tag-3-line text-green-600 mr-2"></i>Regular Price (per unit)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-3 text-gray-500 font-semibold">$</span>
+                            <input 
+                                type="number" 
+                                id="unit_price_without_group" 
+                                name="unit_price_without_group" 
+                                placeholder="0.00" 
+                                step="0.01"
+                                class="w-full px-4 py-3 pl-8 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="unit_price_with_group" class="block text-lg font-semibold text-gray-900 mb-2">
+                            <i class="ri-price-tag-2-line text-green-600 mr-2"></i>Group Price (per unit)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-3 text-gray-500 font-semibold">$</span>
+                            <input 
+                                type="number" 
+                                id="unit_price_with_group" 
+                                name="unit_price_with_group" 
+                                placeholder="0.00" 
+                                step="0.01"
+                                class="w-full px-4 py-3 pl-8 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid: Quantity Unit & Minimum -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="quantity_unit" class="block text-lg font-semibold text-gray-900 mb-2">
+                            <i class="ri-ruler-2-line text-green-600 mr-2"></i>Unit of Measurement
+                        </label>
+                        <input 
+                            type="text" 
+                            id="quantity_unit" 
+                            name="quantity_unit" 
+                            placeholder="e.g., kg, bag, box" 
+                            required
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                        />
+                    </div>
+
+                    <div>
+                        <label for="minimum_order_quantity" class="block text-lg font-semibold text-gray-900 mb-2">
+                            <i class="ri-inbox-2-line text-green-600 mr-2"></i>Minimum Order Quantity
+                        </label>
+                        <input 
+                            type="number" 
+                            id="minimum_order_quantity" 
+                            name="minimum_order_quantity" 
+                            placeholder="e.g., 50" 
+                            min="1"
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                        />
+                    </div>
+                </div>
+
+                <!-- Grid: Dates -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="start_date" class="block text-lg font-semibold text-gray-900 mb-2">
+                            <i class="ri-calendar-event-line text-green-600 mr-2"></i>Start Date
+                        </label>
+                        <input 
+                            type="date" 
+                            id="start_date" 
+                            name="start_date" 
+                            required
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                        />
+                    </div>
+
+                    <div>
+                        <label for="end_date" class="block text-lg font-semibold text-gray-900 mb-2">
+                            <i class="ri-calendar-event-line text-green-600 mr-2"></i>End Date
+                        </label>
+                        <input 
+                            type="date" 
+                            id="end_date" 
+                            name="end_date" 
+                            required
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                        />
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex gap-4 pt-6">
+                    <button 
+                        type="submit" 
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                        <i class="ri-check-line"></i> Create Initiative
+                    </button>
+                    <a 
+                        href="{% url 'core:group_buying_list' %}" 
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                        <i class="ri-close-line"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Info Box -->
+        <div class="mt-8 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
+            <h3 class="font-semibold text-blue-900 flex items-center gap-2 mb-3">
+                <i class="ri-information-line"></i> How Group Buying Works
+            </h3>
+            <ul class="text-blue-800 text-sm space-y-2">
+                <li>✓ Create an initiative for a product your farming community needs</li>
+                <li>✓ Set attractive group pricing incentives</li>
+                <li>✓ Let farmers pledge quantities they're interested in</li>
+                <li>✓ Once target is reached, proceed with bulk purchasing</li>
+                <li>✓ Share savings with all participating farmers</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

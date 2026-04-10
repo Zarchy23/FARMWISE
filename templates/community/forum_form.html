@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create New Forum - FarmWise{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <a href="{% url 'core:forum_list' %}" class="inline-flex items-center gap-2 text-green-600 hover:text-green-700 font-semibold mb-4">
+                <i class="ri-arrow-left-line"></i> Back to Forums
+            </a>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-2">
+                <i class="ri-add-circle-line text-green-600"></i> Create New Forum
+            </h1>
+            <p class="text-gray-600 mt-2">Start a new discussion space for the farming community</p>
+        </div>
+
+        <!-- Form Card -->
+        <div class="bg-white rounded-lg shadow-lg p-8 border-t-4 border-green-500">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <!-- Title Field -->
+                <div>
+                    <label for="title" class="block text-lg font-semibold text-gray-900 mb-2">
+                        <i class="ri-text-line text-green-600 mr-2"></i>Forum Title
+                    </label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        name="title" 
+                        placeholder="e.g., Organic Farming Techniques" 
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                    />
+                    <p class="text-sm text-gray-500 mt-1">Give your forum a clear, descriptive name</p>
+                </div>
+
+                <!-- Description Field -->
+                <div>
+                    <label for="description" class="block text-lg font-semibold text-gray-900 mb-2">
+                        <i class="ri-file-text-line text-green-600 mr-2"></i>Description
+                    </label>
+                    <textarea 
+                        id="description" 
+                        name="description" 
+                        placeholder="Describe the purpose and scope of this forum..." 
+                        rows="5"
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors resize-vertical"
+                    ></textarea>
+                    <p class="text-sm text-gray-500 mt-1">Help members understand what this forum is about</p>
+                </div>
+
+                <!-- Category Field -->
+                <div>
+                    <label for="category" class="block text-lg font-semibold text-gray-900 mb-2">
+                        <i class="ri-layout-grid-line text-green-600 mr-2"></i>Category
+                    </label>
+                    <select 
+                        id="category" 
+                        name="category" 
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                    >
+                        <option value="">-- Select a Category --</option>
+                        <option value="crops">🌾 Crops & Farming Techniques</option>
+                        <option value="livestock">🐄 Livestock Management</option>
+                        <option value="equipment">🚜 Equipment & Tools</option>
+                        <option value="marketplace">🛒 Marketplace & Trading</option>
+                        <option value="general">💬 General Discussion</option>
+                    </select>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex gap-4 pt-6">
+                    <button 
+                        type="submit" 
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                        <i class="ri-check-line"></i> Create Forum
+                    </button>
+                    <a 
+                        href="{% url 'core:forum_list' %}" 
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                        <i class="ri-close-line"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Info Box -->
+        <div class="mt-8 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
+            <h3 class="font-semibold text-blue-900 flex items-center gap-2 mb-2">
+                <i class="ri-information-line"></i> Forum Guidelines
+            </h3>
+            <ul class="text-blue-800 text-sm space-y-2">
+                <li>✓ Choose a category that best represents the forum's purpose</li>
+                <li>✓ Write clear titles and descriptions to attract relevant members</li>
+                <li>✓ Moderate discussions to maintain a respectful community</li>
+                <li>✓ Keep the forum focused on agriculture and farming topics</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

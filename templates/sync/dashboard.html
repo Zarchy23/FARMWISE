@@ -1,0 +1,633 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Data Sync Manager - FarmWise{% endblock %}
+{% block page_title %}Data Sync Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    /* Animated Background */
+    .sync-hero {
+        background: var(--gradient-primary);
+        background-size: 400% 400%;
+        animation: gradientShift 15s ease infinite;
+        position: relative;
+        overflow: hidden;
+        padding: 3rem 2rem;
+        border-radius: 1rem;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+    }
+
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* Floating Elements */
+    .floating-icon {
+        position: absolute;
+        opacity: 0.1;
+        font-size: 4rem;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    .floating-icon:nth-child(1) { animation-delay: 0s; top: 20%; left: 10%; }
+    .floating-icon:nth-child(2) { animation-delay: 2s; top: 50%; right: 15%; }
+    .floating-icon:nth-child(3) { animation-delay: 4s; bottom: 15%; left: 20%; }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
+
+    /* Stat Cards */
+    .stat-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        border-left: 4px solid;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 100%);
+        pointer-events: none;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    .stat-card.online { border-left-color: #10b981; }
+    .stat-card.pending { border-left-color: #f59e0b; }
+    .stat-card.synced { border-left-color: #3b82f6; }
+    .stat-card.conflicts { border-left-color: #ef4444; }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .stat-icon.online { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+    .stat-icon.pending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+    .stat-icon.synced { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .stat-icon.conflicts { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #111;
+        line-height: 1;
+        margin: 0.5rem 0;
+    }
+
+    .stat-label {
+        color: #6b7280;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Connection Status Badge */
+    .connection-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .connection-badge.online {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .connection-badge.offline {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        animation: pulse 2s infinite;
+    }
+
+    .status-indicator.online { background: #10b981; }
+    .status-indicator.offline { background: #ef4444; }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* Sync Queue Container */
+    .sync-queue-container {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .queue-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .queue-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .queue-item {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: background 0.2s ease;
+    }
+
+    .queue-item:hover {
+        background: #f9fafb;
+    }
+
+    .queue-item:last-child {
+        border-bottom: none;
+    }
+
+    .queue-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .queue-icon.create { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+    .queue-icon.update { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .queue-icon.delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+    .queue-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .queue-title {
+        font-weight: 600;
+        color: #111;
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    .queue-meta {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .queue-progress {
+        width: 100px;
+        height: 6px;
+        background: #e5e7eb;
+        border-radius: 9999px;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .queue-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #3b82f6);
+        animation: slideRight 2s ease-in-out infinite;
+        border-radius: 9999px;
+    }
+
+    @keyframes slideRight {
+        0%, 100% { width: 0%; }
+        50% { width: 100%; }
+    }
+
+    .queue-status {
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-badge.pending {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .status-badge.synced {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .status-badge.error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: #d1d5db;
+        margin-bottom: 1rem;
+    }
+
+    .empty-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-text {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Action Buttons */
+    .btn-sync {
+        background: var(--gradient-success);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+    }
+
+    .btn-sync:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(17, 153, 142, 0.4);
+    }
+
+    .btn-sync:active {
+        transform: translateY(0);
+    }
+
+    .btn-sync.syncing {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .sync-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Timeline */
+    .sync-timeline {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .timeline-item {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        position: relative;
+        padding-left: 2rem;
+    }
+
+    .timeline-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 8px;
+        height: 8px;
+        background: #667eea;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 0 0 3px #e5e7eb;
+    }
+
+    .timeline-content {
+        flex: 1;
+    }
+
+    .timeline-title {
+        font-weight: 600;
+        color: #111;
+        margin-bottom: 0.25rem;
+    }
+
+    .timeline-time {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .sync-hero { padding: 2rem 1.5rem; }
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        .queue-item { flex-wrap: wrap; }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid { grid-template-columns: 1fr; }
+        .queue-progress { width: 60px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="sync-hero">
+    <div class="floating-icon"><i class="ri-cloud-sync-line"></i></div>
+    <div class="floating-icon"><i class="ri-server-line"></i></div>
+    <div class="floating-icon"><i class="ri-database-line"></i></div>
+    
+    <div style="position: relative; z-index: 1;">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h1 class="text-4xl font-bold mb-2">Data Sync Manager</h1>
+                <p class="text-white text-opacity-90">Monitor and manage your offline changes in real-time</p>
+            </div>
+            <button class="btn-sync" onclick="syncNow()" id="syncBtn">
+                <i class="ri-cloud-sync-line"></i>
+                <span id="syncBtnText">Sync Now</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Connection Status & Last Sync -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div style="background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <div>
+                <p style="color: #6b7280; font-size: 0.875rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; margin-bottom: 0.5rem;">Connection Status</p>
+                <div class="connection-badge online">
+                    <span class="status-indicator online"></span>
+                    Online
+                </div>
+            </div>
+            <div style="font-size: 1.5rem; color: #10b981;"><i class="ri-wifi-line"></i></div>
+        </div>
+    </div>
+
+    <div style="background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+            <div>
+                <p style="color: #6b7280; font-size: 0.875rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; margin-bottom: 0.5rem;">Last Sync</p>
+                <p style="font-size: 1.5rem; font-weight: bold; color: #111; margin: 0;">
+                    {% if last_sync %}
+                        {{ last_sync|timesince }} ago
+                    {% else %}
+                        <span style="color: #ef4444;">Never</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div style="font-size: 1.5rem; color: #667eea;"><i class="ri-time-line"></i></div>
+        </div>
+    </div>
+</div>
+
+<!-- Sync Statistics -->
+<div class="stats-grid">
+    <!-- Total Items -->
+    <div class="stat-card online">
+        <div class="stat-icon online">
+            <i class="ri-database-line"></i>
+        </div>
+        <div class="stat-number" id="totalItems">0</div>
+        <div class="stat-label">Total Items</div>
+    </div>
+
+    <!-- Pending -->
+    <div class="stat-card pending">
+        <div class="stat-icon pending">
+            <i class="ri-time-line"></i>
+        </div>
+        <div class="stat-number" id="pendingCount">0</div>
+        <div class="stat-label">Pending Sync</div>
+    </div>
+
+    <!-- Synced -->
+    <div class="stat-card synced">
+        <div class="stat-icon synced">
+            <i class="ri-check-double-line"></i>
+        </div>
+        <div class="stat-number" id="syncedCount">0</div>
+        <div class="stat-label">Successfully Synced</div>
+    </div>
+
+    <!-- Conflicts -->
+    <div class="stat-card conflicts">
+        <div class="stat-icon conflicts">
+            <i class="ri-alert-line"></i>
+        </div>
+        <div class="stat-number" id="conflictCount">0</div>
+        <div class="stat-label">Conflicts</div>
+    </div>
+</div>
+
+<!-- Sync Queue Section -->
+<div class="sync-queue-container" style="margin-bottom: 2rem;">
+    <div class="queue-header">
+        <h3><i class="ri-list-check"></i> Sync Queue</h3>
+        <div style="font-size: 0.875rem; color: rgba(255,255,255,0.8);">
+            <span id="queueCount">0</span> item{{ queue_items.count|pluralize }}
+        </div>
+    </div>
+    <div id="queueList">
+        {% if queue_items %}
+            {% for item in queue_items %}
+                <div class="queue-item">
+                    <div class="queue-icon {% if item.operation == 'CREATE' %}create{% elif item.operation == 'DELETE' %}delete{% else %}update{% endif %}">
+                        <i class="ri-{% if item.operation == 'CREATE' %}add-line{% elif item.operation == 'DELETE' %}delete-bin-line{% else %}edit-line{% endif %}"></i>
+                    </div>
+                    <div class="queue-content">
+                        <div class="queue-title">{{ item.model }} • {{ item.get_operation_display }}</div>
+                        <div class="queue-meta">
+                            <i class="ri-time-line" style="margin-right: 0.25rem;"></i>
+                            {{ item.created_at|date:"M d, Y H:i" }}
+                        </div>
+                    </div>
+                    <div class="queue-progress">
+                        <div class="queue-progress-bar" style="width: 100%;"></div>
+                    </div>
+                    <div class="queue-status">
+                        {% if item.is_synced %}
+                            <span class="status-badge synced">
+                                <i class="ri-check-line"></i> Synced
+                            </span>
+                        {% else %}
+                            <span class="status-badge pending">
+                                <i class="ri-loader-4-line"></i> Pending
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon"><i class="ri-check-double-fill"></i></div>
+                <div class="empty-title">Sync queue is empty</div>
+                <p class="empty-text">All changes synchronized! Your data is up to date.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Conflicts Section -->
+{% if conflicts %}
+<div class="sync-queue-container">
+    <div class="queue-header">
+        <h3><i class="ri-alert-fill"></i> Sync Conflicts</h3>
+        <div style="font-size: 0.875rem; color: rgba(255,255,255,0.8);">
+            <span id="conflictCount">{{ conflicts.count }}</span> unresolved
+        </div>
+    </div>
+    <div>
+        {% for conflict in conflicts %}
+            <div class="queue-item">
+                <div class="queue-icon delete">
+                    <i class="ri-exchange-2-line"></i>
+                </div>
+                <div class="queue-content">
+                    <div class="queue-title">Conflict in {{ conflict.sync_entry.model }}</div>
+                    <div class="queue-meta">
+                        <i class="ri-error-warning-line" style="margin-right: 0.25rem;"></i>
+                        Local and server versions differ. Manual resolution required.
+                    </div>
+                </div>
+                <div style="flex-shrink: 0;">
+                    <a href="{% url 'core:resolve_sync_conflict' conflict.id %}" class="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm">
+                        <i class="ri-settings-line"></i> Resolve
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Loading Animation -->
+<script>
+    function updateStats() {
+        const totalItems = {{ queue_items.count|default:'0' }};
+        const pendingCount = {{ pending_count|default:'0' }};
+        const syncedCount = totalItems - pendingCount;
+        const conflictCount = {{ conflicts.count|default:'0' }};
+
+        document.getElementById('totalItems').textContent = totalItems;
+        document.getElementById('pendingCount').textContent = pendingCount;
+        document.getElementById('syncedCount').textContent = syncedCount;
+        document.getElementById('conflictCount').textContent = conflictCount;
+        document.getElementById('queueCount').textContent = totalItems;
+    }
+
+    function syncNow() {
+        const btn = document.getElementById('syncBtn');
+        const btnText = document.getElementById('syncBtnText');
+        
+        btn.classList.add('syncing');
+        btn.innerHTML = '<span class="sync-spinner"></span> <span>Syncing...</span>';
+        btn.disabled = true;
+
+        // Simulate sync for demo
+        setTimeout(() => {
+            btn.classList.remove('syncing');
+            btnText.textContent = 'Sync Complete!';
+            btn.innerHTML = '<i class="ri-check-line"></i> <span>Sync Complete!</span>';
+            button.style.background = 'var(--gradient-success)';
+            
+            setTimeout(() => {
+                btn.innerHTML = '<i class="ri-cloud-sync-line"></i> <span>Sync Now</span>';
+                btn.disabled = false;
+                updateStats();
+            }, 2000);
+        }, 2500);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', updateStats);
+</script>
+
+{% endblock %}

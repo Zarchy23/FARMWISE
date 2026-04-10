@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ reminder.title }} - FarmWise{% endblock %}
+{% block page_title %}Reminder Details{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-6">
+    <!-- Header with Status -->
+    <div class="bg-white rounded-lg shadow-lg p-8 mb-6">
+        <div class="flex justify-between items-start mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ reminder.title }}</h1>
+                <p class="text-gray-600">
+                    <i class="ri-bank-line"></i> Farm: <strong>{{ reminder.farm.name }}</strong>
+                </p>
+            </div>
+            <div class="text-right">
+                {% if reminder.is_completed %}
+                <div class="text-4xl mb-2">✅</div>
+                <span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                    Completed
+                </span>
+                {% elif reminder.due_date < today %}
+                <div class="text-4xl mb-2">🔴</div>
+                <span class="inline-block px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">
+                    Overdue
+                </span>
+                {% else %}
+                <div class="text-4xl mb-2">⏰</div>
+                <span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">
+                    Active
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 border-t pt-6">
+            <div>
+                <p class="text-xs text-gray-500 uppercase font-semibold">Type</p>
+                <p class="text-lg font-semibold text-gray-800 mt-1">
+                    {% if reminder.reminder_type == 'vaccination' %}💉 Vaccination
+                    {% elif reminder.reminder_type == 'medication' %}💊 Medication
+                    {% elif reminder.reminder_type == 'breeding' %}🧬 Breeding
+                    {% elif reminder.reminder_type == 'maintenance' %}🔧 Maintenance
+                    {% elif reminder.reminder_type == 'breeding_check' %}🐄 Breeding Check
+                    {% elif reminder.reminder_type == 'feed_order' %}🌾 Feed Order
+                    {% elif reminder.reminder_type == 'pasture_rotation' %}🌱 Pasture Rotation
+                    {% elif reminder.reminder_type == 'inspection' %}📋 Inspection
+                    {% else %}📝 General
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 uppercase font-semibold">Due Date</p>
+                <p class="text-lg font-semibold {% if reminder.due_date < today and not reminder.is_completed %}text-red-600{% else %}text-gray-800{% endif %} mt-1">
+                    {{ reminder.due_date|date:"M d, Y" }}
+                </p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 uppercase font-semibold">Recurring</p>
+                <p class="text-lg font-semibold text-gray-800 mt-1">
+                    {% if reminder.is_recurring %}
+                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">🔁 Yes</span>
+                    {% else %}
+                    <span class="text-gray-500">No</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 uppercase font-semibold">Status</p>
+                <p class="text-lg font-semibold text-gray-800 mt-1">
+                    {% if reminder.is_active %}
+                    <span class="text-green-600">🟢 Active</span>
+                    {% else %}
+                    <span class="text-gray-500">⚪ Inactive</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Created & Completed Info -->
+        <div class="bg-gray-50 p-4 rounded-lg text-sm text-gray-600">
+            <p><strong>Created:</strong> {{ reminder.created_at|date:"M d, Y \a\t H:i" }}</p>
+            {% if reminder.is_completed %}
+            <p><strong>Completed:</strong> {{ reminder.completed_at|date:"M d, Y \a\t H:i" }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h3 class="font-semibold text-gray-800 mb-4">Actions</h3>
+        <div class="flex flex-wrap gap-3">
+            <a href="{% url 'core:reminder_edit' reminder.pk %}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
+                <i class="ri-edit-line"></i> Edit
+            </a>
+
+            {% if not reminder.is_completed %}
+            <a href="{% url 'core:reminder_complete' reminder.pk %}" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition" onclick="return confirm('Mark as completed?')">
+                <i class="ri-checkbox-circle-line"></i> Mark Complete
+            </a>
+            {% endif %}
+
+            <a href="{% url 'core:reminder_delete' reminder.pk %}" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition" onclick="return confirm('Are you sure you want to delete this reminder?')">
+                <i class="ri-delete-bin-line"></i> Delete
+            </a>
+
+            <a href="{% url 'core:reminder_list' %}" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-medium transition">
+                <i class="ri-arrow-left-line"></i> Back to Reminders
+            </a>
+        </div>
+    </div>
+
+    <!-- Related Information -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 class="font-semibold text-blue-900 mb-3">
+            <i class="ri-information-line"></i> Reminder Information
+        </h3>
+        <ul class="space-y-2 text-sm text-blue-800">
+            <li>✓ This reminder is for <strong>{{ reminder.farm.name }}</strong></li>
+            {% if reminder.due_date < today and not reminder.is_completed %}
+            <li>⚠️ This reminder is <strong>OVERDUE</strong> - Please complete it as soon as possible</li>
+            {% endif %}
+            {% if reminder.is_recurring %}
+            <li>🔁 This is a recurring reminder and will repeat periodically</li>
+            {% endif %}
+            <li>📧 You can create multiple reminders for different tasks</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

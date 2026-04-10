@@ -549,3 +549,213 @@ class ActivityLogSerializer(serializers.ModelSerializer):
     
     def get_description(self, obj):
         return obj.details.get('description', '') if obj.details else ''
+
+
+# ============================================================
+# FEATURE 10: FARMER NETWORK & KNOWLEDGE SHARING SERIALIZERS
+# ============================================================
+
+class DiscussionForumSerializer(serializers.ModelSerializer):
+    thread_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = DiscussionForum
+        fields = ['id', 'title', 'description', 'category', 'is_moderated', 'is_active', 
+                  'member_count', 'post_count', 'thread_count', 'created_at', 'updated_at']
+    
+    def get_thread_count(self, obj):
+        return obj.threads.count()
+
+
+class ForumThreadSerializer(serializers.ModelSerializer):
+    author_username = serializers.CharField(source='author.username', read_only=True)
+    reply_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ForumThread
+        fields = ['id', 'forum', 'author', 'author_username', 'title', 'content', 'is_pinned', 
+                  'is_closed', 'view_count', 'reply_count', 'tags', 'created_at', 'updated_at']
+    
+    def get_reply_count(self, obj):
+        return obj.replies.count()
+
+
+class ForumReplySerializer(serializers.ModelSerializer):
+    author_username = serializers.CharField(source='author.username', read_only=True)
+    
+    class Meta:
+        model = ForumReply
+        fields = ['id', 'thread', 'author', 'author_username', 'content', 'attachments', 
+                  'is_helpful', 'helpful_count', 'created_at', 'updated_at']
+
+
+class GroupBuyingInitiativeSerializer(serializers.ModelSerializer):
+    participant_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = GroupBuyingInitiative
+        fields = ['id', 'title', 'description', 'product_type', 'minimum_order_quantity', 
+                  'quantity_unit', 'unit_price_without_group', 'unit_price_with_group', 
+                  'discount_percent', 'start_date', 'end_date', 'delivery_date', 'organizer', 
+                  'organizer_contact', 'farmers_joined', 'total_quantity_pledged', 
+                  'participant_count', 'status', 'created_at']
+    
+    def get_participant_count(self, obj):
+        return obj.participants.count()
+
+
+class GroupBuyingParticipantSerializer(serializers.ModelSerializer):
+    farmer_username = serializers.CharField(source='farmer.username', read_only=True)
+    
+    class Meta:
+        model = GroupBuyingParticipant
+        fields = ['id', 'initiative', 'farmer', 'farmer_username', 'quantity_pledged', 
+                  'quantity_received', 'payment_status', 'amount_paid', 'joined_at']
+
+
+# ============================================================
+# FEATURE 11: CARBON FOOTPRINT TRACKER SERIALIZERS
+# ============================================================
+
+class EmissionSourceSerializer(serializers.ModelSerializer):
+    farm_name = serializers.CharField(source='farm.name', read_only=True)
+    
+    class Meta:
+        model = EmissionSource
+        fields = ['id', 'farm', 'farm_name', 'source_type', 'name', 'emission_factor', 
+                  'unit', 'is_active', 'created_at']
+
+
+class EmissionRecordSerializer(serializers.ModelSerializer):
+    farm_name = serializers.CharField(source='farm.name', read_only=True)
+    source_name = serializers.CharField(source='source.name', read_only=True)
+    
+    class Meta:
+        model = EmissionRecord
+        fields = ['id', 'farm', 'farm_name', 'source', 'source_name', 'record_date', 
+                  'quantity_used', 'calculated_emissions_kg_co2e', 'description', 'created_at']
+
+
+class CarbonSequestrationSerializer(serializers.ModelSerializer):
+    farm_name = serializers.CharField(source='farm.name', read_only=True)
+    
+    class Meta:
+        model = CarbonSequestration
+        fields = ['id', 'farm', 'farm_name', 'activity_type', 'name', 'description', 
+                  'area_hectares', 'tree_count', 'annual_sequestration_kg_co2e', 
+                  'start_date', 'end_date', 'created_at']
+
+
+class CarbonFootprintReportSerializer(serializers.ModelSerializer):
+    farm_name = serializers.CharField(source='farm.name', read_only=True)
+    
+    class Meta:
+        model = CarbonFootprintReport
+        fields = ['id', 'farm', 'farm_name', 'report_period', 'year', 'month', 
+                  'total_emissions_kg_co2e', 'total_sequestration_kg_co2e', 
+                  'net_carbon_footprint_kg_co2e', 'emissions_per_hectare', 
+                  'emission_breakdown', 'is_carbon_neutral', 'offset_needed_kg_co2e', 
+                  'recommendations', 'created_at']
+
+
+# ============================================================
+# FEATURE 12: FARM MAPPING & GEOFENCING SERIALIZERS
+# ============================================================
+
+class FarmBoundarySerializer(serializers.ModelSerializer):
+    farm_name = serializers.CharField(source='farm.name', read_only=True)
+    
+    class Meta:
+        model = FarmBoundary
+        fields = ['id', 'farm', 'farm_name', 'geojson_boundary', 'total_area_hectares', 
+                  'center_latitude', 'center_longitude', 'is_verified', 'created_at', 'updated_at']
+
+
+class GeofenceSerializer(serializers.ModelSerializer):
+    farm_name = serializers.CharField(source='farm.name', read_only=True)
+    field_name = serializers.CharField(source='field.name', read_only=True)
+    livestock_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Geofence
+        fields = ['id', 'farm', 'farm_name', 'field', 'field_name', 'name', 
+                  'geojson_boundary', 'enable_exit_alerts', 'enable_entry_alerts', 
+                  'alert_channels', 'livestock_count', 'is_active', 'created_at']
+    
+    def get_livestock_count(self, obj):
+        return obj.assigned_livestock.count()
+
+
+class LivestockLocationSerializer(serializers.ModelSerializer):
+    livestock_name = serializers.CharField(source='livestock.name', read_only=True)
+    
+    class Meta:
+        model = LivestockLocation
+        fields = ['id', 'livestock', 'livestock_name', 'latitude', 'longitude', 
+                  'accuracy_meters', 'device_id', 'signal_strength', 
+                  'is_inside_assigned_geofence', 'recorded_at', 'created_at']
+
+
+class GeofenceAlertSerializer(serializers.ModelSerializer):
+    geofence_name = serializers.CharField(source='geofence.name', read_only=True)
+    livestock_name = serializers.CharField(source='livestock.name', read_only=True)
+    resolved_by_username = serializers.CharField(source='resolved_by.username', read_only=True)
+    
+    class Meta:
+        model = GeofenceAlert
+        fields = ['id', 'geofence', 'geofence_name', 'livestock', 'livestock_name', 
+                  'alert_type', 'latitude', 'longitude', 'is_resolved', 'resolved_by', 
+                  'resolved_by_username', 'resolved_at', 'resolution_notes', 'alert_time', 'created_at']
+
+
+# ============================================================
+# FEATURE 13: OFFLINE SYNC & DATA MANAGEMENT SERIALIZERS
+# ============================================================
+
+class OfflineSyncQueueSerializer(serializers.ModelSerializer):
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = OfflineSyncQueue
+        fields = ['id', 'user', 'user_username', 'model_name', 'operation', 'object_id', 
+                  'data_payload', 'is_synced', 'sync_error', 'sync_attempted_at', 
+                  'created_at', 'updated_at']
+
+
+class SyncConflictSerializer(serializers.ModelSerializer):
+    sync_entry_id = serializers.IntegerField(source='sync_entry.id', read_only=True)
+    
+    class Meta:
+        model = SyncConflict
+        fields = ['id', 'sync_entry', 'sync_entry_id', 'server_version', 'local_version', 
+                  'conflicting_fields', 'resolution_status', 'resolved_data', 
+                  'resolved_by', 'created_at']
+
+
+# ============================================================
+# FEATURE 14: WEATHER ENHANCEMENT SERIALIZERS
+# ============================================================
+
+class WeatherForecastSerializer(serializers.ModelSerializer):
+    farm_name = serializers.CharField(source='farm.name', read_only=True)
+    
+    class Meta:
+        model = WeatherForecast
+        fields = ['id', 'farm', 'farm_name', 'latitude', 'longitude', 'forecast_date', 
+                  'forecast_time', 'recorded_at', 'temperature_celsius', 'feels_like_celsius', 
+                  'min_temp_celsius', 'max_temp_celsius', 'humidity_percent', 'pressure_hpa', 
+                  'wind_speed_kmh', 'wind_direction_degrees', 'wind_gust_kmh', 'rainfall_mm', 
+                  'rainfall_probability_percent', 'cloud_coverage_percent', 'visibility_km', 
+                  'uv_index', 'weather_condition', 'description', 'gdd', 'farming_recommendation', 'created_at']
+
+
+class WeatherAlertSerializer(serializers.ModelSerializer):
+    farm_name = serializers.CharField(source='farm.name', read_only=True)
+    acknowledged_by_username = serializers.CharField(source='acknowledged_by.username', read_only=True)
+    
+    class Meta:
+        model = WeatherAlert
+        fields = ['id', 'farm', 'farm_name', 'alert_type', 'severity', 'alert_issued_at', 
+                  'alert_effective_from', 'alert_expires_at', 'description', 'recommended_actions', 
+                  'is_acknowledged', 'acknowledged_by', 'acknowledged_by_username', 'acknowledged_at', 
+                  'response_actions', 'created_at']

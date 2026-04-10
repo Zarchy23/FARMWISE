@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ initiative.title }} - Group Buying{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Back Button -->
+        <div class="mb-6">
+            <a href="{% url 'core:group_buying_list' %}" class="inline-flex items-center gap-2 text-green-600 hover:text-green-700 font-semibold">
+                <i class="ri-arrow-left-line"></i> Back to Initiatives
+            </a>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column: Initiative Details -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Header Card -->
+                <div class="bg-white rounded-lg shadow-lg p-8 border-l-4 border-green-500">
+                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+                        <div className="flex-1">
+                            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">{{ initiative.title }}</h1>
+                            <p class="text-gray-600 text-lg">{{ initiative.description }}</p>
+                        </div>
+                        <div>
+                            <span class="inline-block px-4 py-2 rounded-full text-sm font-bold 
+                                {% if initiative.status == 'open' %}bg-green-100 text-green-800
+                                {% elif initiative.status == 'closed' %}bg-orange-100 text-orange-800
+                                {% elif initiative.status == 'completed' %}bg-blue-100 text-blue-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                <i class="ri-circle-fill mr-1" style="font-size: 0.5rem;"></i>
+                                {{ initiative.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Initiative Details Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Details Card -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <i class="ri-information-line text-green-600"></i> Details
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-start pb-3 border-b">
+                                <span class="text-gray-600 font-semibold">Product Type:</span>
+                                <span class="text-gray-900 font-bold">{{ initiative.product_type|title }}</span>
+                            </div>
+                            <div class="flex justify-between items-start pb-3 border-b">
+                                <span class="text-gray-600 font-semibold">Organizer:</span>
+                                <div class="text-right">
+                                    <p class="text-gray-900 font-bold">{{ initiative.organizer }}</p>
+                                    <p class="text-xs text-gray-500">{{ initiative.organizer_contact }}</p>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-start pb-3 border-b">
+                                <span class="text-gray-600 font-semibold">Start Date:</span>
+                                <span class="text-gray-900 font-bold">{{ initiative.start_date|date:'M d, Y' }}</span>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <span class="text-gray-600 font-semibold">End Date:</span>
+                                <span class="text-gray-900 font-bold">{{ initiative.end_date|date:'M d, Y' }}</span>
+                            </div>
+                            {% if initiative.delivery_date %}
+                            <div class="flex justify-between items-start pt-3 border-t">
+                                <span class="text-gray-600 font-semibold">Delivery Date:</span>
+                                <span class="text-gray-900 font-bold">{{ initiative.delivery_date|date:'M d, Y' }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Pricing Card -->
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-2 border-green-200 p-6">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <i class="ri-price-tag-2-line text-green-600"></i> Pricing
+                        </h3>
+                        <div class="space-y-4">
+                            <div class="bg-white rounded-lg p-4">
+                                <p class="text-sm text-gray-600 mb-1">Regular Price</p>
+                                <p class="text-2xl font-bold text-gray-400 line-through">${{ initiative.unit_price_without_group }}/{{ initiative.quantity_unit }}</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 border-2 border-green-500">
+                                <p class="text-sm text-gray-600 mb-1">Group Price</p>
+                                <p class="text-3xl font-bold text-green-600">${{ initiative.unit_price_with_group }}/{{ initiative.quantity_unit }}</p>
+                                <p class="text-sm font-semibold text-green-700 mt-2">
+                                    <i class="ri-percent-line"></i> Save {{ initiative.discount_percent }}%
+                                </p>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div class="bg-gradient-to-r from-green-500 to-green-600 h-full" style="width: {{ initiative.discount_percent|default:50 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Participants Section -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="ri-team-line text-green-600"></i> Participants ({{ participants|length }})
+                    </h3>
+                    
+                    {% if participants %}
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b-2 border-gray-200">
+                                    <th class="text-left py-3 px-4 font-bold text-gray-900">Farmer</th>
+                                    <th class="text-center py-3 px-4 font-bold text-gray-900">Quantity</th>
+                                    <th class="text-center py-3 px-4 font-bold text-gray-900">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                {% for participant in participants %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="py-3 px-4 text-gray-900 font-semibold">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                                {{ participant.farmer.first_name|first|upper }}
+                                            </div>
+                                            {{ participant.farmer.get_full_name|default:participant.farmer.username }}
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4 text-center text-gray-900 font-bold">
+                                        {{ participant.quantity_pledged }} {{ initiative.quantity_unit }}
+                                    </td>
+                                    <td class="py-3 px-4 text-center">
+                                        <span class="inline-block px-3 py-1 rounded-full text-xs font-bold
+                                            {% if participant.payment_status == 'paid' %}bg-green-100 text-green-800
+                                            {% elif participant.payment_status == 'pending' %}bg-orange-100 text-orange-800
+                                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                            {{ participant.get_payment_status_display|default:'Pending' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8">
+                        <i class="ri-team-line text-4xl text-gray-300 mb-2"></i>
+                        <p class="text-gray-500 font-semibold">No participants yet. Be the first to join!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Right Column: Progress & Join -->
+            <div class="space-y-6">
+                <!-- Progress Card (Sticky) -->
+                <div class="bg-white rounded-lg shadow-lg p-6 border-t-4 border-green-500 lg:sticky lg:top-8">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="ri-bar-chart-box-line text-green-600"></i> Campaign Progress
+                    </h3>
+
+                    <!-- Farmers Joined -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-sm text-gray-600 font-semibold">Farmers Joined</p>
+                            <p class="text-2xl font-bold text-green-600">{{ initiative.farmers_joined|default:0 }}</p>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div class="bg-gradient-to-r from-green-500 to-green-600 h-full" style="width: {% widthratio initiative.farmers_joined|default:1 50 100 %}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Quantity Pledged -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-sm text-gray-600 font-semibold">Quantity Pledged</p>
+                            <p class="text-2xl font-bold text-blue-600">{{ initiative.total_quantity_pledged|default:0 }}</p>
+                        </div>
+                        <p class="text-xs text-gray-500 mb-2">Minimum: {{ initiative.minimum_order_quantity|default:1 }} {{ initiative.quantity_unit }}</p>
+                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div class="bg-gradient-to-r from-blue-500 to-blue-600 h-full" style="width: {% widthratio initiative.total_quantity_pledged|default:1 initiative.minimum_order_quantity|default:1 100 %}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Join Form -->
+                    {% if initiative.status == 'open' and user.is_authenticated %}
+                    <form method="post" action="{% url 'core:group_buying_join' initiative.id %}" class="space-y-3">
+                        {% csrf_token %}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-900 mb-2">
+                                <i class="ri-inbox-2-line"></i> Quantity to Pledge
+                            </label>
+                            <div class="flex gap-2">
+                                <input 
+                                    type="number" 
+                                    name="quantity" 
+                                    placeholder="e.g., 50"
+                                    min="1" 
+                                    required
+                                    class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                                />
+                                <span class="flex items-center px-3 text-gray-600 font-semibold bg-gray-100 rounded-lg">
+                                    {{ initiative.quantity_unit }}
+                                </span>
+                            </div>
+                        </div>
+                        <button 
+                            type="submit" 
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                            <i class="ri-check-line"></i> Join Initiative
+                        </button>
+                    </form>
+                    {% elif initiative.status != 'open' %}
+                    <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
+                        <p class="text-orange-900 font-semibold flex items-center gap-2">
+                            <i class="ri-lock-line"></i> Initiative is {{ initiative.get_status_display|lower }}
+                        </p>
+                    </div>
+                    {% elif user.is_authenticated %}
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-center">
+                        <p class="text-blue-900 font-semibold">Already joined!</p>
+                    </div>
+                    {% else %}
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-center">
+                        <p class="text-blue-900 font-semibold mb-2">Join to Participate</p>
+                        <a href="{% url 'account_login' %}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+                            <i class="ri-login-box-line"></i> Log In
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Total Potential Savings -->
+                    <div class="mt-6 pt-6 border-t">
+                        <p class="text-sm text-gray-600 font-semibold mb-2">Potential Savings</p>
+                        <p class="text-3xl font-bold text-green-600">
+                            ${{ initiative.discount_percent|default:0 }}
+                        </p>
+                        <p class="text-xs text-gray-500">per {{ initiative.quantity_unit }}</p>
+                    </div>
+                </div>
+
+                <!-- Value Card -->
+                <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-6">
+                    <h4 class="font-bold text-blue-900 flex items-center gap-2 mb-3">
+                        <i class="ri-bulb-flash-line"></i> Why Join?
+                    </h4>
+                    <ul class="text-blue-800 text-sm space-y-2">
+                        <li class="flex gap-2">
+                            <i class="ri-checkbox-circle-line flex-shrink-0 mt-0.5 text-green-600"></i>
+                            <span>Save up to {{ initiative.discount_percent }}%</span>
+                        </li>
+                        <li class="flex gap-2">
+                            <i class="ri-checkbox-circle-line flex-shrink-0 mt-0.5 text-green-600"></i>
+                            <span>Buy with other farmers</span>
+                        </li>
+                        <li class="flex gap-2">
+                            <i class="ri-checkbox-circle-line flex-shrink-0 mt-0.5 text-green-600"></i>
+                            <span>Support community farming</span>
+                        </li>
+                        <li class="flex gap-2">
+                            <i class="ri-checkbox-circle-line flex-shrink-0 mt-0.5 text-green-600"></i>
+                            <span>Secure your supply early</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

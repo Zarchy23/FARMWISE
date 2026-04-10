@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import login
-from django.db.models import Sum, Count, Q, Avg
+from django.db.models import Sum, Count, Q, Avg, F
 from django.utils import timezone
 from django.http import JsonResponse
 from django.core.paginator import Paginator
@@ -241,8 +241,8 @@ def api_keys_debug(request):
 def wallboard(request):
     """System admin wallboard with statistical data - Admin only"""
     
-    # Check if user is system admin
-    if request.user.user_type != 'admin':
+    # Check if user is system admin or superuser
+    if request.user.user_type != 'admin' and not request.user.is_superuser:
         messages.error(request, 'Access denied. Only system administrators can view this page.')
         return redirect('core:dashboard')
     
@@ -1083,60 +1083,63 @@ def encode_image_to_base64(image_file):
 
 
 def analyze_pest_with_ai(image_file, image_name):
-    """Use AI Vision API to analyze pest image - supports Together.ai (for Render) and OpenAI fallback"""
+    """
+    Use AI Vision API to analyze pest image - NEW VERSION
+    
+    Priority Order (all FREE for Render):
+    1. Google Gemini (free tier - 60 req/min) - RECOMMENDED
+    2. Groq (free tier) - fast alternative
+    3. Together.ai (free tier) - another alternative
+    4. Rule-based detection (completely free) - fallback
+    5. OpenAI (DEPRECATED - too expensive for Render free tier)
+    """
     import logging
     logger = logging.getLogger(__name__)
     
     try:
         from django.conf import settings
+        from core.services.pest_detection import PestDetectionService
         
-        # Try Together.ai first (works better with Render)
-        together_api_key = settings.TOGETHER_API_KEY if hasattr(settings, 'TOGETHER_API_KEY') else None
-        openai_api_key = settings.OPENAI_API_KEY
+        # Use new unified pest detection service
+        gemini_api_key = getattr(settings, 'GEMINI_API_KEY', None)
+        groq_api_key = getattr(settings, 'GROQ_API_KEY', None)
         
-        # Encode image to base64
-        base64_image = encode_image_to_base64(image_file)
+        # Debug logging
+        logger.info(f'GEMINI_API_KEY present: {bool(gemini_api_key) and len(str(gemini_api_key)) > 0}')
+        logger.info(f'GROQ_API_KEY present: {bool(groq_api_key) and len(str(groq_api_key)) > 0}')
         
-        # Get image format from filename
-        image_format = image_name.lower().split('.')[-1] if '.' in image_name else 'jpeg'
-        if image_format == 'jpg':
-            image_format = 'jpeg'
+        pest_service = PestDetectionService(gemini_api_key, groq_api_key)
         
-        media_type = f'image/{image_format}'
+        logger.info(f'Starting pest detection analysis for {image_name}')
         
-        # Try Together.ai first
-        if together_api_key and together_api_key.strip():
-            logger.info('Using Together.ai for pest detection')
-            return analyze_pest_with_together(base64_image, media_type, together_api_key, logger)
+        # Analyze image using service
+        logger.info(f'[VIEWS] Calling pest_service.detect_from_image() for {image_name}')
+        result = pest_service.detect_from_image(image_file)
+        logger.info(f'[VIEWS] Result received: {result}')
+        logger.info(f'[VIEWS] Result has error_fallback: {result.get("error_fallback")}')
         
-        # Fallback to OpenAI
-        if openai_api_key and openai_api_key.strip():
-            logger.info('Using OpenAI for pest detection')
-            return analyze_pest_with_openai(base64_image, media_type, openai_api_key, logger)
-        
-        # No API key available
-        error_msg = 'No AI API key configured. Please add TOGETHER_API_KEY or OPENAI_API_KEY to Render environment variables.'
-        logger.error(error_msg)
-        return {
-            'pest_detected': False,
-            'pest_name': 'API Key Not Configured',
-            'confidence': 0,
-            'severity': 'low',
+        # Normalize result to match expected format
+        normalized = {
+            'pest_detected': result.get('detected_issue', '').lower() != 'healthy crop' and not result.get('error_fallback'),
+            'pest_name': result.get('detected_issue', 'Unable to analyze'),
+            'confidence': result.get('confidence', 0),
+            'severity': result.get('severity', 'low'),
             'affected_area': 0,
-            'explanation': error_msg,
-            'identification_details': 'API configuration required',
-            'immediate_action': 'Configure your API key in Render dashboard first',
-            'treatment': 'API configuration required',
-            'organic_treatment': '',
-            'prevention': '',
+            'explanation': result.get('description', 'Analysis attempted'),
+            'identification_details': result.get('description', ''),
+            'immediate_action': 'Monitor closely' if result.get('severity') in ['high', 'severe'] else 'Continue normal care',
+            'treatment': result.get('treatment', 'Consult local expert'),
+            'organic_treatment': result.get('organic_options', 'Contact extension office'),
+            'prevention': result.get('prevention', 'Regular field scouting'),
             'disease_cycle': '',
-            'environmental_factors': '',
-            'error': 'No API key configured'
+            'environmental_factors': ''
         }
+        
+        logger.info(f'[VIEWS] Normalized: pest_detected={normalized["pest_detected"]}, pest_name={normalized["pest_name"]}, confidence={normalized["confidence"]}')
+        logger.info(f'Pest analysis completed: {normalized["pest_name"]}')
+        return normalized
     
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
         logger.error(f'Pest analysis error: {str(e)}')
         logger.error(f'Error type: {type(e).__name__}')
         logger.error(f'Full error: {repr(e)}', exc_info=True)
@@ -1149,7 +1152,7 @@ def analyze_pest_with_ai(image_file, image_name):
             'affected_area': 0,
             'explanation': f'Error analyzing image: {str(e)}',
             'identification_details': 'Error occurred',
-            'immediate_action': 'Please try again',
+            'immediate_action': 'Please try again or use rule-based detection',
             'treatment': f'Error: {str(e)}',
             'organic_treatment': '',
             'prevention': '',
@@ -1163,6 +1166,10 @@ def analyze_pest_with_together(base64_image, media_type, api_key, logger):
     """Analyze pest using Together.ai API (works with Render)"""
     try:
         url = "https://api.together.xyz/v1/chat/completions"
+        
+        # Log API key status (first 10 chars only)
+        logger.info(f'Together.ai API key status: SET')
+        logger.info(f'Together.ai API key preview: {api_key[:10]}...')
         
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -1211,7 +1218,17 @@ Be thorough, professional, and educational."""
         }
         
         logger.info('Sending request to Together.ai...')
+        logger.info(f'URL: {url}')
+        logger.info(f'Model: {payload["model"]}')
+        
         response = requests.post(url, json=payload, headers=headers, timeout=30)
+        
+        logger.info(f'Response status: {response.status_code}')
+        logger.info(f'Response headers: {response.headers}')
+        
+        if response.status_code != 200:
+            logger.error(f'Response text: {response.text}')
+        
         response.raise_for_status()
         
         result_data = response.json()
@@ -1226,6 +1243,28 @@ Be thorough, professional, and educational."""
         
         logger.info(f'Together.ai analysis completed: {result.get("pest_name")}')
         return result
+    
+    except requests.exceptions.HTTPError as e:
+        logger.error(f'Together.ai HTTP error: {e.response.status_code}')
+        logger.error(f'Response text: {e.response.text}')
+        logger.error(f'Error details: {str(e)}')
+        
+        return {
+            'pest_detected': False,
+            'pest_name': 'API Error',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': f'Together.ai service error: {e.response.status_code} - {e.response.text[:200]}',
+            'identification_details': 'API error occurred',
+            'immediate_action': 'Please try again later or check API key',
+            'treatment': f'API Error: {e.response.status_code}',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': f'Together.ai API error: {e.response.status_code}'
+        }
     
     except requests.exceptions.RequestException as e:
         logger.error(f'Together.ai request error: {str(e)}')
@@ -1265,6 +1304,86 @@ Be thorough, professional, and educational."""
             'disease_cycle': '',
             'environmental_factors': '',
             'error': f'Error: {str(e)}'
+        }
+
+
+def analyze_pest_with_groq(base64_image, media_type, api_key, logger):
+    """Analyze pest using Groq API (very fast, free tier available)"""
+    try:
+        from groq import Groq
+        
+        logger.info('Using Groq for pest detection')
+        
+        client = Groq(api_key=api_key)
+        
+        # Groq doesn't support direct image input like OpenAI, so we use text analysis
+        # You would need to use OCR or describe the image
+        # For now, we'll use Groq for quick text-based analysis
+        
+        prompt = """You are an agricultural disease and pest expert. Based on this image analysis, provide a comprehensive pest detection report.
+
+Analyze for pests, diseases, or crop health issues. Provide a JSON response with these exact keys:
+
+{
+    "pest_detected": true or false,
+    "pest_name": "Specific pest/disease name or 'Healthy Crop' if no issues found",
+    "confidence": 0-100 (your confidence level),
+    "severity": "none, low, medium, high, or severe",
+    "affected_area": 0-100 (percentage of crop affected),
+    "explanation": "Detailed 2-3 sentence explanation of what you observe",
+    "identification_details": "Specific visual indicators that led to diagnosis",
+    "immediate_action": "What the farmer should do immediately",
+    "treatment": "Detailed treatment options",
+    "organic_treatment": "Organic alternatives",
+    "prevention": "Long-term prevention strategies",
+    "disease_cycle": "Brief explanation of disease lifecycle",
+    "environmental_factors": "Conditions that favor this pest/disease"
+}
+
+Be thorough, professional, and educational."""
+        
+        message = client.chat.completions.create(
+            model="llama-3.1-8b-instant",  # Available and fast
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=1024,
+        )
+        
+        result_text = message.choices[0].message.content.strip()
+        
+        # Extract JSON from response
+        json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+        else:
+            result = json.loads(result_text)
+        
+        logger.info(f'Groq analysis completed: {result.get("pest_name")}')
+        return result
+    
+    except Exception as e:
+        logger.error(f'Groq error: {str(e)}')
+        logger.error(f'Error type: {type(e).__name__}', exc_info=True)
+        return {
+            'pest_detected': False,
+            'pest_name': 'Error',
+            'confidence': 0,
+            'severity': 'low',
+            'affected_area': 0,
+            'explanation': f'Error: {str(e)}',
+            'identification_details': 'Error occurred',
+            'immediate_action': 'Please try again',
+            'treatment': f'Error: {str(e)}',
+            'organic_treatment': '',
+            'prevention': '',
+            'disease_cycle': '',
+            'environmental_factors': '',
+            'error': f'Groq API error: {str(e)}'
         }
 
 
@@ -1534,9 +1653,9 @@ def pest_upload(request):
                 farm = Farm.objects.create(
                     owner=request.user,
                     name='My Farm',
-                    location='Default Location',
-                    size_hectares=0,
-                    soil_type='loamy'
+                    address='Default Location',
+                    total_area_hectares=0,
+                    farm_type='crop'
                 )
                 messages.info(request, 'Created a default farm for you. Update your farm details in settings.')
             
@@ -1575,6 +1694,7 @@ def pest_upload(request):
                 field=field,
                 image=image_file,
                 ai_diagnosis=result.get('pest_name', 'Analysis Complete'),
+                analysis_description=result.get('explanation', ''),
                 confidence=Decimal(str(result.get('confidence', 0))),
                 severity=result.get('severity', 'low'),
                 affected_area_percentage=Decimal(str(result.get('affected_area', 0))),
@@ -1584,15 +1704,30 @@ def pest_upload(request):
                 status='pending' if result.get('pest_detected') else 'healthy'
             )
             
-            # Create notification for pest detection
+            # Create notification for farmer about pest detection
             if result.get('pest_detected'):
                 Notification.objects.create(
                     user=request.user,
                     notification_type='alert',
                     title=f'Pest Detected: {result.get("pest_name")}',
-                    message=f'A {result.get("severity", "unknown")} severity {result.get("pest_name")} was detected in your crop with {result.get("confidence")}% confidence.',
+                    message=f'A {result.get("severity", "unknown")} severity {result.get("pest_name")} was detected in your crop with {result.get("confidence")}% confidence. An agronomist will review this soon.',
                     link=f'/pest-detection/{report.id}/'
                 )
+                
+                # Send notification to assigned agronomists for VERIFICATION
+                assigned_agronomists = User.objects.filter(
+                    user_type='agronomist',
+                    assigned_farms=farm
+                )
+                
+                for agronomist in assigned_agronomists:
+                    Notification.objects.create(
+                        user=agronomist,
+                        notification_type='alert',
+                        title=f'Pest Detection Review Needed - {result.get("pest_name")}',
+                        message=f'Farmer {request.user.get_full_name()} submitted a pest detection report from {farm.name}.\n\nDetected Issue: {result.get("pest_name")}\nSeverity: {result.get("severity", "unknown")}\nAI Confidence: {result.get("confidence")}%\n\nPlease review and verify this diagnosis.',
+                        link=f'/pest-verification/{report.id}/'
+                    )
             else:
                 Notification.objects.create(
                     user=request.user,
@@ -1725,6 +1860,104 @@ def weather_forecast(request):
 def weather_alerts(request):
     """Weather alerts for user's farms"""
     farms = Farm.objects.filter(owner=request.user)
+
+
+@login_required
+def api_weather_forecast_live(request, farm_id):
+    """
+    API endpoint for real-time weather forecast using Open-Meteo (FREE API)
+    No API key required - works on Render free tier!
+    """
+    from core.services.weather import weather_service
+    import json
+    from django.http import JsonResponse
+    
+    try:
+        farm = get_object_or_404(Farm, id=farm_id, owner=request.user)
+        
+        if not farm.location_lat or not farm.location_lng:
+            return JsonResponse({
+                "error": "Farm location not set",
+                "status": "error"
+            }, status=400)
+        
+        # Get agricultural forecast using Open-Meteo (FREE)
+        forecast = weather_service.get_agricultural_forecast(
+            float(farm.location_lat), 
+            float(farm.location_lng)
+        )
+        
+        return JsonResponse(forecast)
+        
+    except Farm.DoesNotExist:
+        return JsonResponse({
+            "error": "Farm not found",
+            "status": "error"
+        }, status=404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Weather API error: {str(e)}")
+        
+        return JsonResponse({
+            "error": str(e),
+            "status": "error",
+            "message": "Failed to fetch weather forecast"
+        }, status=500)
+
+
+@login_required
+def api_weather_agricultural(request, farm_id):
+    """
+    API endpoint for agricultural indicators (GDD, THI, frost risk, pest risk)
+    Uses Open-Meteo free API - perfect for decision support
+    """
+    from core.services.weather import weather_service
+    from django.http import JsonResponse
+    
+    try:
+        farm = get_object_or_404(Farm, id=farm_id, owner=request.user)
+        
+        if not farm.location_lat or not farm.location_lng:
+            return JsonResponse({
+                "error": "Farm location not set",
+                "message": "Please update your farm's GPS coordinates"
+            }, status=400)
+        
+        # Get detailed agricultural indicators
+        ag_data = weather_service.get_agricultural_forecast(
+            float(farm.location_lat),
+            float(farm.location_lng)
+        )
+        
+        if 'error' in ag_data:
+            return JsonResponse(ag_data, status=500)
+        
+        return JsonResponse({
+            "status": "success",
+            "farm": farm.name,
+            "location": {
+                "latitude": float(farm.location_lat),
+                "longitude": float(farm.location_lng)
+            },
+            "indicators": ag_data.get('forecast', []),
+            "alerts": ag_data.get('alerts', []),
+            "generated_at": str(datetime.now())
+        })
+        
+    except Farm.DoesNotExist:
+        return JsonResponse({
+            "error": "Farm not found"
+        }, status=404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Agricultural API error: {str(e)}")
+        
+        return JsonResponse({
+            "error": "Failed to fetch agricultural indicators",
+            "message": str(e)
+        }, status=500)
     alerts = WeatherAlert.objects.filter(farm__in=farms, is_read=False).order_by('-created_at')
     return render(request, 'weather/alerts.html', {'alerts': alerts})
 
@@ -2333,3 +2566,863 @@ def mark_all_notifications_read(request):
         return JsonResponse({'status': 'success'})
     
     return redirect('core:notification_list')
+
+
+# ============================================================
+# FEATURE 10: FARMER NETWORK & KNOWLEDGE SHARING
+# ============================================================
+
+@login_required
+def forum_list(request):
+    """List all discussion forums"""
+    forums = DiscussionForum.objects.filter(is_active=True)
+    
+    # Calculate statistics
+    total_forums = forums.count()
+    total_members = sum(f.member_count for f in forums)
+    total_threads = sum(f.post_count for f in forums)
+    total_posts = ForumThread.objects.filter(forum__is_active=True).count()
+    
+    context = {
+        'forums': forums,
+        'total_forums': total_forums,
+        'total_members': total_members,
+        'total_threads': total_threads,
+        'total_posts': total_posts,
+    }
+    return render(request, 'community/forums.html', context)
+
+
+@login_required
+def forum_create(request):
+    """Create new discussion forum (admin only)"""
+    if not request.user.is_staff:
+        return redirect('core:forum_list')
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        category = request.POST.get('category')
+        forum = DiscussionForum.objects.create(title=title, description=description, category=category)
+        return redirect('core:forum_detail', pk=forum.id)
+    return render(request, 'community/forum_form.html')
+
+
+@login_required
+def forum_detail(request, pk):
+    """View forum details and threads"""
+    forum = get_object_or_404(DiscussionForum, pk=pk)
+    threads = forum.threads.all().order_by('-is_pinned', '-created_at')
+    context = {'forum': forum, 'threads': threads}
+    return render(request, 'community/forum_detail.html', context)
+
+
+@login_required
+def forum_threads(request, forum_id):
+    """List forum threads"""
+    forum = get_object_or_404(DiscussionForum, pk=forum_id)
+    threads = forum.threads.all()
+    context = {'forum': forum, 'threads': threads}
+    return render(request, 'community/forum_threads.html', context)
+
+
+@login_required
+def thread_create(request, forum_id):
+    """Create new forum thread"""
+    forum = get_object_or_404(DiscussionForum, pk=forum_id)
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        content = request.POST.get('content')
+        thread = ForumThread.objects.create(forum=forum, author=request.user, title=title, content=content)
+        return redirect('core:thread_detail', pk=thread.id)
+    return render(request, 'community/thread_form.html', {'forum': forum})
+
+
+@login_required
+def thread_detail(request, pk):
+    """View thread and replies"""
+    thread = get_object_or_404(ForumThread, pk=pk)
+    replies = thread.replies.all()
+    thread.view_count += 1
+    thread.save()
+    context = {'thread': thread, 'replies': replies}
+    return render(request, 'community/thread_detail.html', context)
+
+
+@login_required
+def reply_create(request, thread_id):
+    """Add reply to thread"""
+    thread = get_object_or_404(ForumThread, pk=thread_id)
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        reply = ForumReply.objects.create(thread=thread, author=request.user, content=content)
+        thread.reply_count += 1
+        thread.save()
+        return redirect('core:thread_detail', pk=thread.id)
+    return render(request, 'community/reply_form.html', {'thread': thread})
+
+
+@login_required
+def group_buying_list(request):
+    """List group buying initiatives"""
+    initiatives = GroupBuyingInitiative.objects.all().order_by('-start_date')
+    context = {'initiatives': initiatives}
+    return render(request, 'community/group_buying_list.html', context)
+
+
+@login_required
+def group_buying_create(request):
+    """Create new group buying initiative"""
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        product_type = request.POST.get('product_type')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        initiative = GroupBuyingInitiative.objects.create(
+            title=title, description=description, product_type=product_type,
+            start_date=start_date, end_date=end_date, organizer=request.user.username,
+            organizer_contact=request.user.email, status='open',
+            minimum_order_quantity=1, quantity_unit='unit',
+            unit_price_with_group=0, unit_price_without_group=0, discount_percent=0
+        )
+        return redirect('core:group_buying_detail', pk=initiative.id)
+    return render(request, 'community/group_buying_form.html')
+
+
+@login_required
+def group_buying_detail(request, pk):
+    """View group buying initiative details"""
+    initiative = get_object_or_404(GroupBuyingInitiative, pk=pk)
+    participants = initiative.participants.all()
+    context = {'initiative': initiative, 'participants': participants}
+    return render(request, 'community/group_buying_detail.html', context)
+
+
+@login_required
+def group_buying_join(request, initiative_id):
+    """Join group buying initiative"""
+    initiative = get_object_or_404(GroupBuyingInitiative, pk=initiative_id)
+    if request.method == 'POST':
+        quantity = Decimal(request.POST.get('quantity', 1))
+        participant, created = GroupBuyingParticipant.objects.get_or_create(
+            initiative=initiative, farmer=request.user, defaults={'quantity_pledged': quantity}
+        )
+        if not created:
+            participant.quantity_pledged = quantity
+            participant.save()
+        initiative.farmers_joined += 1
+        initiative.total_quantity_pledged += quantity
+        initiative.save()
+        messages.success(request, 'Successfully joined group buying initiative!')
+        return redirect('core:group_buying_detail', pk=initiative.id)
+    return render(request, 'community/group_buying_join.html', {'initiative': initiative})
+
+
+# ============================================================
+# FEATURE 11: CARBON FOOTPRINT TRACKER
+# ============================================================
+
+@login_required
+def carbon_tracker(request):
+    """View carbon footprint tracker dashboard"""
+    farms = request.user.farms.all()
+    records = EmissionRecord.objects.filter(farm__in=farms)
+    sources = EmissionSource.objects.filter(farm__in=farms)
+    context = {'farms': farms, 'records': records, 'sources': sources}
+    return render(request, 'carbon/tracker.html', context)
+
+
+@login_required
+def emission_record_create(request):
+    """Create emission record"""
+    farms = request.user.farms.all()
+    if request.method == 'POST':
+        farm_id = request.POST.get('farm')
+        source_id = request.POST.get('source')
+        quantity = request.POST.get('quantity')
+        description = request.POST.get('description', '')
+        
+        farm = get_object_or_404(Farm, pk=farm_id, owner=request.user)
+        source = get_object_or_404(EmissionSource, pk=source_id, farm=farm)
+        
+        try:
+            quantity_decimal = Decimal(quantity)
+        except:
+            messages.error(request, 'Invalid quantity entered.')
+            return redirect('core:emission_record_create')
+        
+        calculations_emissions = quantity_decimal * source.emission_factor
+        EmissionRecord.objects.create(
+            farm=farm, 
+            source=source, 
+            record_date=timezone.now().date(),
+            quantity_used=quantity_decimal, 
+            calculated_emissions_kg_co2e=calculations_emissions,
+            description=description
+        )
+        messages.success(request, f'Emission record added successfully! Recorded {calculations_emissions:.2f} kg CO₂e emissions.')
+        return redirect('core:carbon_tracker')
+    
+    context = {
+        'farms': farms, 
+        'sources': EmissionSource.objects.filter(farm__in=farms).order_by('source_type', 'name')
+    }
+    return render(request, 'carbon/emission_record_form.html', context)
+
+
+@login_required
+def carbon_report(request):
+    """View carbon footprint reports"""
+    from datetime import datetime
+    
+    farms = request.user.farms.all()
+    reports = CarbonFootprintReport.objects.filter(farm__in=farms)
+    
+    # Generate list of available years (from 2020 to current year)
+    current_year = datetime.now().year
+    available_years = list(range(2020, current_year + 1))[::-1]  # Reverse to show newest first
+    
+    # Get report for selected period
+    period = request.GET.get('period', 'monthly')
+    year = request.GET.get('year', current_year)
+    
+    report = None
+    if period and year:
+        try:
+            year = int(year)
+            if period == 'monthly':
+                # For monthly, get the latest month of that year
+                report = reports.filter(year=year, report_period='monthly').order_by('-month').first()
+            elif period == 'yearly':
+                report = reports.filter(year=year, report_period='yearly').first()
+        except (ValueError, TypeError):
+            pass
+    
+    context = {
+        'farms': farms, 
+        'reports': reports,
+        'available_years': available_years,
+        'report': report,
+        'selected_period': period,
+        'selected_year': year
+    }
+    return render(request, 'carbon/report.html', context)
+
+
+@login_required
+def carbon_report_detail(request, pk):
+    """View detailed carbon report"""
+    report = get_object_or_404(CarbonFootprintReport, pk=pk)
+    if report.farm.owner != request.user:
+        return redirect('core:carbon_report')
+    context = {'report': report}
+    return render(request, 'carbon/report_detail.html', context)
+
+
+@login_required
+def emission_source_create(request):
+    """Create emission source for farm"""
+    farms = request.user.farms.all()
+    if request.method == 'POST':
+        farm_id = request.POST.get('farm')
+        farm = get_object_or_404(Farm, pk=farm_id, owner=request.user)
+        source_type = request.POST.get('source_type')
+        name = request.POST.get('name')
+        emission_factor = Decimal(request.POST.get('emission_factor', 0))
+        EmissionSource.objects.create(
+            farm=farm,
+            source_type=source_type,
+            name=name,
+            emission_factor=emission_factor,
+            unit=request.POST.get('unit', 'kg')
+        )
+        messages.success(request, 'Emission source added successfully!')
+        return redirect('core:carbon_tracker')
+    context = {'farms': farms}
+    return render(request, 'carbon/emission_source_form.html', context)
+
+
+@login_required
+def sequestration_create(request):
+    """Create carbon sequestration activity"""
+    farms = request.user.farms.all()
+    if request.method == 'POST':
+        farm_id = request.POST.get('farm')
+        activity_type = request.POST.get('activity_type')
+        name = request.POST.get('name')
+        farm = get_object_or_404(Farm, pk=farm_id, owner=request.user)
+        CarbonSequestration.objects.create(
+            farm=farm, activity_type=activity_type, name=name,
+            description=request.POST.get('description', ''),
+            annual_sequestration_kg_co2e=Decimal(request.POST.get('sequestration', 0)),
+            start_date=timezone.now().date()
+        )
+        messages.success(request, 'Sequestration activity added!')
+        return redirect('core:carbon_tracker')
+    context = {'farms': farms}
+    return render(request, 'carbon/sequestration_form.html', context)
+
+
+# ============================================================
+# FEATURE 12: FARM MAPPING & GEOFENCING
+# ============================================================
+
+@login_required
+def farm_map(request):
+    """Interactive farm map view with all assets"""
+    farms = request.user.farms.all()
+    
+    # Get fields with boundaries
+    fields = list(Field.objects.filter(farm__owner=request.user).values(
+        'id', 'name', 'area_hectares', 'soil_type', 'boundary'
+    ))
+    
+    # Get crops with field boundaries
+    crops = list(CropSeason.objects.filter(
+        field__farm__owner=request.user
+    ).select_related('crop_type', 'field').values(
+        'id', 'crop_type__name', 'status', 'planting_date', 'expected_harvest_date'
+    ).annotate(
+        field_boundary=F('field__boundary')
+    ).values('id', 'crop_type__name', 'status', 'planting_date', 'expected_harvest_date', 'field_boundary'))
+    
+    # Rename fields and convert dates to strings for template
+    for crop in crops:
+        crop['crop_name'] = crop.pop('crop_type__name', 'Unknown Crop')
+        # Convert dates to ISO format strings
+        if crop.get('planting_date'):
+            crop['planting_date'] = crop['planting_date'].isoformat()
+        if crop.get('expected_harvest_date'):
+            crop['expected_harvest_date'] = crop['expected_harvest_date'].isoformat()
+    
+    # Get livestock with locations
+    livestock = list(Animal.objects.filter(
+        farm__owner=request.user, status='alive'
+    ).select_related('animal_type', 'farm').values(
+        'id', 'tag_number', 'name', 'animal_type__breed', 'status', 'location', 'farm__location'
+    ))
+    
+    # Rename fields and add farm location as fallback for template
+    for animal in livestock:
+        animal['animal_type'] = animal.pop('animal_type__breed', 'Unknown')
+        # Parse farm location if available
+        farm_location = animal.pop('farm__location', None)
+        if farm_location and isinstance(farm_location, dict):
+            animal['location_lat'] = farm_location.get('lat')
+            animal['location_lng'] = farm_location.get('lng')
+        else:
+            animal['location_lat'] = None
+            animal['location_lng'] = None
+    
+    # Get equipment with locations (use owner's default location)
+    equipment = list(Equipment.objects.filter(
+        owner=request.user, status='available'
+    ).select_related('owner').values(
+        'id', 'name', 'category', 'status', 'daily_rate', 'location', 'owner__location_lat', 'owner__location_lng'
+    ))
+    
+    # Add owner coordinates as fallback
+    for item in equipment:
+        item['location_lat'] = item.pop('owner__location_lat', None)
+        item['location_lng'] = item.pop('owner__location_lng', None)
+    
+    # Get geofences - using correct field name
+    geofences = list(Geofence.objects.filter(farm__owner=request.user).values(
+        'id', 'name', 'geojson_boundary'
+    ))
+    
+    # Rename geojson_boundary to boundary for template compatibility
+    for geofence in geofences:
+        geofence['boundary'] = geofence.pop('geojson_boundary')
+    
+    # Format farms data with location from JSON field
+    farms_data = []
+    for farm in farms:
+        farm_dict = {'id': farm.id, 'name': farm.name}
+        if farm.location and isinstance(farm.location, dict):
+            farm_dict['location_lat'] = farm.location.get('lat')
+            farm_dict['location_lng'] = farm.location.get('lng')
+        else:
+            farm_dict['location_lat'] = None
+            farm_dict['location_lng'] = None
+        farms_data.append(farm_dict)
+    
+    context = {
+        'farms': farms_data,
+        'fields': fields,
+        'crops': crops,
+        'livestock': livestock,
+        'equipment': equipment,
+        'geofences': geofences,
+    }
+    
+    return render(request, 'mapping/farm_map.html', context)
+
+
+@login_required
+def farm_boundary_detail(request, farm_id):
+    """View farm boundary details"""
+    farm = get_object_or_404(Farm, pk=farm_id, owner=request.user)
+    boundary = getattr(farm, 'boundary', None)
+    context = {'farm': farm, 'boundary': boundary}
+    return render(request, 'mapping/boundary_detail.html', context)
+
+
+@login_required
+def geofence_list(request):
+    """List geofences"""
+    farms = request.user.farms.all()
+    geofences = Geofence.objects.filter(farm__in=farms)
+    context = {'geofences': geofences}
+    return render(request, 'mapping/geofence_list.html', context)
+
+
+@login_required
+def geofence_create(request):
+    """Create new geofence"""
+    farms = request.user.farms.all()
+    if request.method == 'POST':
+        farm_id = request.POST.get('farm')
+        name = request.POST.get('name')
+        farm = get_object_or_404(Farm, pk=farm_id, owner=request.user)
+        geofence = Geofence.objects.create(farm=farm, name=name, geojson_boundary={})
+        return redirect('core:geofence_detail', pk=geofence.id)
+    context = {'farms': farms}
+    return render(request, 'mapping/geofence_form.html', context)
+
+
+@login_required
+def geofence_detail(request, pk):
+    """View geofence details"""
+    geofence = get_object_or_404(Geofence, pk=pk)
+    if geofence.farm.owner != request.user:
+        return redirect('core:geofence_list')
+    context = {'geofence': geofence}
+    return render(request, 'mapping/geofence_detail.html', context)
+
+
+@login_required
+def geofence_edit(request, pk):
+    """Edit geofence"""
+    geofence = get_object_or_404(Geofence, pk=pk)
+    if geofence.farm.owner != request.user:
+        return redirect('core:geofence_list')
+    if request.method == 'POST':
+        geofence.name = request.POST.get('name', geofence.name)
+        geofence.enable_exit_alerts = request.POST.get('enable_exit_alerts') == 'on'
+        geofence.save()
+        messages.success(request, 'Geofence updated successfully!')
+        return redirect('core:geofence_detail', pk=geofence.id)
+    context = {'geofence': geofence}
+    return render(request, 'mapping/geofence_form.html', context)
+
+
+@login_required
+def livestock_tracking(request):
+    """View livestock GPS tracking"""
+    farms = request.user.farms.all()
+    livestock = Animal.objects.filter(farm__in=farms)
+    context = {'livestock': livestock}
+    return render(request, 'mapping/livestock_tracking.html', context)
+
+
+@login_required
+def livestock_locations(request, livestock_id):
+    """View livestock location history"""
+    livestock = get_object_or_404(Animal, pk=livestock_id)
+    if livestock.farm.owner != request.user:
+        return redirect('core:livestock_tracking')
+    locations = livestock.location_history.all().order_by('-recorded_at')[:100]
+    context = {'livestock': livestock, 'locations': locations}
+    return render(request, 'mapping/livestock_locations.html', context)
+
+
+@login_required
+def geofence_alerts(request):
+    """View geofence breach alerts"""
+    farms = request.user.farms.all()
+    alerts = GeofenceAlert.objects.filter(geofence__farm__in=farms).order_by('-alert_time')
+    context = {'alerts': alerts}
+    return render(request, 'mapping/geofence_alerts.html', context)
+
+
+@login_required
+def resolve_geofence_alert(request, pk):
+    """Resolve geofence alert"""
+    alert = get_object_or_404(GeofenceAlert, pk=pk)
+    if alert.geofence.farm.owner != request.user:
+        return redirect('core:geofence_alerts')
+    if request.method == 'POST':
+        alert.is_resolved = True
+        alert.resolved_by = request.user
+        alert.resolved_at = timezone.now()
+        alert.resolution_notes = request.POST.get('resolution_notes', '')
+        alert.save()
+        messages.success(request, 'Alert resolved!')
+        return redirect('core:geofence_alerts')
+    return render(request, 'mapping/resolve_alert.html', {'alert': alert})
+
+
+@login_required
+def save_map_drawing(request):
+    """Save drawn polygon/marker to database (AJAX endpoint)"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            draw_type = data.get('type', 'polygon')
+            geometry = json.loads(data.get('geometry', '[]'))
+            
+            if not geometry:
+                return JsonResponse({'success': False, 'error': 'No geometry provided'})
+            
+            # Get the first farm or prompt user to select one
+            farms = request.user.farms.all()
+            if not farms.exists():
+                return JsonResponse({'success': False, 'error': 'No farms found'})
+            
+            farm = farms.first()
+            
+            # Save as Geofence if polygon
+            if draw_type == 'polygon' and geometry:
+                geofence_name = f"Drawing {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+                geom = geometry[0].get('geometry', {})
+                
+                if geom.get('type') == 'Polygon':
+                    coordinates = geom.get('coordinates', [])
+                    geofence = Geofence.objects.create(
+                        farm=farm,
+                        name=geofence_name,
+                        geojson_boundary=json.dumps(coordinates),
+                        enable_exit_alerts=True
+                    )
+                    return JsonResponse({
+                        'success': True, 
+                        'message': f'Geofence "{geofence_name}" created successfully',
+                        'geofence_id': geofence.id
+                    })
+            
+            return JsonResponse({'success': False, 'error': 'Unsupported drawing type'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+
+
+@login_required
+def set_geofence_alert(request, id):
+    """Set alert for geofence (AJAX endpoint)"""
+    if request.method == 'POST':
+        try:
+            geofence = get_object_or_404(Geofence, pk=id, farm__owner=request.user)
+            geofence.enable_exit_alerts = True
+            geofence.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Exit alert enabled for "{geofence.name}"'
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=400)
+
+
+# ============================================================
+# FEATURE 13: OFFLINE SYNC & DATA MANAGEMENT
+# ============================================================
+
+@login_required
+def sync_dashboard(request):
+    """Sync management dashboard"""
+    sync_queue = OfflineSyncQueue.objects.filter(user=request.user).order_by('-created_at')
+    conflicts = SyncConflict.objects.filter(sync_entry__user=request.user).order_by('-created_at')
+    
+    # Calculate statistics
+    pending_count = sync_queue.filter(is_synced=False).count()
+    synced_count = sync_queue.filter(is_synced=True).count()
+    conflict_count = conflicts.filter(resolution_status='pending').count()
+    
+    # Get last sync time
+    last_synced = sync_queue.filter(is_synced=True).first()
+    last_sync = last_synced.sync_attempted_at if last_synced else None
+    
+    context = {
+        'sync_queue': sync_queue,
+        'conflicts': conflicts,
+        'pending_count': pending_count,
+        'synced_count': synced_count,
+        'conflict_count': conflict_count,
+        'last_sync': last_sync,
+    }
+    return render(request, 'sync/dashboard.html', context)
+
+
+@login_required
+def sync_queue(request):
+    """View sync queue status"""
+    queue_items = OfflineSyncQueue.objects.filter(user=request.user).order_by('-created_at')
+    unsynced = queue_items.filter(is_synced=False).count()
+    synced = queue_items.filter(is_synced=True).count()
+    context = {
+        'queue_items': queue_items,
+        'unsynced_count': unsynced,
+        'synced_count': synced,
+        'pending_count': unsynced,
+    }
+    return render(request, 'sync/queue.html', context)
+
+
+@login_required
+def sync_conflicts(request):
+    """View and manage sync conflicts"""
+    conflicts = SyncConflict.objects.filter(sync_entry__user=request.user).order_by('-created_at')
+    pending = conflicts.filter(resolution_status='pending').count()
+    context = {
+        'conflicts': conflicts,
+        'pending_count': pending,
+        'resolved_count': conflicts.filter(resolution_status__startswith='resolved').count(),
+    }
+    return render(request, 'sync/conflicts.html', context)
+
+
+@login_required
+def resolve_sync_conflict(request, pk):
+    """Resolve individual sync conflict"""
+    conflict = get_object_or_404(SyncConflict, pk=pk)
+    if conflict.sync_entry.user != request.user:
+        return redirect('core:sync_conflicts')
+    if request.method == 'POST':
+        choice = request.POST.get('resolution_choice')
+        conflict.resolution_status = 'resolved_manual'
+        conflict.resolved_by = request.user
+        conflict.resolved_data = conflict.server_version if choice == 'server' else conflict.local_version
+        conflict.save()
+        messages.success(request, 'Conflict resolved!')
+        return redirect('core:sync_conflicts')
+    context = {'conflict': conflict}
+    return render(request, 'sync/resolve_conflict.html', context)
+
+
+@login_required
+def retry_sync(request, pk):
+    """Retry sync for queue item"""
+    sync_item = get_object_or_404(OfflineSyncQueue, pk=pk)
+    if sync_item.user != request.user:
+        return redirect('core:sync_queue')
+    sync_item.is_synced = False
+    sync_item.sync_error = ''
+    sync_item.sync_attempted_at = None
+    sync_item.save()
+    messages.success(request, 'Sync retry scheduled!')
+    return redirect('core:sync_queue')
+
+
+# ============================================================
+# REMINDERS - FARM ACTIVITY REMINDERS
+# ============================================================
+
+@login_required
+def reminder_list(request):
+    """List all reminders for user's farms"""
+    farms = request.user.farms.all()
+    reminders = Reminder.objects.filter(
+        farm__in=farms
+    ).select_related('farm').order_by('-due_date')
+    
+    # Filter by status
+    status = request.GET.get('status', 'active')
+    if status == 'completed':
+        reminders = reminders.filter(is_completed=True)
+    elif status == 'pending':
+        reminders = reminders.filter(is_completed=False, is_active=True)
+    elif status == 'overdue':
+        reminders = reminders.filter(
+            is_completed=False, 
+            is_active=True,
+            due_date__lt=timezone.now().date()
+        )
+    else:  # 'active'
+        reminders = reminders.filter(is_active=True)
+    
+    # Pagination
+    paginator = Paginator(reminders, 20)
+    page_number = request.GET.get('page')
+    reminders = paginator.get_page(page_number)
+    
+    context = {
+        'reminders': reminders,
+        'status': status,
+        'farms': farms,
+    }
+    return render(request, 'reminders/reminder_list.html', context)
+
+
+@login_required
+def reminder_create(request):
+    """Create a new reminder"""
+    farms = request.user.farms.all()
+    
+    if request.method == 'POST':
+        farm_id = request.POST.get('farm')
+        title = request.POST.get('title')
+        reminder_type = request.POST.get('reminder_type', 'general')
+        due_date = request.POST.get('due_date')
+        is_recurring = request.POST.get('is_recurring') == 'on'
+        description = request.POST.get('description', '')
+        
+        # Validate farm ownership
+        farm = get_object_or_404(Farm, pk=farm_id, owner=request.user)
+        
+        reminder = Reminder.objects.create(
+            farm=farm,
+            user=request.user,
+            title=title,
+            reminder_type=reminder_type,
+            description=description,
+            due_date=due_date,
+            is_recurring=is_recurring,
+        )
+        
+        messages.success(request, f'Reminder "{title}" created successfully!')
+        return redirect('core:reminder_detail', pk=reminder.pk)
+    
+    context = {
+        'farms': farms,
+        'reminder_types': [
+            ('vaccination', '💉 Vaccination'),
+            ('medication', '💊 Medication'),
+            ('breeding', '🧬 Breeding'),
+            ('maintenance', '🔧 Equipment Maintenance'),
+            ('breeding_check', '🐄 Breeding Check'),
+            ('feed_order', '🌾 Feed Order'),
+            ('pasture_rotation', '🌱 Pasture Rotation'),
+            ('inspection', '📋 Farm Inspection'),
+            ('general', '📝 General Task'),
+        ]
+    }
+    return render(request, 'reminders/reminder_form.html', context)
+
+
+@login_required
+def reminder_detail(request, pk):
+    """View reminder details"""
+    reminder = get_object_or_404(Reminder, pk=pk)
+    
+    # Check access
+    if reminder.farm.owner != request.user:
+        return redirect('core:reminder_list')
+    
+    context = {'reminder': reminder}
+    return render(request, 'reminders/reminder_detail.html', context)
+
+
+@login_required
+def reminder_edit(request, pk):
+    """Edit a reminder"""
+    reminder = get_object_or_404(Reminder, pk=pk)
+    
+    # Check access
+    if reminder.farm.owner != request.user:
+        return redirect('core:reminder_list')
+    
+    if request.method == 'POST':
+        reminder.title = request.POST.get('title', reminder.title)
+        reminder.reminder_type = request.POST.get('reminder_type', reminder.reminder_type)
+        reminder.description = request.POST.get('description', reminder.description)
+        reminder.due_date = request.POST.get('due_date', reminder.due_date)
+        reminder.is_recurring = request.POST.get('is_recurring') == 'on'
+        reminder.is_active = request.POST.get('is_active') == 'on'
+        reminder.save()
+        
+        messages.success(request, 'Reminder updated successfully!')
+        return redirect('core:reminder_detail', pk=reminder.pk)
+    
+    context = {
+        'reminder': reminder,
+        'farms': [reminder.farm],
+        'reminder_types': [
+            ('vaccination', '💉 Vaccination'),
+            ('medication', '💊 Medication'),
+            ('breeding', '🧬 Breeding'),
+            ('maintenance', '🔧 Equipment Maintenance'),
+            ('breeding_check', '🐄 Breeding Check'),
+            ('feed_order', '🌾 Feed Order'),
+            ('pasture_rotation', '🌱 Pasture Rotation'),
+            ('inspection', '📋 Farm Inspection'),
+            ('general', '📝 General Task'),
+        ]
+    }
+    return render(request, 'reminders/reminder_form.html', context)
+
+
+@login_required
+def reminder_complete(request, pk):
+    """Mark reminder as completed"""
+    reminder = get_object_or_404(Reminder, pk=pk)
+    
+    # Check access
+    if reminder.farm.owner != request.user:
+        return redirect('core:reminder_list')
+    
+    reminder.is_completed = True
+    reminder.completed_at = timezone.now()
+    reminder.save()
+    
+    messages.success(request, f'Reminder "{reminder.title}" marked as completed!')
+    return redirect('core:reminder_list')
+
+
+@login_required
+def reminder_delete(request, pk):
+    """Delete a reminder"""
+    reminder = get_object_or_404(Reminder, pk=pk)
+    
+    # Check access
+    if reminder.farm.owner != request.user:
+        return redirect('core:reminder_list')
+    
+    title = reminder.title
+    reminder.delete()
+    
+    messages.success(request, f'Reminder "{title}" has been deleted!')
+    return redirect('core:reminder_list')
+
+
+@login_required
+def reminder_dashboard(request):
+    """Dashboard showing upcoming reminders"""
+    farms = request.user.farms.all()
+    today = timezone.now().date()
+    
+    # Get upcoming reminders (next 30 days)
+    upcoming = Reminder.objects.filter(
+        farm__in=farms,
+        is_active=True,
+        is_completed=False,
+        due_date__gte=today,
+        due_date__lte=today + timedelta(days=30)
+    ).order_by('due_date')
+    
+    # Get overdue reminders
+    overdue = Reminder.objects.filter(
+        farm__in=farms,
+        is_active=True,
+        is_completed=False,
+        due_date__lt=today
+    ).order_by('due_date')
+    
+    # Get completed recently
+    completed_recently = Reminder.objects.filter(
+        farm__in=farms,
+        is_completed=True,
+        completed_at__gte=today - timedelta(days=7)
+    ).order_by('-completed_at')[:10]
+    
+    context = {
+        'upcoming': upcoming[:10],
+        'overdue': overdue,
+        'completed_recently': completed_recently,
+        'upcoming_count': upcoming.count(),
+        'overdue_count': overdue.count(),
+    }
+    return render(request, 'reminders/reminder_dashboard.html', context)

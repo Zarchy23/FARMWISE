@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reply to Discussion - FarmWise Forum{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <div class="mb-6">
+            <div class="flex items-center gap-2 text-gray-600 text-sm">
+                <a href="{% url 'core:forum_list' %}" class="text-green-600 hover:text-green-700">Forums</a>
+                <i class="ri-arrow-right-s-line"></i>
+                <a href="{% url 'core:forum_detail' thread.forum.id %}" class="text-green-600 hover:text-green-700">{{ thread.forum.title }}</a>
+                <i class="ri-arrow-right-s-line"></i>
+                <a href="{% url 'core:thread_detail' thread.id %}" class="text-green-600 hover:text-green-700">{{ thread.title|truncatewords:5 }}</a>
+                <i class="ri-arrow-right-s-line"></i>
+                <span>Reply</span>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-2">
+                <i class="ri-reply-line text-green-600"></i> Reply to Discussion
+            </h1>
+            <p class="text-gray-600 mt-2">Share your response with the farming community</p>
+        </div>
+
+        <!-- Original Thread Preview -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8 border-l-4 border-blue-500">
+            <p class="text-sm text-gray-500 font-semibold mb-2">Original Discussion:</p>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">{{ thread.title }}</h3>
+            <p class="text-gray-600 line-clamp-3">{{ thread.content|truncatewords:50 }}</p>
+            <a href="{% url 'core:thread_detail' thread.id %}" class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold mt-3">
+                View Full Discussion <i class="ri-arrow-right-line"></i>
+            </a>
+        </div>
+
+        <!-- Reply Form -->
+        <div class="bg-white rounded-lg shadow-lg p-8 border-t-4 border-green-500">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <!-- Reply Content -->
+                <div>
+                    <label for="content" class="block text-lg font-semibold text-gray-900 mb-2">
+                        <i class="ri-file-text-line text-green-600 mr-2"></i>Your Reply
+                    </label>
+                    <textarea 
+                        id="content" 
+                        name="content" 
+                        placeholder="Share your experience, advice, or thoughts..." 
+                        rows="10"
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors resize-vertical"
+                    ></textarea>
+                    <p class="text-sm text-gray-500 mt-1">Be clear, helpful, and respectful in your response</p>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex gap-4 pt-6">
+                    <button 
+                        type="submit" 
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                        <i class="ri-send-plane-line"></i> Post Reply
+                    </button>
+                    <a 
+                        href="{% url 'core:thread_detail' thread.id %}" 
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                        <i class="ri-close-line"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tips Box -->
+        <div class="mt-8 bg-green-50 border-l-4 border-green-500 p-6 rounded-lg">
+            <h3 class="font-semibold text-green-900 flex items-center gap-2 mb-3">
+                <i class="ri-lightbulb-flash-line"></i> Writing a Helpful Reply
+            </h3>
+            <ul class="text-green-800 text-sm space-y-2">
+                <li>✓ <span class="font-semibold">Be specific:</span> Reference specific parts of the original question</li>
+                <li>✓ <span class="font-semibold">Share evidence:</span> Include data, experience, or sources when possible</li>
+                <li>✓ <span class="font-semibold">Be constructive:</span> Aim to help, not criticize</li>
+                <li>✓ <span class="font-semibold">Keep it relevant:</span> Stay on topic and focused</li>
+                <li>✓ <span class="font-semibold">Proofread:</span> Check for typos and clarity before posting</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

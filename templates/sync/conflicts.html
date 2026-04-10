@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Resolve Sync Conflicts - FarmWise{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .page-header {
+        background: var(--gradient-warning);
+        color: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(245, 87, 108, 0.3);
+    }
+
+    .conflict-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border-top: 4px solid #f5576c;
+        transition: all 0.3s ease;
+    }
+
+    .conflict-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    .conflict-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1.5rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .conflict-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #111;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .conflict-meta {
+        font-size: 0.875rem;
+        color: #6b7280;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .badge.pending {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .badge.resolved {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .badge.auto {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    /* Comparison Section */
+    .comparison {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .comparison-item {
+        background: #f9fafb;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        border: 1px solid #e5e7eb;
+    }
+
+    .comparison-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .comparison-item.local .comparison-label {
+        color: #f5576c;
+    }
+
+    .comparison-item.server .comparison-label {
+        color: #10b981;
+    }
+
+    .comparison-content {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        font-family: 'Monaco', 'Courier', monospace;
+        font-size: 0.875rem;
+        color: #1f2937;
+        max-height: 250px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+    }
+
+    .comparison-content pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    /* Fields Involved */
+    .fields-section {
+        background: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .fields-title {
+        font-weight: 600;
+        color: #78350f;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .field-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .field-badge {
+        background: white;
+        border: 1px solid #f59e0b;
+        color: #f59e0b;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Resolution Options */
+    .resolution-section {
+        background: #f0f9ff;
+        border: 2px solid #3b82f6;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .resolution-title {
+        font-weight: 600;
+        color: #111;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .resolution-options {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .resolution-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 0.75rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .resolution-option:hover {
+        border-color: #3b82f6;
+        background: #f0f9ff;
+    }
+
+    .resolution-option input[type="radio"] {
+        margin-top: 0.25rem;
+    }
+
+    .resolution-label {
+        flex: 1;
+    }
+
+    .resolution-label strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: #111;
+    }
+
+    .resolution-label small {
+        color: #6b7280;
+    }
+
+    .btn {
+        padding: 0.6rem 1.2rem;
+        border-radius: 0.5rem;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .btn-secondary:hover {
+        background: #d1d5db;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+        color: #d1d5db;
+        margin-bottom: 1rem;
+    }
+
+    .empty-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-text {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .comparison { grid-template-columns: 1fr; }
+        .conflict-header { flex-direction: column; }
+        .button-group { flex-direction: column; }
+        .btn { width: 100%; justify-content: center; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1 style="font-size: 2rem; font-weight: bold; margin: 0 0 0.5rem 0;">Sync Conflicts</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 0;">Resolve conflicts between offline and server changes</p>
+</div>
+
+<!-- Conflicts or Empty State -->
+{% if conflicts %}
+    {% for conflict in conflicts %}
+    <div class="conflict-card">
+        <div class="conflict-header">
+            <div>
+                <p class="conflict-title">
+                    <i class="ri-exchange-2-line" style="color: #f5576c;"></i>
+                    {{ conflict.sync_entry.model }} • {{ conflict.sync_entry.get_operation_display }}
+                </p>
+                <div class="conflict-meta">
+                    <div class="meta-item">
+                        <i class="ri-time-line"></i>
+                        <span>{{ conflict.created_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="ri-database-line"></i>
+                        <span>ID: {{ conflict.sync_entry.object_id }}</span>
+                    </div>
+                </div>
+            </div>
+            <span class="badge {% if conflict.resolution_status == 'pending' %}pending{% elif conflict.resolution_status == 'resolved_auto' %}auto{% else %}resolved{% endif %}">
+                {% if conflict.resolution_status == 'pending' %}
+                    <i class="ri-alert-fill"></i> Pending
+                {% elif conflict.resolution_status == 'resolved_auto' %}
+                    <i class="ri-refresh-line"></i> Auto-Resolved
+                {% else %}
+                    <i class="ri-check-double-line"></i> Resolved
+                {% endif %}
+            </span>
+        </div>
+
+        <!-- Conflicting Fields -->
+        <div class="fields-section">
+            <div class="fields-title">
+                <i class="ri-alert-line"></i>
+                Conflicting Fields
+            </div>
+            <div class="field-badges">
+                {% if conflict.conflicting_fields %}
+                    {% for field in conflict.conflicting_fields %}
+                    <span class="field-badge">{{ field }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="field-badge">All Fields</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Version Comparison -->
+        <div class="comparison">
+            <div class="comparison-item local">
+                <div class="comparison-label">
+                    <i class="ri-user-line"></i> Your Changes
+                </div>
+                <div class="comparison-content">
+                    {% if conflict.local_version %}
+                        <pre>{{ conflict.local_version|safe }}</pre>
+                    {% else %}
+                        <pre><em>No local changes recorded</em></pre>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="comparison-item server">
+                <div class="comparison-label">
+                    <i class="ri-server-line"></i> Server Version
+                </div>
+                <div class="comparison-content">
+                    {% if conflict.server_version %}
+                        <pre>{{ conflict.server_version|safe }}</pre>
+                    {% else %}
+                        <pre><em>No server version available</em></pre>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Resolution Options -->
+        {% if conflict.resolution_status == 'pending' %}
+        <form method="post" action="{% url 'core:resolve_sync_conflict' conflict.id %}">
+            {% csrf_token %}
+
+            <div class="resolution-section">
+                <div class="resolution-title">
+                    <i class="ri-settings-line"></i>
+                    Choose Resolution Strategy
+                </div>
+
+                <div class="resolution-options">
+                    <!-- Keep Local -->
+                    <label class="resolution-option">
+                        <input type="radio" name="resolution_choice" value="local" checked>
+                        <div class="resolution-label">
+                            <strong>Keep My Changes</strong>
+                            <small>Use your local version. Your offline changes will be preserved and synced.</small>
+                        </div>
+                    </label>
+
+                    <!-- Use Server -->
+                    <label class="resolution-option">
+                        <input type="radio" name="resolution_choice" value="server">
+                        <div class="resolution-label">
+                            <strong>Use Server Version</strong>
+                            <small>Accept the server's latest version. Your local changes will be discarded.</small>
+                        </div>
+                    </label>
+
+                    <!-- Merge -->
+                    <label class="resolution-option">
+                        <input type="radio" name="resolution_choice" value="merge">
+                        <div class="resolution-label">
+                            <strong>Merge Changes</strong>
+                            <small>Combine both versions (if possible). Fields without conflicts will be merged.</small>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <a href="{% url 'core:sync_conflicts' %}" class="btn btn-secondary">
+                    <i class="ri-arrow-left-line"></i> Back
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="ri-check-double-line"></i> Resolve Conflict
+                </button>
+            </div>
+        </form>
+        {% else %}
+        <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: #078a4a; font-weight: 500;">
+                <i class="ri-check-double-line"></i>
+                This conflict has been resolved.
+            </div>
+            <small style="color: #047857;">
+                Resolution by: {{ conflict.resolved_by.get_full_name|default:conflict.resolved_by.username }}
+            </small>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state">
+        <div class="empty-icon">
+            <i class="ri-check-double-fill"></i>
+        </div>
+        <div class="empty-title">No conflicts found</div>
+        <p class="empty-text">All your offline changes have been successfully synchronized without conflicts!</p>
+        <a href="{% url 'core:sync_dashboard' %}" class="btn btn-primary">
+            <i class="ri-arrow-left-line"></i> Back to Sync Dashboard
+        </a>
+    </div>
+{% endif %}
+
+{% endblock %}
+

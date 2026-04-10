@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ farm.name }} - Farm Boundary - FarmWise{% endblock %}
+{% block page_title %}{{ farm.name }} - Farm Boundary{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+    .boundary-container {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 1.5rem;
+        height: 75vh;
+    }
+    
+    .boundary-panel {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    
+    .map-panel {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    #boundary-map {
+        height: 100%;
+        width: 100%;
+    }
+    
+    .farm-header {
+        background: linear-gradient(135deg, #16a34a, #15803d);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+    }
+    
+    .farm-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .info-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .info-section-title {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        font-size: 0.95rem;
+    }
+    
+    .info-label {
+        color: #6b7280;
+    }
+    
+    .info-value {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    
+    .stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+    
+    .stat-box {
+        background: #f9fafb;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 3px solid #16a34a;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #16a34a;
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid #f3f4f6;
+    }
+    
+    .btn {
+        flex: 1;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+    
+    .btn-primary {
+        background: #16a34a;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #15803d;
+    }
+    
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+    
+    .btn-secondary:hover {
+        background: #d1d5db;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="boundary-container">
+    <!-- Boundary Info Panel -->
+    <div class="boundary-panel">
+        <div class="farm-header">
+            <div class="farm-title">{{ farm.name }}</div>
+            <div style="opacity: 0.9;">Farm Boundary Information</div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-section-title">Location</div>
+            <div class="info-row">
+                <span class="info-label">Latitude:</span>
+                <span class="info-value">{{ farm.location_lat|default:"N/A"|floatformat:4 }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Longitude:</span>
+                <span class="info-value">{{ farm.location_lng|default:"N/A"|floatformat:4 }}</span>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-section-title">Statistics</div>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-value">{{ farm.fields.count }}</div>
+                    <div class="stat-label">Fields</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{{ farm.animals.count }}</div>
+                    <div class="stat-label">Animals</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-section-title">About</div>
+            <div style="font-size: 0.95rem; color: #6b7280; line-height: 1.6;">
+                {% if farm.description %}
+                    {{ farm.description }}
+                {% else %}
+                    <em>No description available</em>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="btn-group">
+            <a href="{% url 'core:farm_detail' farm.pk %}" class="btn btn-primary">View Farm</a>
+            <a href="{% url 'core:farm_map' %}" class="btn btn-secondary">Back to Map</a>
+        </div>
+    </div>
+    
+    <!-- Map Panel -->
+    <div class="map-panel">
+        <div id="boundary-map"></div>
+    </div>
+</div>
+
+<script>
+    let map;
+    const farmBoundary = {{ farm.boundary|safe|default:'null' }};
+    const farmLat = {{ farm.location_lat|default:-1.286389 }};
+    const farmLng = {{ farm.location_lng|default:36.817223 }};
+    
+    function initMap() {
+        map = L.map('boundary-map').setView([farmLat, farmLng], 13);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OSM &copy; CARTO',
+            maxZoom: 20
+        }).addTo(map);
+        
+        // Mark farm center
+        L.marker([farmLat, farmLng], {
+            title: '{{ farm.name }}'
+        }).addTo(map).bindPopup('📍 {{ farm.name }}');
+        
+        // Draw boundary if available
+        if (farmBoundary) {
+            const polygon = L.polygon(farmBoundary, {
+                color: '#16a34a',
+                weight: 3,
+                fillColor: '#16a34a',
+                fillOpacity: 0.2
+            }).addTo(map);
+            
+            map.fitBounds(polygon.getBounds());
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reminders Dashboard - FarmWise{% endblock %}
+{% block page_title %}Reminders Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Reminders Dashboard</h1>
+        <p class="text-gray-600">Quick overview of your farm activity reminders</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <!-- Upcoming Count -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-600">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm font-semibold uppercase mb-1">Upcoming (Next 30 Days)</p>
+                    <p class="text-3xl font-bold text-blue-600">{{ upcoming_count }}</p>
+                </div>
+                <div class="text-4xl text-blue-200">📅</div>
+            </div>
+        </div>
+
+        <!-- Overdue Count -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-600">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm font-semibold uppercase mb-1">Overdue</p>
+                    <p class="text-3xl font-bold text-red-600">{{ overdue_count }}</p>
+                </div>
+                <div class="text-4xl text-red-200">⚠️</div>
+            </div>
+        </div>
+
+        <!-- Create New -->
+        <div class="bg-green-50 rounded-lg shadow-md p-6 border-l-4 border-green-600">
+            <p class="text-gray-500 text-sm font-semibold uppercase mb-3">Quick Actions</p>
+            <a href="{% url 'core:reminder_create' %}" class="inline-block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition">
+                <i class="ri-add-line"></i> New Reminder
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Overdue Reminders -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-bold text-red-600 mb-4">
+                <i class="ri-alert-line"></i> Overdue Reminders
+            </h2>
+            {% if overdue %}
+            <div class="space-y-3">
+                {% for reminder in overdue %}
+                <div class="bg-red-50 border border-red-200 p-4 rounded-lg hover:shadow-md transition">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold text-gray-800">{{ reminder.title }}</h3>
+                        <span class="text-xs bg-red-600 text-white px-2 py-1 rounded">Overdue</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">
+                        <i class="ri-calendar-line"></i> Due: <strong>{{ reminder.due_date|date:"M d, Y" }}</strong>
+                    </p>
+                    <p class="text-xs text-gray-500 mb-3">{{ reminder.farm.name }}</p>
+                    <div class="flex gap-2">
+                        <a href="{% url 'core:reminder_detail' reminder.pk %}" class="flex-1 text-center px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200">View</a>
+                        <a href="{% url 'core:reminder_complete' reminder.pk %}" class="flex-1 text-center px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200" onclick="return confirm('Mark as completed?')">✓ Done</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="ri-checkbox-circle-line text-4xl text-gray-300 mb-2"></i>
+                <p class="text-gray-500">No overdue reminders - Great job! 🎉</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Upcoming Reminders -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-bold text-blue-600 mb-4">
+                <i class="ri-calendar-schedule-line"></i> Upcoming (Next 30 Days)
+            </h2>
+            {% if upcoming %}
+            <div class="space-y-3">
+                {% for reminder in upcoming %}
+                <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg hover:shadow-md transition">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold text-gray-800">{{ reminder.title }}</h3>
+                        <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded">Upcoming</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">
+                        <i class="ri-calendar-line"></i> Due: <strong>{{ reminder.due_date|date:"M d, Y" }}</strong>
+                    </p>
+                    <p class="text-xs text-gray-500 mb-3">{{ reminder.farm.name }}</p>
+                    <div class="flex gap-2">
+                        <a href="{% url 'core:reminder_detail' reminder.pk %}" class="flex-1 text-center px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200">View</a>
+                        <a href="{% url 'core:reminder_edit' reminder.pk %}" class="flex-1 text-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200">Edit</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="ri-checkbox-circle-line text-4xl text-gray-300 mb-2"></i>
+                <p class="text-gray-500">No upcoming reminders</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recently Completed -->
+    {% if completed_recently %}
+    <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+        <h2 class="text-xl font-bold text-green-600 mb-4">
+            <i class="ri-checkbox-circle-fill-line"></i> Recently Completed (Last 7 Days)
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {% for reminder in completed_recently %}
+            <div class="bg-green-50 border border-green-200 p-4 rounded-lg text-center">
+                <p class="text-2xl mb-2">✅</p>
+                <h3 class="font-semibold text-gray-800 text-sm mb-2">{{ reminder.title }}</h3>
+                <p class="text-xs text-gray-600">Completed {{ reminder.completed_at|timesince }} ago</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Links -->
+    <div class="mt-8 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg shadow-md p-6 border border-green-200">
+        <h3 class="font-semibold text-gray-800 mb-4">
+            <i class="ri-links-line"></i> Quick Links
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a href="{% url 'core:reminder_list' %}?status=pending" class="p-3 bg-white rounded-lg text-center hover:shadow-md transition border border-gray-200">
+                <i class="ri-time-line text-2xl text-blue-600 mb-1"></i>
+                <p class="text-sm font-medium">Pending</p>
+            </a>
+            <a href="{% url 'core:reminder_list' %}?status=overdue" class="p-3 bg-white rounded-lg text-center hover:shadow-md transition border border-gray-200">
+                <i class="ri-alert-line text-2xl text-red-600 mb-1"></i>
+                <p class="text-sm font-medium">Overdue</p>
+            </a>
+            <a href="{% url 'core:reminder_list' %}?status=completed" class="p-3 bg-white rounded-lg text-center hover:shadow-md transition border border-gray-200">
+                <i class="ri-checkbox-circle-line text-2xl text-green-600 mb-1"></i>
+                <p class="text-sm font-medium">Completed</p>
+            </a>
+            <a href="{% url 'core:reminder_create' %}" class="p-3 bg-white rounded-lg text-center hover:shadow-md transition border border-gray-200">
+                <i class="ri-add-circle-line text-2xl text-purple-600 mb-1"></i>
+                <p class="text-sm font-medium">Create New</p>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,598 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Livestock Tracking - FarmWise{% endblock %}
+{% block page_title %}Real-Time Livestock Tracking{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<style>
+    #tracking-map {
+        height: 70vh;
+        width: 100%;
+        border-radius: 1rem;
+        z-index: 1;
+    }
+    
+    .tracking-container {
+        display: grid;
+        grid-template-columns: 1fr 3fr;
+        gap: 1rem;
+        height: 75vh;
+    }
+    
+    .livestock-sidebar {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .sidebar-header {
+        background: linear-gradient(135deg, #16a34a, #15803d);
+        color: white;
+        padding: 1rem;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .sidebar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+    
+    .search-box {
+        margin-bottom: 1rem;
+    }
+    
+    .search-box input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .livestock-item {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background: #f9fafb;
+        border-left: 4px solid #16a34a;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .livestock-item:hover {
+        background: #f3f4f6;
+        transform: translateX(4px);
+    }
+    
+    .livestock-item.active {
+        background: #dcfce7;
+        border-left-color: #15803d;
+        font-weight: 600;
+    }
+    
+    .livestock-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #1f2937;
+    }
+    
+    .livestock-info {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 0.25rem;
+    }
+    
+    .status-alive { background: #dcfce7; color: #166534; }
+    .status-sick { background: #fef3c7; color: #b45309; }
+    .status-injured { background: #fee2e2; color: #b91c1c; }
+    .status-missing { background: #e0e7ff; color: #3730a3; }
+    
+    .map-container {
+        position: relative;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .map-overlay {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 0.75rem;
+    }
+    
+    .legend {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 1000;
+        background: white;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        font-size: 0.75rem;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .legend-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+    
+    .icon-alive { background: #dcfce7; color: #16a34a; }
+    .icon-sick { background: #fef3c7; color: #d97706; }
+    .icon-injured { background: #fee2e2; color: #dc2626; }
+    .icon-missing { background: #e0e7ff; color: #4f46e5; }
+    
+    .info-panel {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1000;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        width: 320px;
+        max-height: 80vh;
+        overflow-y: auto;
+        display: none;
+    }
+    
+    .info-panel.active {
+        display: block;
+    }
+    
+    .info-header {
+        background: linear-gradient(135deg, #16a34a, #15803d);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem 0.5rem 0 0;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .info-body {
+        padding: 1rem;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #6b7280;
+        font-size: 0.85rem;
+    }
+    
+    .info-value {
+        color: #1f2937;
+        font-size: 0.85rem;
+    }
+    
+    .close-info {
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: white;
+    }
+    
+    .controls {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .btn-small {
+        padding: 0.5rem 1rem;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+    
+    .btn-small:hover {
+        background: #e5e7eb;
+    }
+    
+    .btn-small.active {
+        background: #16a34a;
+        color: white;
+        border-color: #15803d;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .pulse {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes ping {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+    }
+    
+    .ping {
+        animation: ping 2s infinite;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tracking-container">
+    <!-- Livestock Sidebar -->
+    <div class="livestock-sidebar">
+        <div class="sidebar-header">
+            <span><i class="ri-cow-line mr-2"></i>Livestock</span>
+            <span class="text-sm">({{ livestock.count }})</span>
+        </div>
+        <div class="sidebar-content">
+            <div class="search-box">
+                <input type="text" id="livestockSearch" placeholder="🔍 Search by tag/name..." autocomplete="off">
+            </div>
+            <div id="livestockList">
+                <!-- Livestock items populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Map Container -->
+    <div class="map-container">
+        <!-- Info Panel (appears on selection) -->
+        <div class="info-panel" id="infoPanel">
+            <div class="info-header">
+                <span id="selectedName">Select an animal</span>
+                <span class="close-info" onclick="closeInfoPanel()">✕</span>
+            </div>
+            <div class="info-body">
+                <div class="info-row">
+                    <span class="info-label">Tag/ID:</span>
+                    <span class="info-value" id="infoTag">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Type:</span>
+                    <span class="info-value" id="infoType">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status:</span>
+                    <span class="info-value" id="infoStatus">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Location:</span>
+                    <span class="info-value" id="infoLocation">—</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Updated:</span>
+                    <span class="info-value" id="infoUpdated">—</span>
+                </div>
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f3f4f6;">
+                    <a id="infoDetailLink" href="#" class="bg-green-600 text-white px-3 py-1 rounded text-sm inline-block">View Details →</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map Controls -->
+        <div class="map-overlay">
+            <div class="controls">
+                <button onclick="filterByStatus('all')" class="btn-small active" id="filterAll">All Animals</button>
+                <button onclick="filterByStatus('alive')" class="btn-small" id="filterAlive">💚 Healthy</button>
+                <button onclick="filterByStatus('sick')" class="btn-small" id="filterSick">⚠️ Sick</button>
+            </div>
+            <div class="controls">
+                <button onclick="zoomToAll()" class="btn-small">Zoom to All</button>
+                <button onclick="toggleTracking()" class="btn-small" id="trackingBtn">🔄 Refresh</button>
+            </div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="legend">
+            <div style="font-weight: 600; margin-bottom: 0.5rem;">Legend</div>
+            <div class="legend-item">
+                <div class="legend-icon icon-alive">📍</div>
+                <span>Healthy Animal</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon icon-sick">⚠️</div>
+                <span>Sick/Alert</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon icon-injured">🚨</div>
+                <span>Injured</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon icon-missing">❓</div>
+                <span>Missing/Unknown</span>
+            </div>
+        </div>
+        
+        <!-- Map -->
+        <div id="tracking-map"></div>
+    </div>
+</div>
+
+<script>
+    // Global state
+    let map;
+    let markers = {};
+    let currentFilter = 'all';
+    let selectedLivestock = null;
+    let autoRefresh = false;
+    let refreshInterval = null;
+    
+    // Livestock data from Django
+    const livestockData = [
+        {% for animal in livestock %}
+        {
+            id: {{ animal.id }},
+            tag: '{{ animal.tag_number }}',
+            name: '{{ animal.name }}',
+            type: '{{ animal.animal_type.breed }}',
+            status: '{{ animal.status }}',
+            lat: {{ animal.location_lat|default:"null" }},
+            lng: {{ animal.location_lng|default:"null" }},
+            breed: '{{ animal.animal_type.breed }}',
+            age: '{{ animal.age_years }}',
+            weight: {{ animal.weight_kg|default:"0" }}
+        },
+        {% endfor %}
+    ];
+    
+    // Initialize map
+    function initMap() {
+        const defaultCenter = [-1.286389, 36.817223];
+        map = L.map('tracking-map').setView(defaultCenter, 13);
+        
+        // Add tiles
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OSM &copy; CARTO',
+            maxZoom: 20
+        }).addTo(map);
+        
+        // Load all livestock markers
+        loadMarkers();
+        populateLivestock();
+    }
+    
+    // Load markers on map
+    function loadMarkers() {
+        livestockData.forEach((animal, idx) => {
+            if (animal.lat && animal.lng) {
+                const marker = createMarker(animal);
+                markers[animal.id] = marker;
+            }
+        });
+    }
+    
+    // Create marker with proper styling
+    function createMarker(animal) {
+        const color = getStatusColor(animal.status);
+        const icon = L.divIcon({
+            html: `<div style="
+                background: ${color};
+                border: 3px solid white;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.5rem;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                cursor: pointer;
+            ">${getStatusIcon(animal.status)}</div>`,
+            className: 'custom-marker',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+        
+        const marker = L.marker([animal.lat, animal.lng], { icon }).addTo(map);
+        
+        // Click to select
+        marker.on('click', () => selectLivestock(animal.id));
+        
+        // Hover popup
+        marker.bindPopup(`
+            <div style="padding: 0.5rem;">
+                <strong>${animal.name || animal.tag}</strong><br>
+                Type: ${animal.type}<br>
+                Status: <span class="status-badge status-${animal.status}">${animal.status}</span>
+            </div>
+        `);
+        
+        return marker;
+    }
+    
+    // Get color by status
+    function getStatusColor(status) {
+        switch(status) {
+            case 'alive': return '#22c55e';
+            case 'sick': return '#f59e0b';
+            case 'injured': return '#ef4444';
+            case 'missing': return '#6366f1';
+            default: return '#8b5cf6';
+        }
+    }
+    
+    // Get icon by status
+    function getStatusIcon(status) {
+        switch(status) {
+            case 'alive': return '📍';
+            case 'sick': return '⚠️';
+            case 'injured': return '🚨';
+            case 'missing': return '❓';
+            default: return '🐄';
+        }
+    }
+    
+    // Populate livestock list
+    function populateLivestock() {
+        const list = document.getElementById('livestockList');
+        list.innerHTML = '';
+        
+        livestockData.forEach(animal => {
+            if (currentFilter !== 'all' && animal.status !== currentFilter) return;
+            
+            const div = document.createElement('div');
+            div.className = 'livestock-item';
+            div.onclick = () => selectLivestock(animal.id);
+            div.innerHTML = `
+                <div class="livestock-name">
+                    ${getStatusIcon(animal.status)} ${animal.name || animal.tag}
+                </div>
+                <div class="livestock-info">
+                    ${animal.type} • ${animal.tag}
+                </div>
+                <span class="status-badge status-${animal.status}">
+                    ${animal.status.charAt(0).toUpperCase() + animal.status.slice(1)}
+                </span>
+            `;
+            list.appendChild(div);
+        });
+    }
+    
+    // Select livestock
+    function selectLivestock(livestockId) {
+        selectedLivestock = livestockId;
+        const animal = livestockData.find(a => a.id === livestockId);
+        
+        // Update list highlight
+        document.querySelectorAll('.livestock-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        event.target.closest('.livestock-item')?.classList.add('active');
+        
+        // Update info panel
+        if (animal) {
+            document.getElementById('selectedName').textContent = animal.name || animal.tag;
+            document.getElementById('infoTag').textContent = animal.tag;
+            document.getElementById('infoType').textContent = animal.type;
+            document.getElementById('infoStatus').textContent = 
+                `<span class="status-badge status-${animal.status}">${animal.status.toUpperCase()}</span>`;
+            document.getElementById('infoLocation').textContent = 
+                `${animal.lat?.toFixed(4)}, ${animal.lng?.toFixed(4)}`;
+            document.getElementById('infoUpdated').textContent = 'Just now';
+            document.getElementById('infoDetailLink').href = `/livestock/${animal.id}/`;
+            
+            // Show info panel
+            document.getElementById('infoPanel').classList.add('active');
+            
+            // Focus map on animal
+            if (animal.lat && animal.lng) {
+                map.setView([animal.lat, animal.lng], 16);
+                markers[animal.id]?.openPopup();
+            }
+        }
+    }
+    
+    // Close info panel
+    function closeInfoPanel() {
+        document.getElementById('infoPanel').classList.remove('active');
+        selectedLivestock = null;
+    }
+    
+    // Filter by status
+    function filterByStatus(status) {
+        currentFilter = status;
+        
+        // Update button styles
+        document.querySelectorAll('.btn-small').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('filter' + (status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1))).classList.add('active');
+        
+        populateLivestock();
+    }
+    
+    // Zoom to all markers
+    function zoomToAll() {
+        const group = new L.featureGroup(Object.values(markers));
+        if (Object.keys(markers).length > 0) {
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+    }
+    
+    // Toggle auto-refresh
+    function toggleTracking() {
+        autoRefresh = !autoRefresh;
+        if (autoRefresh) {
+            document.getElementById('trackingBtn').classList.add('active');
+            refreshData();
+            refreshInterval = setInterval(refreshData, 30000); // Refresh every 30 seconds
+        } else {
+            document.getElementById('trackingBtn').classList.remove('active');
+            clearInterval(refreshInterval);
+        }
+    }
+    
+    // Refresh data from server
+    function refreshData() {
+        // In a real implementation, fetch updated data:
+        // fetch('/api/livestock/positions/').then(...)
+        console.log('Refreshing tracking data...');
+    }
+    
+    // Search functionality
+    document.getElementById('livestockSearch').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('.livestock-item').forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = text.includes(searchTerm) ? 'block' : 'none';
+        });
+    });
+    
+    // Close info panel on ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeInfoPanel();
+        }
+    });
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+    });
+</script>
+{% endblock %}

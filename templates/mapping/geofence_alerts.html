@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Geofence Alerts - FarmWise{% endblock %}
+{% block page_title %}Geofence Breach Alerts{% endblock %}
+
+{% block extra_css %}
+<style>
+    .alerts-container {
+        display: grid;
+        gap: 1rem;
+    }
+    
+    .alert-card {
+        background: white;
+        border-left: 4px solid #ef4444;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: start;
+        gap: 1rem;
+    }
+    
+    .alert-card.resolved {
+        border-left-color: #22c55e;
+        opacity: 0.7;
+    }
+    
+    .alert-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .alert-icon {
+        display: inline-block;
+        width: 48px;
+        height: 48px;
+        background: #fee2e2;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    
+    .alert-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #1f2937;
+    }
+    
+    .alert-info {
+        font-size: 0.9rem;
+        color: #6b7280;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .alert-status {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #fee2e2;
+        color: #b91c1c;
+        border-radius: 0.25rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .alert-status.resolved {
+        background: #dcfce7;
+        color: #166534;
+    }
+    
+    .alert-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-direction: column;
+    }
+    
+    .btn-resolve {
+        background: #16a34a;
+        color: white;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+    
+    .btn-resolve:hover {
+        background: #15803d;
+    }
+    
+    .btn-resolve:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #9ca3af;
+    }
+    
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="alerts-container">
+    {% if alerts %}
+        {% for alert in alerts %}
+        <div class="alert-card {% if alert.is_resolved %}resolved{% endif %}">
+            <div class="alert-content">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="alert-icon">{{ alert.is_resolved|yesno:'✓,⚠' }}</div>
+                    <div>
+                        <div class="alert-title">{{ alert.geofence.name }} - Breach Alert</div>
+                        <span class="alert-status {% if alert.is_resolved %}resolved{% endif %}">
+                            {{ alert.is_resolved|yesno:'Resolved,Unresolved' }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="alert-info">
+                    <div>
+                        <strong>Time:</strong> {{ alert.alert_time|date:"M d, Y H:i" }}
+                    </div>
+                    <div>
+                        <strong>Animal:</strong> {{ alert.livestock|default:"Unknown" }}
+                    </div>
+                    <div>
+                        <strong>Farm:</strong> {{ alert.geofence.farm.name }}
+                    </div>
+                </div>
+                
+                {% if alert.alert_message %}
+                <div style="padding: 0.75rem; background: #f9fafb; border-radius: 0.25rem; font-size: 0.9rem; color: #6b7280;">
+                    {{ alert.alert_message }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="alert-actions">
+                {% if not alert.is_resolved %}
+                <a href="{% url 'core:resolve_geofence_alert' alert.pk %}" class="btn-resolve">Resolve</a>
+                {% else %}
+                <button class="btn-resolve" disabled>✓ Resolved</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">✨</div>
+            <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">No Alerts</h3>
+            <p>All geofences are secure. Great job!</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

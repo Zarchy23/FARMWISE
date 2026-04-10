@@ -5,6 +5,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import views_api
+from . import views_pest_verification
 
 app_name = 'core'
 
@@ -37,6 +38,33 @@ router.register(r'scheduled-exports', views_api.ScheduledExportViewSet, basename
 # Phase 6: Workspace Preferences
 router.register(r'workspace-preferences', views_api.WorkspacePreferenceViewSet, basename='workspace-preference')
 
+# Feature 10: Farmer Network & Knowledge Sharing
+router.register(r'forums', views_api.DiscussionForumViewSet, basename='forum-api')
+router.register(r'forum-threads', views_api.ForumThreadViewSet, basename='forum-thread-api')
+router.register(r'forum-replies', views_api.ForumReplyViewSet, basename='forum-reply-api')
+router.register(r'group-buying-initiatives', views_api.GroupBuyingInitiativeViewSet, basename='group-buying-api')
+router.register(r'group-buying-participants', views_api.GroupBuyingParticipantViewSet, basename='participant-api')
+
+# Feature 11: Carbon Footprint Tracker
+router.register(r'emission-sources', views_api.EmissionSourceViewSet, basename='emission-source-api')
+router.register(r'emission-records', views_api.EmissionRecordViewSet, basename='emission-record-api')
+router.register(r'carbon-sequestration', views_api.CarbonSequestrationViewSet, basename='sequestration-api')
+router.register(r'carbon-reports', views_api.CarbonFootprintReportViewSet, basename='carbon-report-api')
+
+# Feature 12: Farm Mapping & Geofencing
+router.register(r'farm-boundaries', views_api.FarmBoundaryViewSet, basename='boundary-api')
+router.register(r'geofences', views_api.GeofenceViewSet, basename='geofence-api')
+router.register(r'livestock-locations', views_api.LivestockLocationViewSet, basename='location-api')
+router.register(r'geofence-alerts', views_api.GeofenceAlertViewSet, basename='geofence-alert-api')
+
+# Feature 13: Offline Sync & Data Management
+router.register(r'sync-queue', views_api.OfflineSyncQueueViewSet, basename='sync-queue-api')
+router.register(r'sync-conflicts', views_api.SyncConflictViewSet, basename='sync-conflict-api')
+
+# Feature 14: Weather Enhancement
+router.register(r'weather-forecasts', views_api.WeatherForecastViewSet, basename='forecast-api')
+router.register(r'weather-alerts', views_api.WeatherAlertViewSet, basename='weather-alert-api')
+
 # Validation API (custom methods)
 validation_api = views_api.ValidateDataAPIView.as_view({
     'post': 'crop'
@@ -50,6 +78,7 @@ urlpatterns = [
     path('api/validate/crop/', views_api.ValidateDataAPIView.as_view({'post': 'crop'}), name='api_validate_crop'),
     path('api/validate/livestock/', views_api.ValidateDataAPIView.as_view({'post': 'livestock'}), name='api_validate_livestock'),
     path('api/validate/marketplace/', views_api.ValidateDataAPIView.as_view({'post': 'marketplace'}), name='api_validate_marketplace'),
+    path('api/farms/<int:farm_id>/emission-sources/', views_api.get_farm_emission_sources, name='api_farm_emission_sources'),
     
     # ============================================================
     # HOME & DASHBOARD
@@ -131,11 +160,24 @@ urlpatterns = [
     path('pest-detection/<int:pk>/', views.pest_detail, name='pest_detail'),
     
     # ============================================================
+    # PEST DETECTION VERIFICATION (AGRONOMIST)
+    # ============================================================
+    path('pest-verification/dashboard/', views_pest_verification.agronomist_pest_dashboard, name='agronomist_pest_dashboard'),
+    path('pest-verification/<int:pk>/', views_pest_verification.pest_verification_detail, name='pest_verification_detail'),
+    path('api/pest-reports/<int:pk>/approve/', views_pest_verification.api_approve_pest_report, name='api_approve_pest_report'),
+    path('api/pest-reports/<int:pk>/reject/', views_pest_verification.api_reject_pest_report, name='api_reject_pest_report'),
+    path('api/pest-reports/statistics/', views_pest_verification.agronomist_statistics, name='agronomist_statistics'),
+    
+    # ============================================================
     # WEATHER
     # ============================================================
     path('weather/', views.weather_forecast, name='weather'),
     path('weather/alerts/', views.weather_alerts, name='weather_alerts'),
     path('weather/alerts/<int:pk>/read/', views.mark_alert_read, name='mark_alert_read'),
+    
+    # FREE Weather APIs (Open-Meteo - no API key required!)
+    path('api/weather/<int:farm_id>/forecast/', views.api_weather_forecast_live, name='api_weather_forecast_live'),
+    path('api/weather/<int:farm_id>/agricultural/', views.api_weather_agricultural, name='api_weather_agricultural'),
     
     # ============================================================
     # IRRIGATION
@@ -181,10 +223,71 @@ urlpatterns = [
     path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     
     # ============================================================
+    # FEATURE 10: FARMER NETWORK & KNOWLEDGE SHARING
+    # ============================================================
+    path('community/forums/', views.forum_list, name='forum_list'),
+    path('community/forums/create/', views.forum_create, name='forum_create'),
+    path('community/forums/<int:pk>/', views.forum_detail, name='forum_detail'),
+    path('community/forums/<int:forum_id>/threads/', views.forum_threads, name='forum_threads'),
+    path('community/forums/<int:forum_id>/thread/create/', views.thread_create, name='thread_create'),
+    path('community/thread/<int:pk>/', views.thread_detail, name='thread_detail'),
+    path('community/thread/<int:thread_id>/reply/', views.reply_create, name='reply_create'),
+    path('community/group-buying/', views.group_buying_list, name='group_buying_list'),
+    path('community/group-buying/create/', views.group_buying_create, name='group_buying_create'),
+    path('community/group-buying/<int:pk>/', views.group_buying_detail, name='group_buying_detail'),
+    path('community/group-buying/<int:initiative_id>/join/', views.group_buying_join, name='group_buying_join'),
+    
+    # ============================================================
+    # FEATURE 11: CARBON FOOTPRINT TRACKER
+    # ============================================================
+    path('carbon/tracker/', views.carbon_tracker, name='carbon_tracker'),
+    path('carbon/tracker/record/create/', views.emission_record_create, name='emission_record_create'),
+    path('carbon/tracker/source/create/', views.emission_source_create, name='emission_source_create'),
+    path('carbon/report/', views.carbon_report, name='carbon_report'),
+    path('carbon/report/<int:pk>/', views.carbon_report_detail, name='carbon_report_detail'),
+    path('carbon/sequestration/create/', views.sequestration_create, name='sequestration_create'),
+    
+    # ============================================================
+    # FEATURE 12: FARM MAPPING & GEOFENCING
+    # ============================================================
+    path('mapping/farm-map/', views.farm_map, name='farm_map'),
+    path('mapping/farm-boundary/<int:farm_id>/', views.farm_boundary_detail, name='farm_boundary_detail'),
+    path('mapping/geofences/', views.geofence_list, name='geofence_list'),
+    path('mapping/geofences/create/', views.geofence_create, name='geofence_create'),
+    path('mapping/geofences/<int:pk>/', views.geofence_detail, name='geofence_detail'),
+    path('mapping/geofences/<int:pk>/edit/', views.geofence_edit, name='geofence_edit'),
+    path('mapping/livestock-tracking/', views.livestock_tracking, name='livestock_tracking'),
+    path('mapping/livestock/<int:livestock_id>/locations/', views.livestock_locations, name='livestock_locations'),
+    path('mapping/geofence-alerts/', views.geofence_alerts, name='geofence_alerts'),
+    path('mapping/geofence-alerts/<int:pk>/resolve/', views.resolve_geofence_alert, name='resolve_geofence_alert'),
+    
+    # ============================================================
+    # FEATURE 13: OFFLINE SYNC & DATA MANAGEMENT
+    # ============================================================
+    path('sync/dashboard/', views.sync_dashboard, name='sync_dashboard'),
+    path('sync/queue/', views.sync_queue, name='sync_queue'),
+    path('sync/conflicts/', views.sync_conflicts, name='sync_conflicts'),
+    path('sync/conflicts/<int:pk>/resolve/', views.resolve_sync_conflict, name='resolve_sync_conflict'),
+    path('sync/retry/<int:pk>/', views.retry_sync, name='retry_sync'),
+    
+    # ============================================================
+    # REMINDERS - FARM ACTIVITY REMINDERS
+    # ============================================================
+    path('reminders/', views.reminder_list, name='reminder_list'),
+    path('reminders/create/', views.reminder_create, name='reminder_create'),
+    path('reminders/dashboard/', views.reminder_dashboard, name='reminder_dashboard'),
+    path('reminders/<int:pk>/', views.reminder_detail, name='reminder_detail'),
+    path('reminders/<int:pk>/edit/', views.reminder_edit, name='reminder_edit'),
+    path('reminders/<int:pk>/complete/', views.reminder_complete, name='reminder_complete'),
+    path('reminders/<int:pk>/delete/', views.reminder_delete, name='reminder_delete'),
+    
+    # ============================================================
     # LEGACY API ENDPOINTS (for AJAX/JavaScript)
     # ============================================================
     path('api/farms/', views.api_farms, name='api_farms'),
     path('api/fields/<int:farm_id>/', views.api_fields, name='api_fields'),
     path('api/weather/<int:farm_id>/', views.api_weather, name='api_weather'),
     path('api/notifications/', views.api_notifications, name='api_notifications'),
+    path('api/map/save-drawing/', views.save_map_drawing, name='save_map_drawing'),
+    path('api/geofences/<int:id>/alert/', views.set_geofence_alert, name='set_geofence_alert'),
 ]

@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Geofence - FarmWise{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Geofence{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<style>
+    .form-container {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 1.5rem;
+        height: 75vh;
+    }
+    
+    .form-panel {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    
+    .map-panel {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+        position: relative;
+    }
+    
+    #geofence-map {
+        height: 100%;
+        width: 100%;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #1f2937;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        font-family: inherit;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #16a34a;
+        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+    }
+    
+    .checkbox-group {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+        width: auto;
+        cursor: pointer;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    .btn {
+        flex: 1;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary {
+        background: #16a34a;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #15803d;
+    }
+    
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+    
+    .btn-secondary:hover {
+        background: #d1d5db;
+    }
+    
+    .map-instructions {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        font-size: 0.9rem;
+        z-index: 1000;
+        max-width: 250px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Form Panel -->
+    <div class="form-panel">
+        <h2 style="margin-bottom: 1.5rem;">{% if form.instance.pk %}Edit{% else %}Create{% endif %} Geofence</h2>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="id_farm">Select Farm</label>
+                <select name="farm" id="id_farm">
+                    <option value="">-- Select Farm --</option>
+                    {% for farm in farms %}
+                    <option value="{{ farm.id }}" {% if farm.id == form.instance.farm_id %}selected{% endif %}>
+                        {{ farm.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="id_name">Geofence Name</label>
+                <input type="text" name="name" id="id_name" placeholder="e.g., North Pasture" 
+                       value="{{ form.instance.name }}" required>
+                <small style="color: #9ca3af;">Describe the area or purpose</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Alert Settings</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" name="enable_exit_alerts" id="id_enable_exit" 
+                           {% if form.instance.enable_exit_alerts %}checked{% endif %}>
+                    <label for="id_enable_exit" style="margin-bottom: 0;">Alert on Exit</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" name="enable_entry_alerts" id="id_enable_entry"
+                           {% if form.instance.enable_entry_alerts %}checked{% endif %}>
+                    <label for="id_enable_entry" style="margin-bottom: 0;">Alert on Entry</label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="id_description">Description</label>
+                <textarea name="description" id="id_description" rows="3" 
+                          placeholder="Optional notes about this geofence..."></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{% url 'core:geofence_list' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    {% if form.instance.pk %}Save Changes{% else %}Create Geofence{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Map Panel -->
+    <div class="map-panel">
+        <div class="map-instructions">
+            <strong>📍 Instructions:</strong><br>
+            {% if form.instance.pk %}
+            • Boundaries already drawn
+            {% else %}
+            • Draw polygon boundary
+            • Add markers for reference
+            • Minimum 3 points
+            {% endif %}
+        </div>
+        <div id="geofence-map"></div>
+    </div>
+</div>
+
+<script>
+    let map;
+    const farms = [
+        {% for farm in farms %}
+        { id: {{ farm.id }}, name: '{{ farm.name }}', lat: {{ farm.location_lat|default:-1.286389 }}, lng: {{ farm.location_lng|default:36.817223 }} },
+        {% endfor %}
+    ];
+    
+    const existingGeofence = {
+        id: {{ form.instance.pk|default:'null' }},
+        name: '{{ form.instance.name }}',
+        boundary: {{ form.instance.geojson_boundary|safe|default:'null' }}
+    };
+    
+    function initMap() {
+        let defaultLat = -1.286389;
+        let defaultLng = 36.817223;
+        
+        if (farms.length > 0) {
+            defaultLat = farms[0].lat;
+            defaultLng = farms[0].lng;
+        }
+        
+        map = L.map('geofence-map').setView([defaultLat, defaultLng], 14);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OSM &copy; CARTO',
+            maxZoom: 20
+        }).addTo(map);
+        
+        // Show existing boundary if editing
+        if (existingGeofence.boundary) {
+            const coords = existingGeofence.boundary;
+            L.polygon(coords, {
+                color: '#8b5cf6',
+                weight: 3,
+                fillColor: '#8b5cf6',
+                fillOpacity: 0.2
+            }).addTo(map);
+        }
+    }
+    
+    // Update map center when farm changes
+    document.getElementById('id_farm').addEventListener('change', function() {
+        const farmId = this.value;
+        const farm = farms.find(f => f.id == farmId);
+        if (farm) {
+            map.setView([farm.lat, farm.lng], 14);
+        }
+    });
+    
+    document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create New Discussion - {{ forum.title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto">
+        <!-- Breadcrumb -->
+        <div class="mb-6">
+            <div class="flex items-center gap-2 text-gray-600">
+                <a href="{% url 'core:forum_list' %}" class="text-green-600 hover:text-green-700">Forums</a>
+                <i class="ri-arrow-right-s-line"></i>
+                <a href="{% url 'core:forum_detail' forum.id %}" class="text-green-600 hover:text-green-700">{{ forum.title }}</a>
+                <i class="ri-arrow-right-s-line"></i>
+                <span>New Discussion</span>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-2">
+                <i class="ri-chat-new-line text-green-600"></i> Start a Discussion
+            </h1>
+            <p class="text-gray-600 mt-2">Share your thoughts and ideas with the community</p>
+        </div>
+
+        <!-- Form Card -->
+        <div class="bg-white rounded-lg shadow-lg p-8 border-t-4 border-green-500">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <!-- Thread Title -->
+                <div>
+                    <label for="title" class="block text-lg font-semibold text-gray-900 mb-2">
+                        <i class="ri-text-line text-green-600 mr-2"></i>Discussion Title
+                    </label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        name="title" 
+                        placeholder="What would you like to discuss?" 
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
+                    />
+                    <p class="text-sm text-gray-500 mt-1">Make it clear and descriptive so others know what to expect</p>
+                </div>
+
+                <!-- Thread Content -->
+                <div>
+                    <label for="content" class="block text-lg font-semibold text-gray-900 mb-2">
+                        <i class="ri-file-text-line text-green-600 mr-2"></i>Content
+                    </label>
+                    <textarea 
+                        id="content" 
+                        name="content" 
+                        placeholder="Share your question, experience, or insight with the community..." 
+                        rows="8"
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500 transition-colors resize-vertical"
+                    ></textarea>
+                    <p class="text-sm text-gray-500 mt-1">Be respectful, constructive, and include relevant details</p>
+                </div>
+
+                <!-- Forum Display -->
+                <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                    <p class="text-sm text-gray-600">
+                        <span class="font-semibold">Posting in:</span>
+                        <a href="{% url 'core:forum_detail' forum.id %}" class="text-green-600 hover:text-green-700 font-semibold">
+                            {{ forum.title }}
+                        </a>
+                    </p>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex gap-4 pt-6">
+                    <button 
+                        type="submit" 
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                        <i class="ri-send-plane-line"></i> Post Discussion
+                    </button>
+                    <a 
+                        href="{% url 'core:forum_detail' forum.id %}" 
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                        <i class="ri-close-line"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tips Box -->
+        <div class="mt-8 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
+            <h3 class="font-semibold text-blue-900 flex items-center gap-2 mb-4">
+                <i class="ri-lightbulb-flash-line"></i> Tips for a Great Discussion
+            </h3>
+            <ul class="text-blue-800 text-sm space-y-2">
+                <li><span class="font-semibold">Be Specific:</span> The more details you provide, the better responses you'll get</li>
+                <li><span class="font-semibold">Search First:</span> Check if your question has been asked before</li>
+                <li><span class="font-semibold">Be Respectful:</span> Everyone here has something valuable to contribute</li>
+                <li><span class="font-semibold">Include Context:</span> Share your location, farming type, or seasonal information when relevant</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

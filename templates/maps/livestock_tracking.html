@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Livestock Tracking - FarmWise{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map { height: 500px; border-radius: 4px; margin-bottom: 20px; }
+    .location-history { max-height: 400px; overflow-y: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Real-Time Livestock Tracking</h1>
+            <p class="text-muted">Monitor the exact location of your livestock in real-time</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-outline-primary" onclick="location.reload()">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div id="map"></div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Livestock</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for animal in livestock %}
+                    <li class="list-group-item">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="livestock_{{ animal.id }}" 
+                                   value="{{ animal.id }}" checked onclick="toggleLivestock({{ animal.id }})">
+                            <label class="form-check-label" for="livestock_{{ animal.id }}">
+                                <strong>{{ animal.name }}</strong><br>
+                                <small class="text-muted">{{ animal.get_type_display }}</small>
+                            </label>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Location Details</h5>
+                </div>
+                <div class="card-body location-history">
+                    {% if current_location %}
+                    <dl class="row">
+                        <dt class="col-sm-6">Latitude:</dt>
+                        <dd class="col-sm-6">{{ current_location.latitude }}</dd>
+
+                        <dt class="col-sm-6">Longitude:</dt>
+                        <dd class="col-sm-6">{{ current_location.longitude }}</dd>
+
+                        <dt class="col-sm-6">Accuracy:</dt>
+                        <dd class="col-sm-6">
+                            {% if current_location.accuracy_meters %}
+                            ±{{ current_location.accuracy_meters }}m
+                            {% else %}
+                            Unknown
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-6">Signal:</dt>
+                        <dd class="col-sm-6">
+                            {% if current_location.signal_strength %}
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar" style="width: {{ current_location.signal_strength }}%">
+                                    {{ current_location.signal_strength }}%
+                                </div>
+                            </div>
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-6">Geofence:</dt>
+                        <dd class="col-sm-6">
+                            {% if current_location.is_inside_assigned_geofence %}
+                            <span class="badge bg-success">Inside</span>
+                            {% else %}
+                            <span class="badge bg-danger">Outside</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-6">Last Update:</dt>
+                        <dd class="col-sm-6">{{ current_location.recorded_at|date:"M d, H:i" }}</dd>
+                    </dl>
+
+                    <h6 class="mt-3">Location History</h6>
+                    {% if location_history %}
+                    <div class="list-group list-group-sm">
+                        {% for loc in location_history %}
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <small>{{ loc.recorded_at|date:"H:i" }}</small><br>
+                            <small class="text-muted">{{ loc.latitude|floatformat:4 }}, {{ loc.longitude|floatformat:4 }}</small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted text-center py-3">No location data available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([{{ farm_lat }}, {{ farm_lon }}], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Add livestock markers
+    {% for location in livestock_locations %}
+    const marker = L.circleMarker([{{ location.latitude }}, {{ location.longitude }}], {
+        radius: 12,
+        color: 'green',
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 0.8,
+        popup: '<strong>{{ location.livestock.name }}</strong><br>Recorded: {{ location.recorded_at|date:"M d, H:i" }}'
+    }).addTo(map);
+    
+    marker.bindPopup(`
+        <strong>{{ location.livestock.name }}</strong><br>
+        Lat: {{ location.latitude }}<br>
+        Lon: {{ location.longitude }}<br>
+        Updated: {{ location.recorded_at|date:"M d, H:i" }}
+    `);
+    {% endfor %}
+
+    function toggleLivestock(id) {
+        // Would trigger AJAX to filter livestock
+        console.log('Toggle livestock:', id);
+    }
+</script>
+{% endblock %}

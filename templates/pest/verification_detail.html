@@ -1,0 +1,317 @@
+{# templates/pest/verification_detail.html #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Pest Detection Verification - {{ report.ai_diagnosis }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 pb-20">
+    <!-- Header -->
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold text-slate-900">
+                        <i class="fas fa-leaf text-emerald-600 mr-3"></i>Pest Detection Review
+                    </h1>
+                    <p class="text-slate-600 mt-1 text-lg">Make a decision on farmer's pest detection report</p>
+                </div>
+                <a href="{% url 'core:agronomist_pest_dashboard' %}" class="inline-flex items-center px-6 py-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold transition shadow-sm">
+                    <i class="fas fa-arrow-left mr-2 text-lg"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left Column: Report Data (2 cols) -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Farmer & Farm Info Card -->
+                <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl transition duration-300">
+                    <div class="bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 px-8 py-6">
+                        <h2 class="text-2xl font-bold text-white flex items-center">
+                            <i class="fas fa-user-circle mr-4 text-3xl"></i>Farmer Information
+                        </h2>
+                    </div>
+                    <div class="p-8 space-y-6">
+                        <div class="grid grid-cols-2 gap-8">
+                            <div class="border-r border-slate-200 pr-6">
+                                <p class="text-xs font-bold text-slate-600 uppercase tracking-widest">👨‍🌾 Farmer</p>
+                                <p class="text-2xl font-bold text-slate-900 mt-2">{{ report.farmer.get_full_name }}</p>
+                                <p class="text-sm text-slate-600 mt-2"><i class="fas fa-phone mr-2"></i>{{ report.farmer.phone_number }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-600 uppercase tracking-widest">📋 User Type</p>
+                                <span class="inline-block mt-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
+                                    {{ report.farmer.get_user_type_display }}
+                                </span>
+                            </div>
+                        </div>
+                        <hr class="border-slate-200">
+                        <div class="grid grid-cols-2 gap-8">
+                            <div>
+                                <p class="text-xs font-bold text-slate-600 uppercase tracking-widest">🏡 Farm</p>
+                                <p class="text-xl font-bold text-slate-900 mt-2">{{ report.farm.name }}</p>
+                                <p class="text-sm text-slate-600 mt-1"><i class="fas fa-map-marker-alt mr-2"></i>{{ report.farm.location }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-600 uppercase tracking-widest">🌾 Field</p>
+                                {% if report.field %}
+                                    <p class="text-xl font-bold text-slate-900 mt-2">{{ report.field.name }}</p>
+                                    <p class="text-sm text-slate-600 mt-1"><i class="fas fa-expand mr-2"></i>{{ report.field.area_hectares }} hectares</p>
+                                {% else %}
+                                    <p class="text-slate-400 italic mt-3">Not specified</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <hr class="border-slate-200">
+                        <div class="grid grid-cols-2 gap-8">
+                            <div>
+                                <p class="text-xs font-bold text-slate-600 uppercase tracking-widest">🌱 Crop</p>
+                                {% if report.crop %}
+                                    <p class="text-xl font-bold text-slate-900 mt-2">{{ report.crop.crop_type.name }}</p>
+                                    <p class="text-sm text-slate-600 mt-1"><i class="fas fa-calendar mr-2"></i>Planted: {{ report.crop.planting_date|date:"M d, Y" }}</p>
+                                {% else %}
+                                    <p class="text-slate-400 italic mt-3">Not specified</p>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-600 uppercase tracking-widest">📅 Report Date</p>
+                                <p class="text-xl font-bold text-slate-900 mt-2">{{ report.created_at|date:"M d, Y" }}</p>
+                                <p class="text-sm text-slate-600 mt-1"><i class="fas fa-clock mr-2"></i>{{ report.created_at|time:"H:i" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Analysis Card -->
+                <div class="bg-white rounded-2xl shadow-lg border-2 border-amber-300 overflow-hidden hover:shadow-xl transition duration-300">
+                    <div class="bg-gradient-to-r from-amber-600 via-amber-600 to-orange-700 px-8 py-6">
+                        <h2 class="text-2xl font-bold text-white flex items-center">
+                            <i class="fas fa-brain mr-4 text-3xl"></i>AI Analysis & Diagnosis
+                        </h2>
+                    </div>
+                    <div class="p-8 space-y-6">
+                        <!-- Pest Name -->
+                        <div class="bg-gradient-to-br from-amber-50 to-orange-100 rounded-xl p-6 border-2 border-amber-200 shadow-sm">
+                            <p class="text-xs font-bold text-amber-900 uppercase tracking-widest">🔍 Detected Pest</p>
+                            <h3 class="text-4xl font-black text-amber-950 mt-3">🐛 {{ report.ai_diagnosis }}</h3>
+                        </div>
+
+                        <!-- Confidence & Severity -->
+                        <div class="grid grid-cols-2 gap-6">
+                            <div class="bg-slate-50 rounded-xl p-6 border border-slate-200">
+                                <p class="text-xs font-bold text-slate-700 uppercase tracking-widest mb-3">📊 Confidence</p>
+                                <div class="flex items-center gap-4 mt-3">
+                                    <div class="flex-1 bg-slate-300 rounded-full h-4 overflow-hidden shadow-sm">
+                                        <div class="bg-gradient-to-r {% if report.confidence >= 80 %}from-emerald-400 to-emerald-600{% elif report.confidence >= 60 %}from-blue-400 to-blue-600{% elif report.confidence >= 40 %}from-amber-400 to-amber-600{% else %}from-red-400 to-red-600{% endif %} h-full transition-all duration-500" style="width: {{ report.confidence }}%"></div>
+                                    </div>
+                                    <span class="font-black text-slate-900 text-2xl min-w-fit">{{ report.confidence|floatformat:0 }}%</span>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 rounded-xl p-6 border border-slate-200">
+                                <p class="text-xs font-bold text-slate-700 uppercase tracking-widest mb-3">⚠️ Severity</p>
+                                <span class="inline-block px-6 py-3 rounded-full font-bold text-white text-lg mt-3 {% if report.severity == 'severe' %}bg-gradient-to-r from-red-600 to-red-700{% elif report.severity == 'high' %}bg-gradient-to-r from-orange-600 to-orange-700{% elif report.severity == 'medium' %}bg-gradient-to-r from-amber-600 to-amber-700{% else %}bg-gradient-to-r from-green-600 to-green-700{% endif %}">
+                                    {% if report.severity == 'severe' %}🔴 SEVERE{% elif report.severity == 'high' %}🟠 HIGH{% elif report.severity == 'medium' %}🟡 MEDIUM{% else %}🟢 LOW{% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        {% if report.affected_area_percentage %}
+                        <div class="bg-slate-50 rounded-xl p-6 border border-slate-200">
+                            <p class="text-xs font-bold text-slate-700 uppercase tracking-widest mb-3">📍 Affected Area</p>
+                            <div class="flex items-center gap-4 mt-3">
+                                <div class="flex-1 bg-slate-300 rounded-full h-3 overflow-hidden">
+                                    <div class="bg-gradient-to-r from-red-500 to-red-700 h-full transition-all" style="width: {{ report.affected_area_percentage }}%"></div>
+                                </div>
+                                <span class="font-bold text-slate-900 text-lg min-w-fit">{{ report.affected_area_percentage|floatformat:0 }}%</span>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Detailed Analysis -->
+                        {% if report.analysis_description %}
+                        <div class="bg-gradient-to-br from-blue-50 to-cyan-50 border-l-4 border-blue-500 rounded-xl p-6">
+                            <p class="text-sm font-bold text-blue-900 uppercase tracking-widest mb-3">📋 Detailed Analysis</p>
+                            <p class="text-slate-800 leading-relaxed text-base">{{ report.analysis_description }}</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Treatment & Prevention -->
+                        <div class="space-y-3 pt-4">
+                            {% if report.treatment_recommended %}
+                            <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-xl p-5">
+                                <p class="text-sm font-bold text-green-900 uppercase tracking-widest mb-2">💊 Recommended Treatment</p>
+                                <p class="text-slate-800">{{ report.treatment_recommended }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if report.organic_options %}
+                            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border-l-4 border-emerald-500 rounded-xl p-5">
+                                <p class="text-sm font-bold text-emerald-900 uppercase tracking-widest mb-2">🌿 Organic Options</p>
+                                <p class="text-slate-800">{{ report.organic_options }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if report.prevention_tips %}
+                            <div class="bg-gradient-to-br from-purple-50 to-pink-50 border-l-4 border-purple-500 rounded-xl p-5">
+                                <p class="text-sm font-bold text-purple-900 uppercase tracking-widest mb-2">🛡️ Prevention Tips</p>
+                                <p class="text-slate-800">{{ report.prevention_tips }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pest Image -->
+                {% if report.image %}
+                <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl transition duration-300">
+                    <div class="bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-700 px-8 py-6">
+                        <h2 class="text-2xl font-bold text-white flex items-center">
+                            <i class="fas fa-image mr-4 text-3xl"></i>Uploaded Image
+                        </h2>
+                    </div>
+                    <div class="p-8 text-center bg-gradient-to-b from-slate-50 to-slate-100">
+                        <img src="{{ report.image.url }}" alt="Pest Detection Image" class="w-full max-h-96 object-cover rounded-xl shadow-md border-2 border-slate-200">
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Column: BIG ACTION BUTTONS (1 col) -->
+            <div class="lg:col-span-1">
+                {% if can_edit %}
+                <div class="space-y-4 sticky top-32">
+                    
+                    <!-- APPROVE BUTTON - HUGE & GREEN -->
+                    <form method="post" class="">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="approve">
+                        
+                        <div class="bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 rounded-2xl p-8 shadow-2xl border-4 border-green-400 transform hover:scale-105 transition-all duration-300 text-center cursor-pointer">
+                            <h3 class="text-4xl font-black text-white mb-2">
+                                <i class="fas fa-check-circle text-5xl mb-3 block"></i>APPROVE
+                            </h3>
+                            <p class="text-green-100 font-bold">This diagnosis is correct</p>
+                        </div>
+
+                        <div class="bg-green-50 rounded-xl p-6 space-y-4 border-2 border-green-200">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-800 mb-2">Your Notes</label>
+                                {{ approval_form.agronomist_notes }}
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-slate-800 mb-2">Severity Adjustment</label>
+                                {{ approval_form.severity_adjustment }}
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-slate-800 mb-2">Additional Treatment</label>
+                                {{ approval_form.additional_treatment }}
+                            </div>
+
+                            {{ approval_form.decision }}
+
+                            <button type="submit" class="w-full bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-black py-4 rounded-xl transition text-lg shadow-lg">
+                                <i class="fas fa-thumbs-up mr-2"></i>CONFIRM APPROVAL
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- REJECT BUTTON - HUGE & RED -->
+                    <form method="post" class="">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reject">
+                        
+                        <div class="bg-gradient-to-br from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 rounded-2xl p-8 shadow-2xl border-4 border-red-400 transform hover:scale-105 transition-all duration-300 text-center cursor-pointer">
+                            <h3 class="text-4xl font-black text-white mb-2">
+                                <i class="fas fa-times-circle text-5xl mb-3 block"></i>REJECT
+                            </h3>
+                            <p class="text-red-100 font-bold">This diagnosis is incorrect</p>
+                        </div>
+
+                        <div class="bg-red-50 rounded-xl p-6 space-y-4 border-2 border-red-200">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-800 mb-2">Reason for Rejection</label>
+                                {{ rejection_form.rejection_reason }}
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-slate-800 mb-2">Suggested Action</label>
+                                {{ rejection_form.suggested_action }}
+                            </div>
+
+                            <div class="flex items-center gap-3 p-3 bg-red-100 rounded-lg">
+                                {{ rejection_form.send_for_revision }}
+                                <label class="text-sm text-slate-800 font-semibold">
+                                    {{ rejection_form.send_for_revision.label }}
+                                </label>
+                            </div>
+
+                            <button type="submit" class="w-full bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-black py-4 rounded-xl transition text-lg shadow-lg">
+                                <i class="fas fa-ban mr-2"></i>CONFIRM REJECTION
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- REQUEST REVISION BUTTON - ORANGE -->
+                    <form method="post" class="">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="request_revision">
+                        
+                        <div class="bg-gradient-to-br from-orange-600 to-amber-700 hover:from-orange-700 hover:to-amber-800 rounded-2xl p-8 shadow-2xl border-4 border-orange-400 transform hover:scale-105 transition-all duration-300 text-center cursor-pointer">
+                            <h3 class="text-4xl font-black text-white mb-2">
+                                <i class="fas fa-sync-alt text-5xl mb-3 block"></i>REVISE
+                            </h3>
+                            <p class="text-orange-100 font-bold">Need more information</p>
+                        </div>
+
+                        <div class="bg-orange-50 rounded-xl p-6 space-y-4 border-2 border-orange-200">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-800 mb-2">Revision Notes</label>
+                                {{ revision_form.revision_notes }}
+                                <p class="text-xs text-slate-600 mt-1">{{ revision_form.revision_notes.help_text }}</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-slate-800 mb-2">Reference Links</label>
+                                {{ revision_form.reference_links }}
+                            </div>
+
+                            <button type="submit" class="w-full bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-700 hover:to-amber-800 text-white font-black py-4 rounded-xl transition text-lg shadow-lg">
+                                <i class="fas fa-arrow-right mr-2"></i>REQUEST REVISION
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                {% else %}
+                <!-- Already Reviewed -->
+                <div class="bg-blue-50 border-l-4 border-blue-600 rounded-xl p-8 shadow-md sticky top-32">
+                    <p class="text-blue-900 text-base font-semibold">
+                        <i class="fas fa-info-circle mr-3 text-2xl"></i>
+                        <strong>Report Reviewed</strong>
+                    </p>
+                    <p class="text-blue-800 mt-3">This report has already been verified and cannot be modified.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Form styling */
+    .form-control, textarea, select {
+        @apply w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-900 bg-white font-medium;
+    }
+    
+    textarea {
+        @apply resize-none min-h-24;
+    }
+</style>
+
+{% endblock %}

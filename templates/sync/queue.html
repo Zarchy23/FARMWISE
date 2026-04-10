@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Sync Queue Status - FarmWise{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .page-header {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .queue-item {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border-left: 4px solid #667eea;
+        transition: all 0.3s ease;
+    }
+
+    .queue-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .queue-item.synced { border-left-color: #10b981; }
+    .queue-item.error { border-left-color: #ef4444; }
+
+    .queue-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+        gap: 1rem;
+    }
+
+    .queue-main {
+        flex: 1;
+    }
+
+    .queue-title {
+        font-weight: 600;
+        font-size: 1.125rem;
+        color: #111;
+        margin-bottom: 0.25rem;
+    }
+
+    .queue-meta {
+        font-size: 0.875rem;
+        color: #6b7280;
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .badge.synced {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .badge.pending {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .badge.error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .badge.create {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+    }
+
+    .badge.update {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    .badge.delete {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .error-message {
+        background: rgba(239, 68, 68, 0.05);
+        border-left: 3px solid #ef4444;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+        font-size: 0.875rem;
+        color: #7f1d1d;
+    }
+
+    .queue-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn {
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        border: none;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+    }
+
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+        color: #d1d5db;
+        margin-bottom: 1rem;
+    }
+
+    .empty-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-text {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: #e5e7eb;
+        border-radius: 9999px;
+        overflow: hidden;
+        margin-top: 0.75rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        animation: slideRight 2s ease-in-out infinite;
+        border-radius: 9999px;
+    }
+
+    @keyframes slideRight {
+        0%, 100% { width: 0%; }
+        50% { width: 100%; }
+    }
+
+    .progress-fill.complete {
+        animation: none;
+        width: 100%;
+        background: #10b981;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-box {
+        background: white;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 1.75rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    @media (max-width: 768px) {
+        .queue-header { flex-direction: column; }
+        .queue-actions { flex-wrap: wrap; }
+        .page-header { padding: 1.5rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1 style="font-size: 2rem; font-weight: bold; margin: 0 0 0.5rem 0;">Sync Queue Management</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 0;">View and manage pending synchronization items</p>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-grid">
+    <div class="stat-box">
+        <div class="stat-number">{{ queue_items.count|default:'0' }}</div>
+        <div class="stat-label">Total Items</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-number" style="color: #f59e0b;">{{ unsynced_count|default:'0' }}</div>
+        <div class="stat-label">Pending Sync</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-number" style="color: #10b981;">{{ queue_items.count|add:'-'|add:unsynced_count|default:'0' }}</div>
+        <div class="stat-label">Completed</div>
+    </div>
+</div>
+
+<!-- Queue Items -->
+<div>
+    {% if queue_items %}
+        {% for item in queue_items %}
+            <div class="queue-item {% if item.is_synced %}synced{% elif item.sync_error %}error{% endif %}">
+                <div class="queue-header">
+                    <div class="queue-main">
+                        <div class="queue-title">
+                            <i class="ri-{% if item.operation == 'CREATE' %}add-fill{% elif item.operation == 'DELETE' %}delete-bin-fill{% else %}edit-fill{% endif %}" style="margin-right: 0.5rem; color: #667eea;"></i>
+                            {{ item.model }} • <span class="badge {% if item.operation == 'CREATE' %}create{% elif item.operation == 'DELETE' %}delete{% else %}update{% endif %}">{{ item.get_operation_display }}</span>
+                        </div>
+                        <div class="queue-meta">
+                            <div class="meta-item">
+                                <i class="ri-time-line"></i>
+                                <span>{{ item.created_at|date:"M d, Y H:i" }}</span>
+                            </div>
+                            {% if item.is_synced %}
+                                <div class="meta-item">
+                                    <i class="ri-check-double-line" style="color: #10b981;"></i>
+                                    <span>Synced {{ item.sync_attempted_at|date:"H:i"|default:"" }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="queue-actions">
+                        {% if not item.is_synced %}
+                            <a href="{% url 'core:retry_sync' item.id %}" class="btn btn-primary">
+                                <i class="ri-refresh-line"></i> Retry
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if not item.is_synced %}
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                {% else %}
+                    <div class="progress-bar">
+                        <div class="progress-fill complete"></div>
+                    </div>
+                {% endif %}
+
+                {% if item.sync_error %}
+                    <div class="error-message">
+                        <strong>Error:</strong> {{ item.sync_error }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="ri-check-double-fill"></i>
+            </div>
+            <div class="empty-title">Sync queue is empty</div>
+            <p class="empty-text">All changes have been successfully synchronized!</p>
+            <a href="{% url 'core:dashboard' %}" class="btn btn-primary">
+                <i class="ri-arrow-left-line"></i> Back to Dashboard
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    // Auto-refresh page every 30 seconds when there are pending items
+    {% if unsynced_count > 0 %}
+        setInterval(function() {
+            location.reload();
+        }, 30000);
+    {% endif %}
+</script>
+
+{% endblock %}

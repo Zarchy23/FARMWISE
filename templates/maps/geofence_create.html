@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Create Geofence - FarmWise{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map { height: 400px; border-radius: 4px; margin-bottom: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h1>Create Geofence</h1>
+            <p class="text-muted">Define a boundary for livestock tracking and alerts</p>
+
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">Geofence Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" 
+                           placeholder="e.g., North Pasture" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="field" class="form-label">Associated Field (Optional)</label>
+                    <select class="form-select" id="field" name="field">
+                        <option value="">Select a field...</option>
+                        {% for field in fields %}
+                        <option value="{{ field.id }}">{{ field.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="map" class="form-label">Draw Boundary on Map *</label>
+                    <p class="text-muted small">Click to add points, double-click to finish</p>
+                    <div id="map"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="geojson_data" class="form-label">Boundary Data</label>
+                    <textarea class="form-control" id="geojson_data" name="geojson_boundary" 
+                              rows="3" readonly placeholder="Automatically populated"></textarea>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Alert Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="exit_alerts" 
+                                   name="enable_exit_alerts" checked>
+                            <label class="form-check-label" for="exit_alerts">
+                                Enable Exit Alerts
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="entry_alerts" 
+                                   name="enable_entry_alerts">
+                            <label class="form-check-label" for="entry_alerts">
+                                Enable Entry Alerts
+                            </label>
+                        </div>
+
+                        <label class="form-label mt-3">Alert Channels</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="alert_sms" 
+                                   name="alert_channels" value="sms">
+                            <label class="form-check-label" for="alert_sms">SMS</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="alert_email" 
+                                   name="alert_channels" value="email" checked>
+                            <label class="form-check-label" for="alert_email">Email</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="alert_push" 
+                                   name="alert_channels" value="push">
+                            <label class="form-check-label" for="alert_push">Push Notification</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="livestock" class="form-label">Assign Livestock (Optional)</label>
+                    <select class="form-select" id="livestock" name="livestock" multiple>
+                        {% for animal in livestock %}
+                        <option value="{{ animal.id }}">{{ animal.name }} ({{ animal.get_type_display }})</option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple</small>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Create Geofence</button>
+                    <a href="{% url 'farm_map' %}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">How to Create</h5>
+                    <ol class="small">
+                        <li>Enter a name for the geofence</li>
+                        <li>Draw the boundary on the map</li>
+                        <li>Configure alert preferences</li>
+                        <li>Assign livestock (optional)</li>
+                        <li>Click Create</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+<script>
+    const map = L.map('map').setView([{{ farm_lat }}, {{ farm_lon }}], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    let polygon = null;
+    let points = [];
+
+    map.on('click', function(e) {
+        points.push([e.latlng.lat, e.latlng.lng]);
+        
+        if (polygon) map.removeLayer(polygon);
+        
+        if (points.length > 2) {
+            polygon = L.polygon([...points, points[0]], {
+                color: 'red',
+                fillColor: 'red',
+                fillOpacity: 0.2,
+                weight: 2
+            }).addTo(map);
+        }
+    });
+
+    map.on('dblclick', function() {
+        if (points.length > 2) {
+            const geoJSON = {
+                type: 'Polygon',
+                coordinates: [[...points.map(p => [p[1], p[0]]), [points[0][1], points[0][0]]]]
+            };
+            document.getElementById('geojson_data').value = JSON.stringify(geoJSON);
+        }
+    });
+</script>
+{% endblock %}

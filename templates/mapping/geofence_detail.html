@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ geofence.name }} - FarmWise{% endblock %}
+{% block page_title %}{{ geofence.name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+    .detail-container {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 1.5rem;
+        height: 75vh;
+    }
+    
+    .detail-panel {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    
+    .map-panel {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    #detail-map {
+        height: 100%;
+        width: 100%;
+    }
+    
+    .geofence-header {
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+        padding: 1.5rem;
+    }
+    
+    .geofence-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .geofence-subtitle {
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
+    
+    .info-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .info-section-title {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        font-size: 0.95rem;
+    }
+    
+    .info-label {
+        color: #6b7280;
+        font-weight: 500;
+    }
+    
+    .info-value {
+        color: #1f2937;
+        font-weight: 600;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #dcfce7;
+        color: #166534;
+        border-radius: 0.25rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    
+    .actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid #f3f4f6;
+    }
+    
+    .btn {
+        flex: 1;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+    
+    .btn-primary {
+        background: #16a34a;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #15803d;
+    }
+    
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+    
+    .btn-secondary:hover {
+        background: #d1d5db;
+    }
+    
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- Detail Panel -->
+    <div class="detail-panel">
+        <div class="geofence-header">
+            <div class="geofence-title">{{ geofence.name }}</div>
+            <div class="geofence-subtitle">{{ geofence.farm.name }}</div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-section-title">Status</div>
+            <div class="info-row">
+                <span class="info-label">Active:</span>
+                <span class="status-badge">{{ geofence.is_active|yesno:'Active,Inactive' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Created:</span>
+                <span class="info-value">{{ geofence.created_at|date:"M d, Y" }}</span>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-section-title">Alert Settings</div>
+            <div class="info-row">
+                <span class="info-label">Exit Alerts:</span>
+                <span class="info-value">{{ geofence.enable_exit_alerts|yesno:'Enabled,Disabled' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Entry Alerts:</span>
+                <span class="info-value">{{ geofence.enable_entry_alerts|yesno:'Enabled,Disabled' }}</span>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-section-title">Assigned Livestock</div>
+            {% if geofence.assigned_livestock.all %}
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    {% for animal in geofence.assigned_livestock.all %}
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #f3f4f6;">
+                        🐄 {{ animal.name|default:animal.tag_number }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p style="color: #9ca3af; margin: 0;">No animals assigned yet</p>
+            {% endif %}
+        </div>
+        
+        <div class="actions">
+            <a href="{% url 'core:geofence_edit' geofence.pk %}" class="btn btn-primary">Edit</a>
+            <a href="{% url 'core:geofence_list' %}" class="btn btn-secondary">Back</a>
+        </div>
+    </div>
+    
+    <!-- Map Panel -->
+    <div class="map-panel">
+        <div id="detail-map"></div>
+    </div>
+</div>
+
+<script>
+    let map;
+    const boundary = {{ geofence.geojson_boundary|safe|default:'[]' }};
+    
+    function initMap() {
+        const center = [-1.286389, 36.817223];
+        map = L.map('detail-map').setView(center, 13);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OSM &copy; CARTO',
+            maxZoom: 20
+        }).addTo(map);
+        
+        // Draw boundary
+        if (boundary && boundary.length > 0) {
+            const polygon = L.polygon(boundary, {
+                color: '#8b5cf6',
+                weight: 3,
+                fillColor: '#8b5cf6',
+                fillOpacity: 0.2
+            }).addTo(map);
+            
+            map.fitBounds(polygon.getBounds());
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}

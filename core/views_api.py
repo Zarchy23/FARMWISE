@@ -5,7 +5,7 @@ Includes validation, activity timeline, templates, predictions, exports, and wor
 """
 
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -18,12 +18,34 @@ from .models import (
     AuditLog, ValidationRule, ValidationLog, 
     UserHistory, FarmHistory, Farm,
     HelpContent, Template, TemplateRating, RecurringAction, 
-    RecurringActionLog, BatchOperation, Prediction, ScheduledExport, WorkspacePreference
+    RecurringActionLog, BatchOperation, Prediction, ScheduledExport, WorkspacePreference,
+    # Feature 10: Community
+    DiscussionForum, ForumThread, ForumReply, GroupBuyingInitiative, GroupBuyingParticipant,
+    # Feature 11: Carbon
+    EmissionSource, EmissionRecord, CarbonSequestration, CarbonFootprintReport,
+    # Feature 12: Mapping
+    FarmBoundary, Geofence, LivestockLocation, GeofenceAlert, Animal,
+    # Feature 13: Sync
+    OfflineSyncQueue, SyncConflict,
+    # Feature 14: Weather
+    WeatherForecast, WeatherAlert
 )
 from .serializers import (
     ActivityLogSerializer, ValidationRuleSerializer, 
     ValidationLogSerializer, UserHistorySerializer, 
-    FarmHistorySerializer
+    FarmHistorySerializer,
+    # Feature 10: Community Serializers
+    DiscussionForumSerializer, ForumThreadSerializer, ForumReplySerializer,
+    GroupBuyingInitiativeSerializer, GroupBuyingParticipantSerializer,
+    # Feature 11: Carbon Serializers
+    EmissionSourceSerializer, EmissionRecordSerializer, CarbonSequestrationSerializer,
+    CarbonFootprintReportSerializer,
+    # Feature 12: Mapping Serializers
+    FarmBoundarySerializer, GeofenceSerializer, LivestockLocationSerializer, GeofenceAlertSerializer,
+    # Feature 13: Sync Serializers
+    OfflineSyncQueueSerializer, SyncConflictSerializer,
+    # Feature 14: Weather Serializers
+    WeatherForecastSerializer, WeatherAlertSerializer
 )
 from .activity import ActivityTimelineService
 from .validators import ValidationEngine
@@ -697,3 +719,284 @@ class WorkspacePreferenceViewSet(viewsets.ViewSet):
         pref.save()
         
         return Response({'default_farm': farm.id, 'farm_name': farm.name})
+
+
+# ============================================================
+# FEATURE 10: FARMER NETWORK & KNOWLEDGE SHARING VIEWSETS
+# ============================================================
+
+class DiscussionForumViewSet(viewsets.ModelViewSet):
+    serializer_class = DiscussionForumSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return DiscussionForum.objects.filter(is_active=True)
+
+
+class ForumThreadViewSet(viewsets.ModelViewSet):
+    serializer_class = ForumThreadSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        forum_id = self.request.query_params.get('forum_id')
+        if forum_id:
+            return ForumThread.objects.filter(forum_id=forum_id)
+        return ForumThread.objects.all()
+    
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+
+class ForumReplyViewSet(viewsets.ModelViewSet):
+    serializer_class = ForumReplySerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        thread_id = self.request.query_params.get('thread_id')
+        if thread_id:
+            return ForumReply.objects.filter(thread_id=thread_id)
+        return ForumReply.objects.all()
+    
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+
+class GroupBuyingInitiativeViewSet(viewsets.ModelViewSet):
+    serializer_class = GroupBuyingInitiativeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return GroupBuyingInitiative.objects.all()
+    
+    @action(detail=True, methods=['post'])
+    def join(self, request, pk=None):
+        initiative = self.get_object()
+        quantity = request.data.get('quantity', 1)
+        participant, created = GroupBuyingParticipant.objects.get_or_create(
+            initiative=initiative, farmer=request.user, 
+            defaults={'quantity_pledged': quantity}
+        )
+        if not created:
+            participant.quantity_pledged = quantity
+            participant.save()
+        return Response({'status': 'joined', 'participant_id': participant.id})
+
+
+class GroupBuyingParticipantViewSet(viewsets.ModelViewSet):
+    serializer_class = GroupBuyingParticipantSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return GroupBuyingParticipant.objects.filter(farmer=self.request.user)
+
+
+# ============================================================
+# FEATURE 11: CARBON FOOTPRINT TRACKER VIEWSETS
+# ============================================================
+
+class EmissionSourceViewSet(viewsets.ModelViewSet):
+    serializer_class = EmissionSourceSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        return EmissionSource.objects.filter(farm__in=farms)
+
+
+class EmissionRecordViewSet(viewsets.ModelViewSet):
+    serializer_class = EmissionRecordSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        return EmissionRecord.objects.filter(farm__in=farms)
+    
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+class CarbonSequestrationViewSet(viewsets.ModelViewSet):
+    serializer_class = CarbonSequestrationSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        return CarbonSequestration.objects.filter(farm__in=farms)
+
+
+class CarbonFootprintReportViewSet(viewsets.ModelViewSet):
+    serializer_class = CarbonFootprintReportSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        return CarbonFootprintReport.objects.filter(farm__in=farms)
+
+
+# ============================================================
+# FEATURE 12: FARM MAPPING & GEOFENCING VIEWSETS
+# ============================================================
+
+class FarmBoundaryViewSet(viewsets.ModelViewSet):
+    serializer_class = FarmBoundarySerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        return FarmBoundary.objects.filter(farm__in=farms)
+
+
+class GeofenceViewSet(viewsets.ModelViewSet):
+    serializer_class = GeofenceSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        return Geofence.objects.filter(farm__in=farms)
+    
+    @action(detail=True, methods=['post'])
+    def toggle_active(self, request, pk=None):
+        geofence = self.get_object()
+        geofence.is_active = not geofence.is_active
+        geofence.save()
+        return Response({'is_active': geofence.is_active})
+
+
+class LivestockLocationViewSet(viewsets.ModelViewSet):
+    serializer_class = LivestockLocationSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        animals = Animal.objects.filter(farm__in=farms)
+        return LivestockLocation.objects.filter(livestock__in=animals)
+
+
+class GeofenceAlertViewSet(viewsets.ModelViewSet):
+    serializer_class = GeofenceAlertSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        return GeofenceAlert.objects.filter(geofence__farm__in=farms)
+
+
+# ============================================================
+# AJAX API ENDPOINTS FOR DYNAMIC FORM UPDATES
+# ============================================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_farm_emission_sources(request, farm_id):
+    """
+    AJAX endpoint to fetch emission sources for a specific farm
+    Used by emission_record_form.html to dynamically populate source dropdown
+    """
+    try:
+        farm = get_object_or_404(Farm, pk=farm_id, owner=request.user)
+        sources = EmissionSource.objects.filter(farm=farm, is_active=True).order_by('source_type', 'name')
+        
+        data = {
+            'farm_id': farm.id,
+            'farm_name': farm.name,
+            'sources': [
+                {
+                    'id': source.id,
+                    'name': source.name,
+                    'source_type': source.source_type,
+                    'display_name': source.get_source_type_display(),
+                    'emission_factor': float(source.emission_factor),
+                    'unit': source.unit,
+                }
+                for source in sources
+            ]
+        }
+        return Response(data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, pk=None):
+        alert = self.get_object()
+        alert.is_resolved = True
+        alert.resolved_by = request.user
+        alert.resolved_at = timezone.now()
+        alert.resolution_notes = request.data.get('resolution_notes', '')
+        alert.save()
+        return Response({'status': 'resolved'})
+        alert.save()
+        return Response({'status': 'resolved'})
+
+
+# ============================================================
+# FEATURE 13: OFFLINE SYNC & DATA MANAGEMENT VIEWSETS
+# ============================================================
+
+class OfflineSyncQueueViewSet(viewsets.ModelViewSet):
+    serializer_class = OfflineSyncQueueSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return OfflineSyncQueue.objects.filter(user=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def retry(self, request, pk=None):
+        sync_item = self.get_object()
+        sync_item.is_synced = False
+        sync_item.sync_error = ''
+        sync_item.sync_attempted_at = None
+        sync_item.save()
+        return Response({'status': 'retry_scheduled'})
+
+
+class SyncConflictViewSet(viewsets.ModelViewSet):
+    serializer_class = SyncConflictSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return SyncConflict.objects.filter(sync_entry__user=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, pk=None):
+        conflict = self.get_object()
+        choice = request.data.get('resolution_choice', 'server')
+        conflict.resolution_status = 'resolved_manual'
+        conflict.resolved_by = request.user
+        conflict.resolved_data = conflict.server_version if choice == 'server' else conflict.local_version
+        conflict.save()
+        return Response({'status': 'resolved'})
+
+
+# ============================================================
+# FEATURE 14: WEATHER ENHANCEMENT VIEWSETS
+# ============================================================
+
+class WeatherForecastViewSet(viewsets.ModelViewSet):
+    serializer_class = WeatherForecastSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        return WeatherForecast.objects.filter(farm__in=farms)
+
+
+class WeatherAlertViewSet(viewsets.ModelViewSet):
+    serializer_class = WeatherAlertSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        farms = self.request.user.farms.all()
+        return WeatherAlert.objects.filter(farm__in=farms)
+    
+    @action(detail=True, methods=['post'])
+    def acknowledge(self, request, pk=None):
+        alert = self.get_object()
+        alert.is_acknowledged = True
+        alert.acknowledged_by = request.user
+        alert.acknowledged_at = timezone.now()
+        alert.response_actions = request.data.get('response_actions', '')
+        alert.save()
+        return Response({'status': 'acknowledged'})

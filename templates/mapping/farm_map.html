@@ -1,0 +1,750 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Farm Map - FarmWise{% endblock %}
+{% block page_title %}Interactive Farm Map{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/leaflet-geosearch@3.11.0/dist/bundle.min.js"></script>
+<style>
+    #farm-map {
+        height: 70vh;
+        width: 100%;
+        border-radius: 1rem;
+        z-index: 1;
+    }
+    .map-container {
+        position: relative;
+    }
+    .map-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 0.5rem;
+    }
+    .layer-control {
+        background: white;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .legend {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 1000;
+        background: white;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        font-size: 0.75rem;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        margin-right: 8px;
+    }
+    .info-panel {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1000;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        width: 280px;
+        max-height: 80vh;
+        overflow-y: auto;
+        transition: all 0.3s ease;
+    }
+    .info-panel-header {
+        background: #16a34a;
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem 0.5rem 0 0;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .info-panel-content {
+        padding: 1rem;
+        display: none;
+    }
+    .info-panel.expanded .info-panel-content {
+        display: block;
+    }
+    .asset-card {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0.75rem 0;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .asset-card:hover {
+        background: #f3f4f6;
+    }
+    .asset-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+    .asset-icon.crop { background: #dcfce7; color: #16a34a; }
+    .asset-icon.livestock { background: #fef3c7; color: #d97706; }
+    .asset-icon.equipment { background: #dbeafe; color: #2563eb; }
+    .draw-tools {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .draw-btn {
+        background: #f3f4f6;
+        border: none;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .draw-btn.active {
+        background: #16a34a;
+        color: white;
+    }
+    .draw-btn:hover {
+        background: #e5e7eb;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    .pulse {
+        animation: pulse 2s infinite;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="map-container relative">
+    <!-- Info Panel -->
+    <div class="info-panel" id="infoPanel">
+        <div class="info-panel-header" onclick="togglePanel()">
+            <span class="font-semibold"><i class="ri-information-line mr-2"></i>Farm Assets</span>
+            <i class="ri-arrow-down-s-line" id="panelIcon"></i>
+        </div>
+        <div class="info-panel-content">
+            <div class="mb-3">
+                <input type="text" id="assetSearch" placeholder="Search assets..." class="w-full border rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div id="assetList">
+                <!-- Crops Section -->
+                <div class="font-semibold text-gray-700 mb-2 mt-3">🌾 Crops</div>
+                <div id="cropsList"></div>
+                
+                <!-- Livestock Section -->
+                <div class="font-semibold text-gray-700 mb-2 mt-3">🐄 Livestock</div>
+                <div id="livestockList"></div>
+                
+                <!-- Equipment Section -->
+                <div class="font-semibold text-gray-700 mb-2 mt-3">🚜 Equipment</div>
+                <div id="equipmentList"></div>
+                
+                <!-- Fields Section -->
+                <div class="font-semibold text-gray-700 mb-2 mt-3">🗺️ Fields</div>
+                <div id="fieldsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Controls -->
+    <div class="map-controls">
+        <div class="layer-control">
+            <div class="text-xs font-semibold mb-2">Map Layers</div>
+            <button onclick="setLayer('street')" id="streetBtn" class="draw-btn w-full mb-1 text-sm">🗺️ Street View</button>
+            <button onclick="setLayer('satellite')" id="satelliteBtn" class="draw-btn w-full text-sm">🛰️ Satellite</button>
+        </div>
+        <div class="layer-control">
+            <div class="text-xs font-semibold mb-2">Draw Tools</div>
+            <div class="draw-tools">
+                <button onclick="enableDraw('polygon')" id="polygonBtn" class="draw-btn" title="Draw Field">
+                    <i class="ri-shape-line"></i>
+                </button>
+                <button onclick="enableDraw('marker')" id="markerBtn" class="draw-btn" title="Add Marker">
+                    <i class="ri-map-pin-line"></i>
+                </button>
+                <button onclick="enableDraw('circle')" id="circleBtn" class="draw-btn" title="Draw Circle">
+                    <i class="ri-circle-line"></i>
+                </button>
+                <button onclick="clearDraw()" class="draw-btn" title="Clear">
+                    <i class="ri-eraser-line"></i>
+                </button>
+                <button onclick="saveDrawing()" class="draw-btn bg-green-100" title="Save">
+                    <i class="ri-save-line"></i>
+                </button>
+            </div>
+        </div>
+        <div class="layer-control">
+            <div class="text-xs font-semibold mb-2">View</div>
+            <button onclick="zoomToFit()" class="draw-btn w-full text-sm">🔍 Zoom to All Fields</button>
+            <button onclick="getCurrentLocation()" class="draw-btn w-full text-sm mt-1">📍 My Location</button>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="text-xs font-semibold mb-1">Legend</div>
+        <div class="legend-item"><div class="legend-color" style="background: #22c55e;"></div><span>Crop Field</span></div>
+        <div class="legend-item"><div class="legend-color" style="background: #f59e0b;"></div><span>Livestock</span></div>
+        <div class="legend-item"><div class="legend-color" style="background: #3b82f6;"></div><span>Equipment</span></div>
+        <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div><span>Alert Zone</span></div>
+        <div class="legend-item"><div class="legend-color" style="background: #8b5cf6;"></div><span>Geofence</span></div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="farm-map"></div>
+</div>
+
+<script>
+    // Initialize map
+    let map;
+    let drawnItems;
+    let drawControl;
+    let currentDrawType = null;
+    let currentLayer = 'street';
+    let markers = {};
+    let polygons = {};
+    
+    // Farm data from Django context - use JSON.parse for reliability
+    let farms = [];
+    let fields = [];
+    let crops = [];
+    let livestock = [];
+    let equipment = [];
+    let geofences = [];
+    
+    try {
+        farms = JSON.parse('{{ farms|escapejs }}') || [];
+        fields = JSON.parse('{{ fields|escapejs }}') || [];
+        crops = JSON.parse('{{ crops|escapejs }}') || [];
+        livestock = JSON.parse('{{ livestock|escapejs }}') || [];
+        equipment = JSON.parse('{{ equipment|escapejs }}') || [];
+        geofences = JSON.parse('{{ geofences|escapejs }}') || [];
+    } catch(e) {
+        console.error('Error parsing map data:', e);
+    }
+    
+    // Fallback if parsing fails
+    if (!Array.isArray(farms)) farms = [];
+    if (!Array.isArray(fields)) fields = [];
+    if (!Array.isArray(crops)) crops = [];
+    if (!Array.isArray(livestock)) livestock = [];
+    if (!Array.isArray(equipment)) equipment = [];
+    if (!Array.isArray(geofences)) geofences = [];
+    
+    // Initialize map
+    function initMap() {
+        // Default center (first farm or default)
+        let center = [-1.286389, 36.817223]; // Nairobi default
+        let zoom = 13;
+        
+        if (farms.length > 0 && farms[0].location_lat && farms[0].location_lng) {
+            center = [farms[0].location_lat, farms[0].location_lng];
+            zoom = 14;
+        }
+        
+        map = L.map('farm-map').setView(center, zoom);
+        
+        // Add base layer
+        updateLayer();
+        
+        // Initialize drawn items layer
+        drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        
+        // Load existing data
+        loadFields();
+        loadLivestock();
+        loadEquipment();
+        loadGeofences();
+        loadCrops();
+        
+        // Add click handler for info
+        map.on('click', function(e) {
+            showLocationInfo(e.latlng);
+        });
+    }
+    
+    // Update map layer
+    function updateLayer() {
+        if (currentLayer === 'street') {
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.TileLayer) {
+                    map.removeLayer(layer);
+                }
+            });
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20,
+                minZoom: 3
+            }).addTo(map);
+        } else {
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.TileLayer) {
+                    map.removeLayer(layer);
+                }
+            });
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                maxZoom: 20,
+                minZoom: 3
+            }).addTo(map);
+        }
+    }
+    
+    function setLayer(type) {
+        currentLayer = type;
+        updateLayer();
+        
+        // Update button styles
+        document.getElementById('streetBtn').classList.remove('active');
+        document.getElementById('satelliteBtn').classList.remove('active');
+        if (type === 'street') {
+            document.getElementById('streetBtn').classList.add('active');
+        } else {
+            document.getElementById('satelliteBtn').classList.add('active');
+        }
+    }
+    
+    // Load fields as polygons
+    function loadFields() {
+        fields.forEach(function(field) {
+            if (field.boundary) {
+                const coords = JSON.parse(field.boundary);
+                const polygon = L.polygon(coords, {
+                    color: '#22c55e',
+                    weight: 3,
+                    fillColor: '#22c55e',
+                    fillOpacity: 0.2,
+                    className: 'field-polygon'
+                }).addTo(map);
+                
+                polygon.bindPopup(`
+                    <div class="p-2">
+                        <h3 class="font-bold">${field.name}</h3>
+                        <p>Area: ${field.area_hectares} ha</p>
+                        <p>Soil: ${field.soil_type}</p>
+                        <a href="/fields/${field.id}/" class="text-green-600 text-sm">View Details →</a>
+                    </div>
+                `);
+                
+                polygons[field.id] = polygon;
+                
+                // Add to asset list
+                addToAssetList('fields', {
+                    id: field.id,
+                    name: field.name,
+                    type: 'Field',
+                    area: field.area_hectares,
+                    icon: 'ri-shape-line'
+                });
+            }
+        });
+    }
+    
+    // Load livestock markers
+    function loadLivestock() {
+        livestock.forEach(function(animal) {
+            if (animal.location_lat && animal.location_lng) {
+                const marker = L.marker([animal.location_lat, animal.location_lng], {
+                    icon: L.divIcon({
+                        html: '<i class="ri-cow-line text-orange-600 text-xl"></i>',
+                        className: 'custom-icon',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div class="p-2">
+                        <h3 class="font-bold">${animal.name || animal.tag_number}</h3>
+                        <p>Type: ${animal.animal_type}</p>
+                        <p>Status: ${animal.status}</p>
+                        <a href="/livestock/${animal.id}/" class="text-green-600 text-sm">View Details →</a>
+                    </div>
+                `);
+                
+                markers[animal.id] = marker;
+                
+                addToAssetList('livestock', {
+                    id: animal.id,
+                    name: animal.name || animal.tag_number,
+                    type: animal.animal_type,
+                    icon: 'ri-cow-line'
+                });
+            }
+        });
+    }
+    
+    // Load equipment markers
+    function loadEquipment() {
+        equipment.forEach(function(item) {
+            if (item.location_lat && item.location_lng) {
+                const marker = L.marker([item.location_lat, item.location_lng], {
+                    icon: L.divIcon({
+                        html: '<i class="ri-tractor-line text-blue-600 text-xl"></i>',
+                        className: 'custom-icon',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div class="p-2">
+                        <h3 class="font-bold">${item.name}</h3>
+                        <p>Status: ${item.status}</p>
+                        <p>Rate: $${item.daily_rate}/day</p>
+                        <a href="/equipment/${item.id}/" class="text-green-600 text-sm">View Details →</a>
+                    </div>
+                `);
+                
+                markers[item.id] = marker;
+                
+                addToAssetList('equipment', {
+                    id: item.id,
+                    name: item.name,
+                    type: item.category,
+                    icon: 'ri-tractor-line'
+                });
+            }
+        });
+    }
+    
+    // Load geofences
+    function loadGeofences() {
+        geofences.forEach(function(geofence) {
+            if (geofence.boundary) {
+                const coords = JSON.parse(geofence.boundary);
+                const fence = L.polygon(coords, {
+                    color: '#8b5cf6',
+                    weight: 2,
+                    fillColor: '#8b5cf6',
+                    fillOpacity: 0.1,
+                    dashArray: '5, 5'
+                }).addTo(map);
+                
+                fence.bindPopup(`
+                    <div class="p-2">
+                        <h3 class="font-bold">${geofence.name}</h3>
+                        <p>Alert when animals leave this area</p>
+                        <button onclick="setGeofenceAlert(${geofence.id})" class="bg-green-600 text-white px-2 py-1 rounded text-xs">Set Alert</button>
+                    </div>
+                `);
+            }
+        });
+    }
+    
+    // Load crops as colored polygons
+    function loadCrops() {
+        crops.forEach(function(crop) {
+            if (crop.field_boundary) {
+                const coords = JSON.parse(crop.field_boundary);
+                const color = getCropColor(crop.status);
+                const polygon = L.polygon(coords, {
+                    color: color,
+                    weight: 2,
+                    fillColor: color,
+                    fillOpacity: 0.3
+                }).addTo(map);
+                
+                polygon.bindPopup(`
+                    <div class="p-2">
+                        <h3 class="font-bold">${crop.crop_name}</h3>
+                        <p>Status: ${crop.status}</p>
+                        <p>Planted: ${crop.planting_date}</p>
+                        <p>Expected harvest: ${crop.expected_harvest_date}</p>
+                        <a href="/crops/${crop.id}/" class="text-green-600 text-sm">View Details →</a>
+                    </div>
+                `);
+                
+                polygons[`crop_${crop.id}`] = polygon;
+                
+                // Add to asset list
+                addToAssetList('crops', {
+                    id: crop.id,
+                    name: crop.crop_name,
+                    type: crop.status,
+                    icon: 'ri-leaf-line'
+                });
+            }
+        });
+    }
+    
+    function getCropColor(status) {
+        switch(status) {
+            case 'growing': return '#22c55e';
+            case 'harvested': return '#eab308';
+            case 'failed': return '#ef4444';
+            default: return '#3b82f6';
+        }
+    }
+    
+    // Add to asset list panel
+    function addToAssetList(category, asset) {
+        let containerId = `${category}List`;
+        // Handle categories with trailing 's' (crops, livestock, equipment, fields)
+        if (category === 'crops') {
+            containerId = 'cropsList';
+        } else if (category === 'livestock') {
+            containerId = 'livestockList';
+        } else if (category === 'equipment') {
+            containerId = 'equipmentList';
+        } else if (category === 'fields') {
+            containerId = 'fieldsList';
+        }
+        
+        const container = document.getElementById(containerId);
+        if (container) {
+            const div = document.createElement('div');
+            div.className = 'asset-card flex items-center space-x-2 p-2 cursor-pointer hover:bg-gray-100 rounded';
+            div.onclick = () => focusAsset(category, asset.id);
+            let iconClass = 'ri-shape-line';
+            if (category === 'livestock') iconClass = 'ri-cow-line';
+            if (category === 'equipment') iconClass = 'ri-tractor-line';
+            div.innerHTML = `
+                <div class="asset-icon ${category === 'crops' ? 'crop' : category === 'livestock' ? 'livestock' : 'equipment'}">
+                    <i class="${iconClass}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-sm truncate">${asset.name}</div>
+                    <div class="text-xs text-gray-500 truncate">${asset.type}</div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+    }
+    
+    // Focus on asset
+    function focusAsset(category, id) {
+        if (category === 'crops') {
+            const key = `crop_${id}`;
+            if (polygons[key]) {
+                map.fitBounds(polygons[key].getBounds());
+                polygons[key].openPopup();
+            }
+        } else if (category === 'fields') {
+            if (polygons[id]) {
+                map.fitBounds(polygons[id].getBounds());
+            }
+        } else if (markers[id]) {
+            map.setView(markers[id].getLatLng(), 16);
+            markers[id].openPopup();
+        }
+    }
+    
+    // Drawing tools
+    function enableDraw(type) {
+        currentDrawType = type;
+        
+        // Remove existing draw control
+        if (drawControl) {
+            map.removeControl(drawControl);
+        }
+        
+        // Clear button styles
+        document.querySelectorAll('.draw-btn').forEach(btn => btn.classList.remove('active'));
+        
+        if (type === 'polygon') {
+            document.getElementById('polygonBtn').classList.add('active');
+            drawControl = new L.Draw.Polygon(map, {
+                shapeOptions: {
+                    color: '#16a34a',
+                    weight: 3
+                }
+            });
+        } else if (type === 'marker') {
+            document.getElementById('markerBtn').classList.add('active');
+            drawControl = new L.Draw.Marker(map);
+        } else if (type === 'circle') {
+            document.getElementById('circleBtn').classList.add('active');
+            drawControl = new L.Draw.Circle(map);
+        }
+        
+        if (drawControl) {
+            drawControl.enable();
+            map.on('draw:created', function(e) {
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                drawControl.disable();
+                currentDrawType = null;
+                document.querySelectorAll('.draw-btn').forEach(btn => btn.classList.remove('active'));
+            });
+        }
+    }
+    
+    function clearDraw() {
+        drawnItems.clearLayers();
+        if (drawControl) {
+            drawControl.disable();
+        }
+        currentDrawType = null;
+        document.querySelectorAll('.draw-btn').forEach(btn => btn.classList.remove('active'));
+    }
+    
+    function saveDrawing() {
+        const layers = drawnItems.getLayers();
+        if (layers.length === 0) {
+            alert('No drawing to save');
+            return;
+        }
+        
+        // Send to server
+        const data = {
+            type: currentDrawType || 'polygon',
+            geometry: JSON.stringify(layers.map(l => l.toGeoJSON()))
+        };
+        
+        fetch('/api/map/save-drawing/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert('Drawing saved successfully!');
+                  clearDraw();
+              } else {
+                  alert('Error saving drawing');
+              }
+          });
+    }
+    
+    // Utility functions
+    function zoomToFit() {
+        const bounds = [];
+        if (polygons) {
+            Object.values(polygons).forEach(p => bounds.push(p.getBounds()));
+        }
+        if (markers) {
+            Object.values(markers).forEach(m => bounds.push(m.getLatLng()));
+        }
+        if (bounds.length > 0) {
+            map.fitBounds(L.latLngBounds(bounds));
+        }
+    }
+    
+    function getCurrentLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const latlng = [position.coords.latitude, position.coords.longitude];
+                map.setView(latlng, 15);
+                L.marker(latlng, {
+                    icon: L.divIcon({
+                        html: '<i class="ri-user-location-line text-red-500 text-2xl pulse"></i>',
+                        className: 'custom-icon',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map).bindPopup('You are here').openPopup();
+            });
+        } else {
+            alert('Geolocation not supported');
+        }
+    }
+    
+    function showLocationInfo(latlng) {
+        // Reverse geocoding
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
+            .then(response => response.json())
+            .then(data => {
+                const popup = L.popup()
+                    .setLatLng(latlng)
+                    .setContent(`
+                        <div class="p-2">
+                            <h4 class="font-bold">Location Info</h4>
+                            <p class="text-sm">Lat: ${latlng.lat.toFixed(6)}</p>
+                            <p class="text-sm">Lng: ${latlng.lng.toFixed(6)}</p>
+                            <p class="text-sm">Address: ${data.display_name || 'Unknown'}</p>
+                            <button onclick="addMarkerAtLocation(${latlng.lat}, ${latlng.lng})" class="bg-green-600 text-white px-2 py-1 rounded text-xs mt-2">Add Marker Here</button>
+                        </div>
+                    `)
+                    .openOn(map);
+            });
+    }
+    
+    function addMarkerAtLocation(lat, lng) {
+        const marker = L.marker([lat, lng]).addTo(map);
+        drawnItems.addLayer(marker);
+        alert('Marker added. Use Save button to keep it.');
+    }
+    
+    function setGeofenceAlert(id) {
+        fetch(`/api/geofences/${id}/alert/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        }).then(() => alert('Alert set for this geofence'));
+    }
+    
+    function togglePanel() {
+        const panel = document.getElementById('infoPanel');
+        const icon = document.getElementById('panelIcon');
+        panel.classList.toggle('expanded');
+        if (panel.classList.contains('expanded')) {
+            icon.classList.remove('ri-arrow-down-s-line');
+            icon.classList.add('ri-arrow-up-s-line');
+        } else {
+            icon.classList.remove('ri-arrow-up-s-line');
+            icon.classList.add('ri-arrow-down-s-line');
+        }
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Search functionality
+    document.getElementById('assetSearch')?.addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('.asset-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+        });
+    });
+    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+        setLayer('street');
+        document.getElementById('streetBtn').classList.add('active');
+    });
+</script>
+{% endblock %}

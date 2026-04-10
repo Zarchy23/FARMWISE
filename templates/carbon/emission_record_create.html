@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Log Emission - FarmWise{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h1>Log Emission Activity</h1>
+            <p class="text-muted">Record your farm's emissions to track carbon footprint</p>
+
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="source" class="form-label">Emission Source *</label>
+                    <select class="form-select" id="source" name="source" required>
+                        <option value="">Select an emission source...</option>
+                        {% for source in sources %}
+                        <option value="{{ source.id }}">
+                            {{ source.get_source_type_display }} - {{ source.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="record_date" class="form-label">Date *</label>
+                    <input type="date" class="form-control" id="record_date" name="record_date" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="quantity_used" class="form-label">Quantity Used *</label>
+                    <div class="input-group">
+                        <input type="number" step="0.01" class="form-control" id="quantity_used" 
+                               name="quantity_used" placeholder="0.00" required>
+                        <span class="input-group-text" id="unit">unit</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <small>
+                        <strong>Estimated Emissions:</strong> <span id="estimated_emissions">0.00</span> kg CO₂e
+                    </small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description (Optional)</label>
+                    <textarea class="form-control" id="description" name="description" rows="4" 
+                              placeholder="Add any notes about this emission..."></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Log Emission</button>
+                    <a href="{% url 'carbon_tracker' %}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">Common Emissions</h5>
+                    <ul class="small">
+                        <li><strong>Fuel (Diesel):</strong> 2.68 kg CO₂e/liter</li>
+                        <li><strong>Electricity:</strong> 0.5 kg CO₂e/kWh</li>
+                        <li><strong>Fertilizer:</strong> 1.5 kg CO₂e/kg</li>
+                        <li><strong>Transport:</strong> 0.1 kg CO₂e/km</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('source').addEventListener('change', function() {
+    // Update unit based on selected source (would need AJAX in real implementation)
+    const unit = this.options[this.selectedIndex].dataset.unit || 'unit';
+    document.getElementById('unit').textContent = unit;
+});
+
+document.getElementById('quantity_used').addEventListener('input', function() {
+    // Calculate emissions (would need JavaScript data or AJAX)
+    const quantity = parseFloat(this.value) || 0;
+    const emissionFactor = 2.68; // Example value
+    const emissions = (quantity * emissionFactor).toFixed(2);
+    document.getElementById('estimated_emissions').textContent = emissions;
+});
+</script>
+{% endblock %}

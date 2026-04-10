@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Add Emission Source - FarmWise{% endblock %}
+
+{% block content %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #e11d48 0%, #be185d 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(225, 29, 72, 0.2);
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border: 1px solid #f3f4f6;
+    }
+    
+    .form-header {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #e11d48;
+        box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.1);
+    }
+    
+    .btn-submit {
+        background: linear-gradient(135deg, #e11d48 0%, #be185d 100%);
+        color: white;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+    
+    .btn-submit:hover {
+        background: linear-gradient(135deg, #be185d 0%, #9d174d 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(225, 29, 72, 0.3);
+    }
+    
+    .btn-cancel {
+        background: #f3f4f6;
+        color: #374151;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .help-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <h1 style="font-size: 2rem; margin: 0; font-weight: 800;">
+            ⚙️ Add Emission Source
+        </h1>
+        <p style="margin: 0.5rem 0 0 0; opacity: 0.95;">
+            Create a new emission source or activity type for your farm
+        </p>
+    </div>
+
+    <!-- Form Container -->
+    <div class="row justify-content-center mb-5">
+        <div class="col-lg-8">
+            <!-- Form Card -->
+            <div class="form-card">
+                <div class="form-header">
+                    📋 Source Details
+                </div>
+
+                <form method="post" action="{% url 'core:emission_source_create' %}">
+                    {% csrf_token %}
+
+                    <!-- Farm Selection -->
+                    <div class="form-group">
+                        <label class="form-label" for="farm">
+                            🏡 Farm
+                        </label>
+                        {% if farms %}
+                        <select name="farm" id="farm" class="form-control" required>
+                            <option value="">-- Select a farm --</option>
+                            {% for farm in farms %}
+                            <option value="{{ farm.id }}">{{ farm.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="help-text">Choose which farm this source applies to</div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            No farms available. Please <a href="{% url 'core:farm_create' %}">create a farm</a> first.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Source Type -->
+                    <div class="form-group">
+                        <label class="form-label" for="source_type">
+                            📌 Source Type
+                        </label>
+                        <select name="source_type" id="source_type" class="form-control" required>
+                            <option value="">-- Select source type --</option>
+                            <option value="fuel_diesel">Diesel Fuel</option>
+                            <option value="fuel_petrol">Petrol/Gasoline</option>
+                            <option value="electricity">Electricity</option>
+                            <option value="lpg">LPG/Gas</option>
+                            <option value="fertilizer">Fertilizer (Synthetic)</option>
+                            <option value="pesticide">Pesticide Application</option>
+                            <option value="transport_input">Transport of Inputs</option>
+                            <option value="transport_output">Transport of Products</option>
+                            <option value="livestock_enteric">Livestock Enteric Fermentation</option>
+                            <option value="manure">Manure Management</option>
+                            <option value="machinery">Machinery/Equipment</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <div class="help-text">Select the type of emission source</div>
+                    </div>
+
+                    <!-- Source Name -->
+                    <div class="form-group">
+                        <label class="form-label" for="name">
+                            📝 Source Name
+                        </label>
+                        <input 
+                            type="text" 
+                            name="name" 
+                            id="name" 
+                            class="form-control" 
+                            placeholder="e.g., Main Tractor, Water Pump, etc." 
+                            required
+                        >
+                        <div class="help-text">Give this source a descriptive name</div>
+                    </div>
+
+                    <!-- Emission Factor -->
+                    <div class="form-group">
+                        <label class="form-label" for="emission_factor">
+                            📊 Emission Factor (kg CO₂e per unit)
+                        </label>
+                        <input 
+                            type="number" 
+                            name="emission_factor" 
+                            id="emission_factor" 
+                            class="form-control" 
+                            placeholder="0.0000" 
+                            step="0.0001" 
+                            min="0" 
+                            required
+                        >
+                        <div class="help-text">Standard emission factor for this source (e.g., diesel = 2.68 kg CO₂e/liter)</div>
+                    </div>
+
+                    <!-- Unit -->
+                    <div class="form-group">
+                        <label class="form-label" for="unit">
+                            📏 Unit of Measurement
+                        </label>
+                        <select name="unit" id="unit" class="form-control" required>
+                            <option value="liter">Liter</option>
+                            <option value="kg">Kilogram</option>
+                            <option value="kWh">kWh (Energy)</option>
+                            <option value="m3">Cubic Meter (m³)</option>
+                            <option value="ton">Metric Ton</option>
+                            <option value="gallon">Gallon</option>
+                            <option value="hour">Hour</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <div class="help-text">Unit for measuring quantity used</div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="button-group">
+                        <button type="submit" class="btn-submit">
+                            ✓ Add Emission Source
+                        </button>
+                        <a href="{% url 'core:carbon_tracker' %}" class="btn-cancel">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

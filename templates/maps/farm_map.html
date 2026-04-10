@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Farm Map & Geofencing - FarmWise{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map { height: 600px; border-radius: 4px; margin-bottom: 20px; }
+    .sidebar { max-height: 600px; overflow-y: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Farm Map & Geofencing</h1>
+            <p class="text-muted">Track livestock location and set up boundary alerts</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'geofence_create' %}" class="btn btn-primary">Create Geofence</a>
+            <a href="{% url 'livestock_tracking' %}" class="btn btn-outline-primary">Track Livestock</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div id="map"></div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sidebar">
+                <div class="card-header">
+                    <h5 class="mb-0">Geofences</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for geofence in geofences %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">{{ geofence.name }}</h6>
+                                {% if geofence.field %}
+                                <small class="text-muted">Field: {{ geofence.field.name }}</small><br>
+                                {% endif %}
+                                <small class="text-muted">
+                                    <i class="fas fa-{% if geofence.is_active %}check-circle text-success{% else %}times-circle text-danger{% endif %}"></i>
+                                    {% if geofence.is_active %}Active{% else %}Inactive{% endif %}
+                                </small>
+                            </div>
+                            <div class="btn-group-vertical btn-group-sm">
+                                <a href="{% url 'geofence_edit' geofence.id %}" class="btn btn-outline-primary">Edit</a>
+                                <a href="{% url 'geofence_alerts' geofence.id %}" class="btn btn-outline-warning">Alerts</a>
+                            </div>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-muted text-center py-3">
+                        <p>No geofences created yet</p>
+                        <a href="{% url 'geofence_create' %}" class="btn btn-sm btn-primary">Create One</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Active Livestock</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for livestock in active_livestock %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">{{ livestock.name }}</h6>
+                                <small class="text-muted">{{ livestock.get_type_display }}</small>
+                            </div>
+                            <a href="{% url 'livestock_location' livestock.id %}" class="btn btn-sm btn-outline-info">
+                                Track
+                            </a>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-muted text-center py-3">
+                        No livestock with GPS tracking
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([{{ farm_lat }}, {{ farm_lon }}], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Add farm boundary
+    {% if farm_boundary %}
+    const boundary = L.geoJSON({{ farm_boundary|safe }}, {
+        style: { color: 'blue', weight: 2, opacity: 0.8, fillOpacity: 0.1 },
+        popup: 'Farm Boundary'
+    }).addTo(map);
+    {% endif %}
+
+    // Add geofences
+    {% for geofence in geofences %}
+    const geofence_{{ geofence.id }} = L.geoJSON({{ geofence.geojson_boundary|safe }}, {
+        style: { color: '{{ geofence.color|default:"red" }}', weight: 2, opacity: 0.7, fillOpacity: 0.2 },
+        popup: '{{ geofence.name }}'
+    }).addTo(map);
+    {% endfor %}
+
+    // Add livestock locations
+    {% for location in livestock_locations %}
+    L.circleMarker([{{ location.latitude }}, {{ location.longitude }}], {
+        radius: 8,
+        color: 'green',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.8,
+        popup: '{{ location.livestock.name }}<br>Accuracy: {{ location.accuracy_meters }}m'
+    }).addTo(map);
+    {% endfor %}
+</script>
+{% endblock %}

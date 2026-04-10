@@ -383,7 +383,8 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
-    'DEFAULT_THROTTLE_CLASSES': [
+    # Disable throttling in development (requires Redis in production)
+    'DEFAULT_THROTTLE_CLASSES': [] if DEBUG else [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
     ],
@@ -469,11 +470,22 @@ STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 # AI & ML Configuration
 # ============================================================
 
-OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+# FREE APIS FOR RENDER (NO COST!)
+# Pest Detection: Google Gemini (free tier - 60 req/min)
+# Weather: Open-Meteo (completely free, no API key needed!)
+# Fallbacks: Groq, Together.ai (free tiers available)
+
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')  # DEPRECATED - use free alternatives
 TOGETHER_API_KEY = config('TOGETHER_API_KEY', default='')
+GROQ_API_KEY = config('GROQ_API_KEY', default='')
+GEMINI_API_KEY = config('GEMINI_API_KEY', default='')  # Free tier for Pest Detection
 GOOGLE_VISION_API_KEY = config('GOOGLE_VISION_API_KEY', default='')
 PEST_DETECTION_API_URL = config('PEST_DETECTION_API_URL', default='')
-OPENWEATHER_API_KEY = config('OPENWEATHER_API_KEY', default='')
+
+# Weather - Open-Meteo (FREE, no API key needed)
+# But you can override with custom weather provider
+OPENWEATHER_API_KEY = config('OPENWEATHER_API_KEY', default='')  # OPTIONAL - Open-Meteo is used by default
+WEATHER_API_KEY = config('WEATHER_API_KEY', default='')
 
 # ============================================================
 # Map Configuration (Leaflet)

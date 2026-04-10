@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ forum.title }} - FarmWise Forum{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Breadcrumb -->
+        <div class="mb-6">
+            <div class="flex items-center gap-2 text-gray-600">
+                <a href="{% url 'core:forum_list' %}" class="text-green-600 hover:text-green-700 flex items-center gap-1">
+                    <i class="ri-home-line"></i> Forums
+                </a>
+                <i class="ri-arrow-right-s-line text-gray-400"></i>
+                <span>{{ forum.title }}</span>
+            </div>
+        </div>
+
+        <!-- Forum Header -->
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-8 border-l-4 border-green-500">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                <div class="flex-1">
+                    <!-- Category Badge -->
+                    <div class="inline-block mb-2">
+                        {% if forum.category == 'crops' %}
+                            <span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-leaf-line"></i> Crops
+                            </span>
+                        {% elif forum.category == 'livestock' %}
+                            <span class="bg-amber-100 text-amber-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-home-heart-line"></i> Livestock
+                            </span>
+                        {% elif forum.category == 'equipment' %}
+                            <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-tools-line"></i> Equipment
+                            </span>
+                        {% elif forum.category == 'marketplace' %}
+                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-shopping-cart-line"></i> Marketplace
+                            </span>
+                        {% else %}
+                            <span class="bg-gray-100 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-chat-3-line"></i> General
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Title and Description -->
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">{{ forum.title }}</h1>
+                    <p class="text-gray-600 text-lg">{{ forum.description }}</p>
+                </div>
+
+                <!-- Create Thread Button -->
+                <a href="{% url 'core:thread_create' forum.id %}" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap">
+                    <i class="ri-add-line"></i> New Discussion
+                </a>
+            </div>
+
+            <!-- Forum Stats -->
+            <div class="grid grid-cols-3 md:grid-cols-6 gap-4 mt-8 pt-8 border-t">
+                <div class="text-center">
+                    <p class="text-2xl font-bold text-green-600">{{ forum.member_count|default:0 }}</p>
+                    <p class="text-sm text-gray-500">Members</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-2xl font-bold text-blue-600">{{ forum.post_count|default:0 }}</p>
+                    <p class="text-sm text-gray-500">Discussions</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-2xl font-bold text-purple-600">{{ forum.created_at|date:'M d, Y' }}</p>
+                    <p class="text-sm text-gray-500">Created</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Discussions Section -->
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <i class="ri-chat-check-line text-green-600"></i> Discussions
+            </h2>
+
+            {% if threads %}
+            <div class="space-y-4">
+                {% for thread in threads %}
+                <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow border-l-4 {% if thread.is_pinned %}border-orange-500 bg-orange-50{% else %}border-green-500{% endif %} overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex gap-4">
+                            <!-- Author Avatar -->
+                            <div class="flex-shrink-0">
+                                <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                                    {{ thread.author.first_name|first|upper }}
+                                </div>
+                            </div>
+
+                            <!-- Thread Content -->
+                            <div class="flex-1 min-w-0">
+                                <!-- Pinned Badge -->
+                                {% if thread.is_pinned %}
+                                <div class="inline-block mb-2">
+                                    <span class="bg-orange-100 text-orange-800 text-xs font-semibold px-2 py-1 rounded flex items-center gap-1">
+                                        <i class="ri-pushpin-2-line"></i> Pinned
+                                    </span>
+                                </div>
+                                {% endif %}
+
+                                <!-- Thread Title -->
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                                    <a href="{% url 'core:thread_detail' thread.id %}" class="hover:text-green-600 transition-colors">
+                                        {{ thread.title }}
+                                    </a>
+                                </h3>
+
+                                <!-- Thread Preview -->
+                                <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ thread.content }}</p>
+
+                                <!-- Thread Meta -->
+                                <div class="flex flex-wrap gap-4 text-sm text-gray-500">
+                                    <span class="flex items-center gap-1">
+                                        <i class="ri-user-line"></i> {{ thread.author.get_full_name|default:thread.author.username }}
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <i class="ri-calendar-line"></i> {{ thread.created_at|date:'M d, Y' }}
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <i class="ri-chat-3-line"></i> {{ thread.reply_count|default:0 }} replies
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <i class="ri-eye-line"></i> {{ thread.view_count|default:0 }} views
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- View Link -->
+                            <div class="flex-shrink-0 flex items-center">
+                                <a href="{% url 'core:thread_detail' thread.id %}" class="text-green-600 hover:text-green-700 text-xl transition-colors">
+                                    <i class="ri-arrow-right-line"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-white rounded-lg shadow-md p-12 text-center">
+                <i class="ri-chat-smile-line text-6xl text-gray-300 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">No Discussions Yet</h3>
+                <p class="text-gray-600 mb-6">Be the first to start a discussion in this forum!</p>
+                <a href="{% url 'core:thread_create' forum.id %}" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                    <i class="ri-add-line"></i> Start Discussion
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

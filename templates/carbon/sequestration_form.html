@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}Add Sequestration Activity - FarmWise{% endblock %}
+
+{% block content %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(8, 145, 178, 0.2);
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border: 1px solid #f3f4f6;
+    }
+    
+    .form-header {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #0891b2;
+        box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+    }
+    
+    .btn-submit {
+        background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+        color: white;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+    
+    .btn-submit:hover {
+        background: linear-gradient(135deg, #0e7490 0%, #164e63 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(8, 145, 178, 0.3);
+    }
+    
+    .btn-cancel {
+        background: #f3f4f6;
+        color: #374151;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .help-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    
+    .info-box {
+        background: #ecf0ff;
+        border-left: 4px solid #0891b2;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        color: #164e63;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <h1 style="font-size: 2rem; margin: 0; font-weight: 800;">
+            🌱 Add Carbon Sequestration Activity
+        </h1>
+        <p style="margin: 0.5rem 0 0 0; opacity: 0.95;">
+            Record activities that sequester (remove) carbon from the atmosphere
+        </p>
+    </div>
+
+    <!-- Form Container -->
+    <div class="row justify-content-center mb-5">
+        <div class="col-lg-8">
+            <!-- Info Box -->
+            <div class="info-box">
+                <strong>💡 What is Carbon Sequestration?</strong><br>
+                Carbon sequestration is the process of capturing and storing atmospheric carbon dioxide. Activities like planting trees, practicing agroforestry, or improving soil carbon help offset your farm's emissions.
+            </div>
+
+            <!-- Form Card -->
+            <div class="form-card">
+                <div class="form-header">
+                    📋 Sequestration Details
+                </div>
+
+                <form method="post" action="{% url 'core:sequestration_create' %}">
+                    {% csrf_token %}
+
+                    <!-- Farm Selection -->
+                    <div class="form-group">
+                        <label class="form-label" for="farm">
+                            🏡 Farm
+                        </label>
+                        {% if farms %}
+                        <select name="farm" id="farm" class="form-control" required>
+                            <option value="">-- Select a farm --</option>
+                            {% for farm in farms %}
+                            <option value="{{ farm.id }}">{{ farm.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="help-text">Choose which farm this activity is on</div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            No farms available. Please <a href="{% url 'core:farm_create' %}">create a farm</a> first.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Activity Type -->
+                    <div class="form-group">
+                        <label class="form-label" for="activity_type">
+                            🌳 Activity Type
+                        </label>
+                        <select name="activity_type" id="activity_type" class="form-control" required>
+                            <option value="">-- Select activity type --</option>
+                            <option value="trees">Trees/Forestry</option>
+                            <option value="agroforestry">Agroforestry</option>
+                            <option value="soil_carbon">Soil Carbon</option>
+                            <option value="compost">Composting</option>
+                            <option value="mulch">Mulching</option>
+                            <option value="wetland">Wetland Conservation</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <div class="help-text">Select the type of sequestration activity</div>
+                    </div>
+
+                    <!-- Activity Name -->
+                    <div class="form-group">
+                        <label class="form-label" for="name">
+                            📝 Activity Name
+                        </label>
+                        <input 
+                            type="text" 
+                            name="name" 
+                            id="name" 
+                            class="form-control" 
+                            placeholder="e.g., Windbreak Trees, Cover Crops, etc." 
+                            required
+                        >
+                        <div class="help-text">Give this activity a descriptive name</div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <label class="form-label" for="description">
+                            📄 Description
+                        </label>
+                        <textarea 
+                            name="description" 
+                            id="description" 
+                            class="form-control" 
+                            rows="4" 
+                            placeholder="Describe the sequestration activity in detail..."
+                            required
+                            style="resize: vertical;"
+                        ></textarea>
+                        <div class="help-text">Provide details about the activity location, scope, and expected impact</div>
+                    </div>
+
+                    <!-- Annual Sequestration -->
+                    <div class="form-group">
+                        <label class="form-label" for="sequestration">
+                            📊 Annual Carbon Sequestration (kg CO₂e/year)
+                        </label>
+                        <input 
+                            type="number" 
+                            name="sequestration" 
+                            id="sequestration" 
+                            class="form-control" 
+                            placeholder="0.00" 
+                            step="0.01" 
+                            min="0" 
+                            required
+                        >
+                        <div class="help-text">Estimated amount of CO₂ this activity sequesters per year (e.g., mature tree ~20 kg/year)</div>
+                    </div>
+
+                    <!-- Area/Quantity -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label" for="area_hectares">
+                                    📏 Area (hectares) - Optional
+                                </label>
+                                <input 
+                                    type="number" 
+                                    name="area_hectares" 
+                                    id="area_hectares" 
+                                    class="form-control" 
+                                    placeholder="0.00" 
+                                    step="0.01" 
+                                    min="0"
+                                >
+                                <div class="help-text">Total area covered by this activity</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label" for="tree_count">
+                                    🌲 Number of Trees - Optional
+                                </label>
+                                <input 
+                                    type="number" 
+                                    name="tree_count" 
+                                    id="tree_count" 
+                                    class="form-control" 
+                                    placeholder="0" 
+                                    min="0"
+                                >
+                                <div class="help-text">Number of trees planted (if applicable)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="button-group">
+                        <button type="submit" class="btn-submit">
+                            ✓ Add Sequestration Activity
+                        </button>
+                        <a href="{% url 'core:carbon_tracker' %}" class="btn-cancel">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tips Section -->
+            <div style="margin-top: 2rem; padding: 1.5rem; background: #dbeafe; border-radius: 12px; border-left: 4px solid #0891b2;">
+                <div style="font-weight: 600; color: #0e5a8a; margin-bottom: 0.5rem;">
+                    🎯 Tips for Calculating Sequestration
+                </div>
+                <ul style="margin: 0; color: #155e75; font-size: 0.9rem; line-height: 1.6;">
+                    <li><strong>Trees:</strong> Mature trees sequester ~20-30 kg CO₂/year</li>
+                    <li><strong>Agroforestry:</strong> 5-10 ton CO₂/hectare/year</li>
+                    <li><strong>Soil Carbon:</strong> 0.5-2 ton CO₂/hectare/year</li>
+                    <li><strong>Composting:</strong> Reduces methane by ~0.5 kg CO₂e per kg composted</li>
+                    <li>Update annually as your sequestration activities mature</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

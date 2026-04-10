@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Geofences - FarmWise{% endblock %}
+{% block page_title %}Farm Geofences{% endblock %}
+
+{% block extra_css %}
+<style>
+    .geofence-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .btn-create {
+        background: #16a34a;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.2s;
+    }
+    
+    .btn-create:hover {
+        background: #15803d;
+    }
+    
+    .geofence-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .geofence-card {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: all 0.2s;
+    }
+    
+    .geofence-card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        transform: translateY(-4px);
+    }
+    
+    .geofence-header-card {
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        color: white;
+        padding: 1.5rem;
+    }
+    
+    .geofence-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .geofence-farm {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .geofence-body {
+        padding: 1.5rem;
+    }
+    
+    .geofence-stat {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .geofence-stat:last-child {
+        border-bottom: none;
+    }
+    
+    .stat-label {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+    
+    .stat-value {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    
+    .geofence-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .btn-small {
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+    
+    .btn-small:hover {
+        background: #f3f4f6;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #dcfce7;
+        color: #166534;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        background: white;
+        border-radius: 0.5rem;
+        color: #9ca3af;
+    }
+    
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="geofence-header">
+    <h2>Manage Geofences</h2>
+    <a href="{% url 'core:geofence_create' %}" class="btn-create">➕ Create Geofence</a>
+</div>
+
+{% if geofences %}
+    <div class="geofence-grid">
+        {% for geofence in geofences %}
+        <div class="geofence-card">
+            <div class="geofence-header-card">
+                <div class="geofence-name">{{ geofence.name }}</div>
+                <div class="geofence-farm">{{ geofence.farm.name }}</div>
+            </div>
+            <div class="geofence-body">
+                <div class="geofence-stat">
+                    <span class="stat-label">Status</span>
+                    <span class="status-badge">{{ geofence.is_active|yesno:'Active,Inactive' }}</span>
+                </div>
+                <div class="geofence-stat">
+                    <span class="stat-label">Exit Alerts</span>
+                    <span class="stat-value">{{ geofence.enable_exit_alerts|yesno:'On,Off' }}</span>
+                </div>
+                <div class="geofence-stat">
+                    <span class="stat-label">Entry Alerts</span>
+                    <span class="stat-value">{{ geofence.enable_entry_alerts|yesno:'On,Off' }}</span>
+                </div>
+                <div class="geofence-stat">
+                    <span class="stat-label">Created</span>
+                    <span class="stat-value">{{ geofence.created_at|date:"M d" }}</span>
+                </div>
+                
+                <div class="geofence-actions">
+                    <a href="{% url 'core:geofence_detail' geofence.pk %}" class="btn-small">View</a>
+                    <a href="{% url 'core:geofence_edit' geofence.pk %}" class="btn-small">Edit</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">🛡️</div>
+        <h3>No Geofences Yet</h3>
+        <p>Create geofences to protect your livestock and equipment</p>
+        <a href="{% url 'core:geofence_create' %}" class="btn-create" style="margin-top: 1rem;">Create First Geofence</a>
+    </div>
+{% endif %}
+{% endblock %}

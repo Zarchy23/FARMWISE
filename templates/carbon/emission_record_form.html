@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}Add Emission Record - FarmWise{% endblock %}
+
+{% block content %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(5, 150, 105, 0.2);
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border: 1px solid #f3f4f6;
+    }
+    
+    .form-header {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #059669;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+    }
+    
+    .btn-submit {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: white;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+    
+    .btn-submit:hover {
+        background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3);
+    }
+    
+    .btn-cancel {
+        background: #f3f4f6;
+        color: #374151;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-cancel:hover {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .info-section {
+        background: #f0fdf4;
+        border-left: 4px solid #059669;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .info-title {
+        font-weight: 600;
+        color: #065f46;
+        margin-bottom: 0.5rem;
+    }
+    
+    .info-text {
+        color: #047857;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    
+    .help-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    
+    .estimated-emissions {
+        background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        border: 2px solid #93c5fd;
+        display: none;
+    }
+    
+    .emissions-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e40af;
+    }
+    
+    .emissions-label {
+        color: #3730a3;
+        font-size: 0.9rem;
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="row align-items-center">
+            <div class="col">
+                <h1 style="font-size: 2rem; margin: 0; font-weight: 800;">
+                    💨 Add Emission Record
+                </h1>
+                <p style="margin: 0.5rem 0 0 0; opacity: 0.95;">
+                    Record farm emissions to track your carbon footprint
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Container -->
+    <div class="row justify-content-center mb-5">
+        <div class="col-lg-8">
+            <!-- Info Section -->
+            <div class="info-section">
+                <div class="info-title">📋 How It Works</div>
+                <div class="info-text">
+                    Select your farm, choose an emission source, and enter the quantity used. FarmWise will automatically calculate the CO2 equivalent emissions based on standard emission factors.
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="form-card">
+                <div class="form-header">
+                    🔍 Emission Details
+                </div>
+
+                <form method="post" action="{% url 'core:emission_record_create' %}">
+                    {% csrf_token %}
+
+                    <!-- Farm Selection -->
+                    <div class="form-group">
+                        <label class="form-label" for="farm">
+                            🏡 Select Farm
+                        </label>
+                        {% if farms %}
+                        <select name="farm" id="farm" class="form-control" required onchange="updateSources()">
+                            <option value="">-- Choose a farm --</option>
+                            {% for farm in farms %}
+                            <option value="{{ farm.id }}">{{ farm.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="help-text">Select the farm where this emission occurred</div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            No farms available. Please <a href="{% url 'core:farm_create' %}">create a farm</a> first.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Source Selection -->
+                    <div class="form-group">
+                        <label class="form-label" for="source">
+                            ⚙️ Emission Source
+                        </label>
+                        {% if sources %}
+                        <select name="source" id="source" class="form-control" required onchange="updateEmissions()">
+                            <option value="">-- Choose a source --</option>
+                            {% for source in sources %}
+                            <option value="{{ source.id }}" data-farm="{{ source.farm.id }}" data-factor="{{ source.emission_factor }}" data-unit="{{ source.unit }}">
+                                {{ source.get_source_type_display }} - {{ source.name }} ({{ source.unit }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="help-text">Select the emission source or activity</div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            ⚠️ No emission sources available. <a href="{% url 'core:carbon_tracker' %}">Configure sources first</a>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Quantity Input -->
+                    <div class="form-group">
+                        <label class="form-label" for="quantity">
+                            📏 Quantity Used
+                        </label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input 
+                                type="number" 
+                                name="quantity" 
+                                id="quantity" 
+                                class="form-control" 
+                                placeholder="0.00" 
+                                step="0.01" 
+                                min="0" 
+                                required 
+                                oninput="updateEmissions()"
+                                style="flex: 1;"
+                            >
+                            <div style="padding: 0.75rem 1rem; background: #f3f4f6; border-radius: 8px; color: #6b7280; font-weight: 500; min-width: 80px; display: flex; align-items: center;">
+                                <span id="unit-display">--</span>
+                            </div>
+                        </div>
+                        <div class="help-text">Enter the amount in the selected unit</div>
+                    </div>
+
+                    <!-- Estimated Emissions -->
+                    <div class="estimated-emissions" id="emissions-estimate">
+                        <div class="emissions-label">Estimated CO₂ Equivalent Emissions:</div>
+                        <div class="emissions-value" id="emissions-value">0.00 kg CO₂e</div>
+                    </div>
+
+                    <!-- Optional Description -->
+                    <div class="form-group">
+                        <label class="form-label" for="description">
+                            📝 Description (Optional)
+                        </label>
+                        <textarea 
+                            name="description" 
+                            id="description" 
+                            class="form-control" 
+                            rows="3" 
+                            placeholder="Add any notes about this emission record..."
+                            style="resize: vertical;"
+                        ></textarea>
+                        <div class="help-text">Add details about when or where this occurred</div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="button-group">
+                        <button type="submit" class="btn-submit">
+                            ✓ Add Emission Record
+                        </button>
+                        <a href="{% url 'core:carbon_tracker' %}" class="btn-cancel">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tips Section -->
+            <div style="margin-top: 2rem; padding: 1.5rem; background: #fff7ed; border-radius: 12px; border-left: 4px solid #ea580c;">
+                <div style="font-weight: 600; color: #92400e; margin-bottom: 0.5rem;">
+                    💡 Tips for Accurate Tracking
+                </div>
+                <ul style="margin: 0; color: #b45309; font-size: 0.9rem; line-height: 1.6;">
+                    <li>Keep receipts for fuel and other inputs for accurate quantities</li>
+                    <li>Record emissions regularly to maintain accurate monthly data</li>
+                    <li>Different activities use different emission factors</li>
+                    <li>Review your total emissions monthly to identify reduction opportunities</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Store all source options
+    let allSourceOptions = [];
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const sourceSelect = document.getElementById('source');
+        if (sourceSelect) {
+            // Store all available options (except the default placeholder)
+            Array.from(sourceSelect.options).forEach((option, index) => {
+                if (index > 0) { // Skip first placeholder option
+                    allSourceOptions.push({
+                        id: option.value,
+                        farm_id: option.dataset.farm,
+                        text: option.text,
+                        factor: option.dataset.factor,
+                        unit: option.dataset.unit
+                    });
+                }
+            });
+        }
+    });
+    
+    function updateSources() {
+        const farmSelect = document.getElementById('farm');
+        const sourceSelect = document.getElementById('source');
+        const farmId = farmSelect.value;
+        
+        // Build new options list
+        let html = '<option value="">-- Choose a source --</option>';
+        
+        if (farmId) {
+            // Filter sources for selected farm
+            allSourceOptions.forEach(source => {
+                if (source.farm_id === farmId) {
+                    html += `<option value="${source.id}" data-farm="${source.farm_id}" data-factor="${source.factor}" data-unit="${source.unit}">
+                        ${source.text}
+                    </option>`;
+                }
+            });
+            
+            if (html === '<option value="">-- Choose a source --</option>') {
+                html += '<option value="">No sources available for this farm</option>';
+            }
+        } else {
+            // Show all sources when no farm selected
+            allSourceOptions.forEach(source => {
+                html += `<option value="${source.id}" data-farm="${source.farm_id}" data-factor="${source.factor}" data-unit="${source.unit}">
+                    ${source.text}
+                </option>`;
+            });
+        }
+        
+        sourceSelect.innerHTML = html;
+        sourceSelect.disabled = allSourceOptions.length === 0;
+        updateEmissions(); // Reset emissions estimate
+    }
+    
+    function updateEmissions() {
+        const sourceSelect = document.getElementById('source');
+        const quantityInput = document.getElementById('quantity');
+        const estimate = document.getElementById('emissions-estimate');
+        const value = document.getElementById('emissions-value');
+        const unitDisplay = document.getElementById('unit-display');
+        
+        const selectedOption = sourceSelect.options[sourceSelect.selectedIndex];
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const factor = parseFloat(selectedOption.dataset.factor) || 0;
+        const unit = selectedOption.dataset.unit || '--';
+        
+        unitDisplay.textContent = unit;
+        
+        if (sourceSelect.value && quantity > 0) {
+            const emissions = (quantity * factor).toFixed(2);
+            value.textContent = `${emissions} kg CO₂e`;
+            estimate.style.display = 'block';
+        } else {
+            estimate.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

@@ -576,6 +576,479 @@ class NotificationAdmin(admin.ModelAdmin):
 
 
 # ============================================================
+# SECTION 13: FARMER NETWORK & KNOWLEDGE SHARING (FEATURE 10)
+# ============================================================
+
+@admin.register(DiscussionForum)
+class DiscussionForumAdmin(admin.ModelAdmin):
+    list_display = ('title', 'category', 'is_moderated', 'is_active', 'member_count', 'post_count', 'created_at')
+    list_filter = ('category', 'is_moderated', 'is_active', 'created_at')
+    search_fields = ('title', 'description')
+    readonly_fields = ('created_at', 'updated_at', 'member_count', 'post_count')
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'description', 'category')
+        }),
+        ('Moderation', {
+            'fields': ('is_moderated', 'moderators')
+        }),
+        ('Settings', {
+            'fields': ('allow_attachments', 'allow_external_links', 'is_active')
+        }),
+        ('Statistics', {
+            'fields': ('member_count', 'post_count'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(ForumThread)
+class ForumThreadAdmin(admin.ModelAdmin):
+    list_display = ('title', 'forum', 'author', 'is_pinned', 'is_closed', 'view_count', 'reply_count', 'created_at')
+    list_filter = ('forum', 'is_pinned', 'is_closed', 'created_at')
+    search_fields = ('title', 'content', 'author__username')
+    readonly_fields = ('view_count', 'reply_count', 'created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('forum', 'author', 'title', 'content')
+        }),
+        ('Status & Engagement', {
+            'fields': ('is_pinned', 'is_closed', 'view_count', 'reply_count')
+        }),
+        ('Tags', {
+            'fields': ('tags',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(ForumReply)
+class ForumReplyAdmin(admin.ModelAdmin):
+    list_display = ('thread', 'author', 'is_helpful', 'helpful_count', 'created_at')
+    list_filter = ('is_helpful', 'created_at')
+    search_fields = ('content', 'author__username', 'thread__title')
+    readonly_fields = ('created_at', 'updated_at', 'helpful_count')
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('thread', 'author', 'content')
+        }),
+        ('Recognition', {
+            'fields': ('is_helpful', 'helpful_count')
+        }),
+        ('Attachments', {
+            'fields': ('attachments',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(GroupBuyingInitiative)
+class GroupBuyingInitiativeAdmin(admin.ModelAdmin):
+    list_display = ('title', 'product_type', 'status', 'discount_percent', 'farmers_joined', 'total_quantity_pledged', 'created_at')
+    list_filter = ('status', 'created_at', 'end_date')
+    search_fields = ('title', 'product_type', 'organizer')
+    readonly_fields = ('created_at', 'farmers_joined', 'total_quantity_pledged')
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'description', 'product_type')
+        }),
+        ('Pricing & Quantity', {
+            'fields': ('minimum_order_quantity', 'quantity_unit', 'unit_price_without_group', 'unit_price_with_group', 'discount_percent')
+        }),
+        ('Timeline', {
+            'fields': ('start_date', 'end_date', 'delivery_date')
+        }),
+        ('Organizer', {
+            'fields': ('organizer', 'organizer_contact')
+        }),
+        ('Status', {
+            'fields': ('status', 'farmers_joined', 'total_quantity_pledged')
+        }),
+    )
+    
+    actions = ['mark_closed', 'mark_completed', 'mark_cancelled']
+    
+    def mark_closed(self, request, queryset):
+        queryset.update(status='closed')
+        self.message_user(request, f"{queryset.count()} initiatives marked as closed.")
+    mark_closed.short_description = "Mark as closed"
+    
+    def mark_completed(self, request, queryset):
+        queryset.update(status='completed')
+        self.message_user(request, f"{queryset.count()} initiatives marked as completed.")
+    mark_completed.short_description = "Mark as completed"
+    
+    def mark_cancelled(self, request, queryset):
+        queryset.update(status='cancelled')
+        self.message_user(request, f"{queryset.count()} initiatives marked as cancelled.")
+    mark_cancelled.short_description = "Mark as cancelled"
+
+
+@admin.register(GroupBuyingParticipant)
+class GroupBuyingParticipantAdmin(admin.ModelAdmin):
+    list_display = ('farmer', 'initiative', 'quantity_pledged', 'quantity_received', 'payment_status', 'amount_paid', 'joined_at')
+    list_filter = ('payment_status', 'joined_at', 'initiative')
+    search_fields = ('farmer__username', 'initiative__title')
+    readonly_fields = ('joined_at',)
+    
+    fieldsets = (
+        ('Participation', {
+            'fields': ('initiative', 'farmer', 'quantity_pledged', 'quantity_received')
+        }),
+        ('Payment', {
+            'fields': ('payment_status', 'amount_paid')
+        }),
+        ('Timestamps', {
+            'fields': ('joined_at',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['mark_payment_pending', 'mark_payment_paid', 'mark_payment_partial']
+    
+    def mark_payment_pending(self, request, queryset):
+        queryset.update(payment_status='pending')
+        self.message_user(request, f"{queryset.count()} participants marked as pending payment.")
+    mark_payment_pending.short_description = "Mark payment as pending"
+    
+    def mark_payment_paid(self, request, queryset):
+        queryset.update(payment_status='paid')
+        self.message_user(request, f"{queryset.count()} participants marked as paid.")
+    mark_payment_paid.short_description = "Mark payment as paid"
+    
+    def mark_payment_partial(self, request, queryset):
+        queryset.update(payment_status='partial')
+        self.message_user(request, f"{queryset.count()} participants marked as partially paid.")
+    mark_payment_partial.short_description = "Mark payment as partial"
+
+
+# ============================================================
+# SECTION 14: CARBON FOOTPRINT TRACKER (FEATURE 11)
+# ============================================================
+
+@admin.register(EmissionSource)
+class EmissionSourceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'farm', 'source_type', 'unit', 'emission_factor', 'is_active')
+    list_filter = ('source_type', 'is_active', 'created_at')
+    search_fields = ('name', 'farm__name')
+    readonly_fields = ('created_at',)
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('farm', 'source_type', 'name')
+        }),
+        ('Emission Factor', {
+            'fields': ('emission_factor', 'unit')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+    )
+
+
+@admin.register(EmissionRecord)
+class EmissionRecordAdmin(admin.ModelAdmin):
+    list_display = ('farm', 'source', 'record_date', 'quantity_used', 'calculated_emissions_kg_co2e', 'created_at')
+    list_filter = ('source', 'record_date', 'farm')
+    search_fields = ('farm__name', 'source__name', 'description')
+    readonly_fields = ('calculated_emissions_kg_co2e', 'created_at')
+    
+    fieldsets = (
+        ('Record Information', {
+            'fields': ('farm', 'source', 'record_date', 'quantity_used')
+        }),
+        ('Calculated Emissions', {
+            'fields': ('calculated_emissions_kg_co2e',)
+        }),
+        ('Details', {
+            'fields': ('description',),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(CarbonSequestration)
+class CarbonSequestrationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'farm', 'activity_type', 'area_hectares', 'annual_sequestration_kg_co2e', 'start_date')
+    list_filter = ('activity_type', 'start_date', 'farm')
+    search_fields = ('name', 'farm__name', 'description')
+    readonly_fields = ('created_at',)
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('farm', 'activity_type', 'name', 'description')
+        }),
+        ('Quantity', {
+            'fields': ('area_hectares', 'tree_count')
+        }),
+        ('Sequestration Rate', {
+            'fields': ('annual_sequestration_kg_co2e',)
+        }),
+        ('Timeline', {
+            'fields': ('start_date', 'end_date')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+# ============================================================
+# SECTION 15: FARM MAP & GEOFENCING (FEATURE 12)
+# ============================================================
+
+@admin.register(FarmBoundary)
+class FarmBoundaryAdmin(admin.ModelAdmin):
+    list_display = ('farm', 'total_area_hectares', 'is_verified', 'created_at')
+    list_filter = ('is_verified', 'created_at')
+    search_fields = ('farm__name',)
+    readonly_fields = ('created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Farm & Boundary', {
+            'fields': ('farm', 'total_area_hectares')
+        }),
+        ('Coordinates', {
+            'fields': ('geojson_boundary', 'center_latitude', 'center_longitude')
+        }),
+        ('Verification', {
+            'fields': ('is_verified',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(Geofence)
+class GeofenceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'farm', 'field', 'is_active', 'enable_exit_alerts', 'enable_entry_alerts', 'created_at')
+    list_filter = ('is_active', 'enable_exit_alerts', 'enable_entry_alerts', 'created_at')
+    search_fields = ('name', 'farm__name')
+    readonly_fields = ('created_at',)
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('farm', 'name', 'field')
+        }),
+        ('Boundary', {
+            'fields': ('geojson_boundary',)
+        }),
+        ('Alert Settings', {
+            'fields': ('enable_exit_alerts', 'enable_entry_alerts', 'alert_channels')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(LivestockLocation)
+class LivestockLocationAdmin(admin.ModelAdmin):
+    list_display = ('latitude', 'longitude', 'accuracy_meters', 'is_inside_assigned_geofence', 'recorded_at')
+    list_filter = ('is_inside_assigned_geofence', 'recorded_at')
+    search_fields = ('device_id',)
+    readonly_fields = ('recorded_at', 'created_at')
+    
+    fieldsets = (
+        ('Location', {
+            'fields': ('latitude', 'longitude')
+        }),
+        ('Accuracy', {
+            'fields': ('accuracy_meters', 'signal_strength')
+        }),
+        ('GPS Device', {
+            'fields': ('device_id',)
+        }),
+        ('Geofence Status', {
+            'fields': ('is_inside_assigned_geofence',)
+        }),
+        ('Timestamps', {
+            'fields': ('recorded_at', 'created_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(GeofenceAlert)
+class GeofenceAlertAdmin(admin.ModelAdmin):
+    list_display = ('geofence', 'alert_type', 'is_resolved', 'alert_time', 'created_at')
+    list_filter = ('alert_type', 'is_resolved', 'alert_time', 'geofence')
+    search_fields = ('geofence__name', 'resolution_notes')
+    readonly_fields = ('alert_time', 'created_at')
+    
+    fieldsets = (
+        ('Alert Information', {
+            'fields': ('geofence', 'alert_type')
+        }),
+        ('Location', {
+            'fields': ('latitude', 'longitude')
+        }),
+        ('Resolution', {
+            'fields': ('is_resolved', 'resolved_by', 'resolved_at', 'resolution_notes')
+        }),
+        ('Timestamps', {
+            'fields': ('alert_time', 'created_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['mark_resolved']
+    
+    def mark_resolved(self, request, queryset):
+        from django.utils import timezone
+        queryset.update(is_resolved=True, resolved_at=timezone.now(), resolved_by=request.user)
+        self.message_user(request, f"{queryset.count()} alerts marked as resolved.")
+    mark_resolved.short_description = "Mark as resolved"
+
+
+# ============================================================
+# SECTION 16: OFFLINE SYNC & DATA MANAGEMENT (FEATURE 13)
+# ============================================================
+
+@admin.register(OfflineSyncQueue)
+class OfflineSyncQueueAdmin(admin.ModelAdmin):
+    list_display = ('user', 'model_name', 'operation', 'is_synced', 'created_at', 'sync_attempted_at')
+    list_filter = ('operation', 'is_synced', 'created_at')
+    search_fields = ('user__username', 'model_name', 'object_id')
+    readonly_fields = ('created_at', 'updated_at', 'sync_attempted_at')
+    
+    fieldsets = (
+        ('User & Operation', {
+            'fields': ('user', 'model_name', 'operation', 'object_id')
+        }),
+        ('Data', {
+            'fields': ('data_payload',)
+        }),
+        ('Sync Status', {
+            'fields': ('is_synced', 'sync_attempted_at', 'sync_error')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['reset_sync_status', 'clear_sync_error']
+    
+    def reset_sync_status(self, request, queryset):
+        queryset.update(is_synced=False, sync_attempted_at=None, sync_error='')
+        self.message_user(request, f"{queryset.count()} sync entries reset.")
+    reset_sync_status.short_description = "Reset sync status"
+    
+    def clear_sync_error(self, request, queryset):
+        queryset.update(sync_error='')
+        self.message_user(request, f"{queryset.count()} sync errors cleared.")
+    clear_sync_error.short_description = "Clear sync errors"
+
+
+@admin.register(SyncConflict)
+class SyncConflictAdmin(admin.ModelAdmin):
+    list_display = ('sync_entry', 'resolution_status', 'resolved_by', 'created_at')
+    list_filter = ('resolution_status', 'created_at')
+    search_fields = ('sync_entry__model_name', 'sync_entry__user__username')
+    readonly_fields = ('created_at',)
+    
+    fieldsets = (
+        ('Conflict Information', {
+            'fields': ('sync_entry',)
+        }),
+        ('Versions', {
+            'fields': ('server_version', 'local_version', 'conflicting_fields')
+        }),
+        ('Resolution', {
+            'fields': ('resolution_status', 'resolved_data', 'resolved_by')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['mark_auto_resolved', 'mark_pending']
+    
+    def mark_auto_resolved(self, request, queryset):
+        queryset.update(resolution_status='resolved_auto')
+        self.message_user(request, f"{queryset.count()} conflicts marked as auto-resolved.")
+    mark_auto_resolved.short_description = "Mark as auto-resolved"
+    
+    def mark_pending(self, request, queryset):
+        queryset.update(resolution_status='pending')
+        self.message_user(request, f"{queryset.count()} conflicts marked as pending.")
+    mark_pending.short_description = "Mark as pending"
+
+
+# ============================================================
+# SECTION 17: WEATHER ENHANCEMENT - DETAILED FORECASTS (FEATURE 14)
+# ============================================================
+
+@admin.register(WeatherForecast)
+class WeatherForecastAdmin(admin.ModelAdmin):
+    list_display = ('farm', 'forecast_date', 'forecast_time', 'temperature_celsius', 'humidity_percent', 'rainfall_mm', 'created_at')
+    list_filter = ('forecast_date', 'weather_condition', 'farm')
+    search_fields = ('farm__name', 'description', 'farming_recommendation')
+    readonly_fields = ('created_at',)
+    
+    fieldsets = (
+        ('Farm & Timing', {
+            'fields': ('farm', 'forecast_date', 'forecast_time', 'recorded_at')
+        }),
+        ('Location', {
+            'fields': ('latitude', 'longitude')
+        }),
+        ('Temperature', {
+            'fields': ('temperature_celsius', 'feels_like_celsius', 'min_temp_celsius', 'max_temp_celsius')
+        }),
+        ('Humidity & Pressure', {
+            'fields': ('humidity_percent', 'pressure_hpa')
+        }),
+        ('Wind', {
+            'fields': ('wind_speed_kmh', 'wind_direction_degrees', 'wind_gust_kmh')
+        }),
+        ('Rainfall & Visibility', {
+            'fields': ('rainfall_mm', 'rainfall_probability_percent', 'visibility_km')
+        }),
+        ('Atmosphere', {
+            'fields': ('cloud_coverage_percent', 'uv_index')
+        }),
+        ('Conditions', {
+            'fields': ('weather_condition', 'description')
+        }),
+        ('Growing Degree Days & Recommendations', {
+            'fields': ('gdd', 'farming_recommendation')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+# ============================================================
 # CUSTOM ADMIN SITE CONFIGURATION
 # ============================================================
 

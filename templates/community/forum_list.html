@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Discussion Forums - FarmWise{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header Section -->
+        <div class="mb-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-2">
+                        <i class="ri-chat-3-line text-green-600"></i> Discussion Forums
+                    </h1>
+                    <p class="text-gray-600 mt-2">Connect with farmers and share experiences</p>
+                </div>
+                {% if user.is_staff %}
+                <a href="{% url 'core:forum_create' %}" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                    <i class="ri-add-line"></i> Create Forum
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-semibold uppercase tracking-wide">Total Forums</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ forums|length }}</p>
+                    </div>
+                    <div class="text-green-500 text-4xl">
+                        <i class="ri-store-2-line"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-semibold uppercase tracking-wide">Members</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ total_members|default:0 }}</p>
+                    </div>
+                    <div class="text-blue-500 text-4xl">
+                        <i class="ri-team-line"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-semibold uppercase tracking-wide">Discussions</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ total_threads|default:0 }}</p>
+                    </div>
+                    <div class="text-purple-500 text-4xl">
+                        <i class="ri-chat-check-line"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-semibold uppercase tracking-wide">Posts</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2">{{ total_posts|default:0 }}</p>
+                    </div>
+                    <div class="text-orange-500 text-4xl">
+                        <i class="ri-message-3-line"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forums Grid -->
+        {% if forums %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for forum in forums %}
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border-b-4 border-green-500">
+                <div class="p-6">
+                    <!-- Forum Category Badge -->
+                    <div class="inline-block">
+                        {% if forum.category == 'crops' %}
+                            <span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-leaf-line"></i> Crops
+                            </span>
+                        {% elif forum.category == 'livestock' %}
+                            <span class="bg-amber-100 text-amber-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-home-heart-line"></i> Livestock
+                            </span>
+                        {% elif forum.category == 'equipment' %}
+                            <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-tools-line"></i> Equipment
+                            </span>
+                        {% elif forum.category == 'marketplace' %}
+                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-shopping-cart-line"></i> Marketplace
+                            </span>
+                        {% else %}
+                            <span class="bg-gray-100 text-gray-800 text-xs font-semibold px-3 py-1 rounded-full">
+                                <i class="ri-chat-3-line"></i> General
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Forum Title -->
+                    <h3 class="text-xl font-bold text-gray-900 mt-4 mb-2">{{ forum.title }}</h3>
+                    
+                    <!-- Forum Description -->
+                    <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{ forum.description }}</p>
+
+                    <!-- Forum Stats -->
+                    <div class="flex items-center gap-4 text-sm text-gray-500 mb-4 pb-4 border-b">
+                        <div class="flex items-center gap-1">
+                            <i class="ri-team-line text-green-600"></i>
+                            <span>{{ forum.member_count|default:0 }} members</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <i class="ri-chat-check-line text-blue-600"></i>
+                            <span>{{ forum.post_count|default:0 }} posts</span>
+                        </div>
+                    </div>
+
+                    <!-- View Button -->
+                    <a href="{% url 'core:forum_detail' forum.id %}" class="inline-flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 font-semibold px-4 py-2 rounded-lg transition-colors w-full justify-center">
+                        Enter Forum
+                        <i class="ri-arrow-right-line"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-lg shadow-md p-12 text-center">
+            <i class="ri-chat-offline-line text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">No Forums Available</h3>
+            <p class="text-gray-600">Check back soon for new discussion forums!</p>
+            {% if user.is_staff %}
+            <a href="{% url 'core:forum_create' %}" class="inline-block mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                Create First Forum
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
