@@ -1,5 +1,6 @@
 # core/views.py
 # FARMWISE - Complete Views for All Functionality
+# ⚠️ PRODUCTION SAFETY: Rate limiting enabled to prevent Gemini API quota errors
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
