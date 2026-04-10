@@ -2,12 +2,23 @@
 # FREE pest detection using Google Gemini (free tier) or rule-based approach
 
 import logging
+import os
 from typing import Dict, List
 from PIL import Image
 import json
 from io import BytesIO
+from decouple import config
 
 logger = logging.getLogger(__name__)
+
+# Production settings
+DISABLE_GEMINI_ON_PRODUCTION = config('DISABLE_GEMINI_ON_PRODUCTION', default='False') == 'True'
+IS_PRODUCTION = config('IS_PRODUCTION', default='False') == 'True'
+
+if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
+    logger.warning("[PEST_DETECTION] ⚠️ GEMINI DISABLED ON PRODUCTION - Using fallback only")
+else:
+    logger.info("[PEST_DETECTION] Gemini enabled")
 
 
 class GeminiPestDetector:
@@ -69,6 +80,11 @@ class GeminiPestDetector:
         Analyze crop image for pests and diseases
         Returns: pest name, confidence, treatment recommendations
         """
+        # PRODUCTION SAFETY: Disable Gemini on production to prevent rate limiting
+        if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
+            logger.warning("[PEST_DETECTION] Production mode - Gemini disabled, using fallback")
+            return RuleBasedPestDetector.get_fallback_response("Using fallback detection on production")
+        
         logger.info(f"[GEMINI] available={self.available}, model={self.model}")
         
         if not self.available or not self.model:

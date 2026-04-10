@@ -488,6 +488,22 @@ OPENWEATHER_API_KEY = config('OPENWEATHER_API_KEY', default='')  # OPTIONAL - Op
 WEATHER_API_KEY = config('WEATHER_API_KEY', default='')
 
 # ============================================================
+# Production Safety Flags - Pest Detection Rate Limiting
+# ============================================================
+
+# Detect if we're running on Render or other production platform
+IS_PRODUCTION = config('IS_PRODUCTION', default=str(not DEBUG), cast=bool)
+
+# Disable Gemini API on production to prevent rate limiting (429 errors)
+# Set DISABLE_GEMINI_ON_PRODUCTION=True in Render environment variables
+DISABLE_GEMINI_ON_PRODUCTION = config('DISABLE_GEMINI_ON_PRODUCTION', default='True' if IS_PRODUCTION else 'False', cast=bool)
+
+if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning("[SETTINGS] ⚠️ PRODUCTION MODE: Gemini API disabled, using rule-based fallback only")
+
+# ============================================================
 # Map Configuration (Leaflet)
 # ============================================================
 

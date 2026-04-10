@@ -21,6 +21,7 @@ from io import BytesIO
 
 from .models import *
 from .forms import *
+from .throttling import throttle_pest_detection
 
 # ============================================================
 # HOME & DASHBOARD
@@ -1616,6 +1617,7 @@ Be thorough, professional, and educational. Provide practical, actionable advice
 
 
 @login_required
+@throttle_pest_detection()
 def pest_upload(request):
     """Upload and analyze pest image"""
     if request.method == 'POST' and request.FILES.get('image'):
