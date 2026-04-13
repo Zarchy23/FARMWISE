@@ -2071,6 +2071,22 @@ def weather_forecast(request):
 def weather_alerts(request):
     """Weather alerts for user's farms"""
     farms = Farm.objects.filter(owner=request.user)
+    
+    if not farms.exists():
+        alerts = []
+        message = "Please create a farm first to see weather alerts."
+    else:
+        # Get all unread alerts for user's farms
+        alerts = WeatherAlert.objects.filter(
+            farm__in=farms,
+            is_read=False
+        ).order_by('-severity', '-created_at')
+        message = None if alerts.exists() else "No active alerts for your farms."
+    
+    return render(request, 'weather/alerts.html', {
+        'alerts': alerts,
+        'message': message
+    })
 
 
 @login_required
@@ -2086,7 +2102,7 @@ def api_weather_forecast_live(request, farm_id):
     try:
         farm = get_object_or_404(Farm, id=farm_id, owner=request.user)
         
-        if not farm.location_lat or not farm.location_lng:
+        if not farm.latitude or not farm.longitude:
             return JsonResponse({
                 "error": "Farm location not set",
                 "status": "error"
@@ -2094,8 +2110,8 @@ def api_weather_forecast_live(request, farm_id):
         
         # Get agricultural forecast using Open-Meteo (FREE)
         forecast = weather_service.get_agricultural_forecast(
-            float(farm.location_lat), 
-            float(farm.location_lng)
+            float(farm.latitude), 
+            float(farm.longitude)
         )
         
         return JsonResponse(forecast)
@@ -2129,7 +2145,7 @@ def api_weather_agricultural(request, farm_id):
     try:
         farm = get_object_or_404(Farm, id=farm_id, owner=request.user)
         
-        if not farm.location_lat or not farm.location_lng:
+        if not farm.latitude or not farm.longitude:
             return JsonResponse({
                 "error": "Farm location not set",
                 "message": "Please update your farm's GPS coordinates"
@@ -2137,8 +2153,8 @@ def api_weather_agricultural(request, farm_id):
         
         # Get detailed agricultural indicators
         ag_data = weather_service.get_agricultural_forecast(
-            float(farm.location_lat),
-            float(farm.location_lng)
+            float(farm.latitude),
+            float(farm.longitude)
         )
         
         if 'error' in ag_data:
@@ -2148,8 +2164,8 @@ def api_weather_agricultural(request, farm_id):
             "status": "success",
             "farm": farm.name,
             "location": {
-                "latitude": float(farm.location_lat),
-                "longitude": float(farm.location_lng)
+                "latitude": float(farm.latitude),
+                "longitude": float(farm.longitude)
             },
             "indicators": ag_data.get('forecast', []),
             "alerts": ag_data.get('alerts', []),
