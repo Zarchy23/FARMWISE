@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Confirm Delete - FarmWise{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6 max-w-md">
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <!-- Warning Icon -->
+        <div class="text-center mb-6">
+            <div class="bg-red-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
+                <i class="ri-alert-line text-red-600 text-3xl"></i>
+            </div>
+        </div>
+
+        <!-- Message -->
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Delete Project?</h1>
+        <p class="text-gray-600 text-center mb-4">
+            Are you sure you want to delete the project <strong>"{{ project.name }}"</strong>?
+        </p>
+        <p class="text-red-600 text-sm text-center mb-6">
+            <i class="ri-error-warning-line"></i> This action cannot be undone. All associated tasks, resources, and milestones will be deleted.
+        </p>
+
+        <!-- Buttons -->
+        <div class="flex gap-4">
+            <form method="post" class="flex-1">
+                {% csrf_token %}
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium px-6 py-2 rounded-lg transition">
+                    <i class="ri-delete-bin-line"></i> Yes, Delete
+                </button>
+            </form>
+            <a href="{% url 'core:project_detail' project.id %}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-medium px-6 py-2 rounded-lg text-center transition">
+                <i class="ri-close-line"></i> Cancel
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

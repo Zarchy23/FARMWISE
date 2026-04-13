@@ -1,0 +1,43 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}System Alert: Email Delivery Failure{% endblock %}
+{% block header_subtitle %}FarmWise system notification{% endblock %}
+
+{% block content %}
+<div style="background-color: #7c3aed; border: 2px solid #a78bfa; border-radius: 8px; padding: 16px; margin-bottom: 20px; color: white;">
+    <h2 style="color: white; margin: 0; font-size: 18px;">⚠️ SYSTEM ALERT</h2>
+</div>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<p style="color: #6b21a8; font-weight: bold; margin-bottom: 15px;">Multiple health reminder email notifications failed to send.</p>
+
+<div class="alert-high">
+    <p style="margin: 0;"><strong>System:</strong> FarmWise Health Reminder Service</p>
+    <p style="margin: 10px 0 0;"><strong>Failed Emails:</strong> {{ failed_count }} messages</p>
+    {% if farm %}<p style="margin: 5px 0 0;"><strong>Affected Farm:</strong> {{ farm.name }}</p>{% endif %}
+    <p style="margin: 5px 0 0;"><strong>Alert Time:</strong> {{ "now"|date:"M d, Y H:i" }} UTC</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">The automated health reminder email system encountered errors while sending notifications. This may indicate:</p>
+<ul style="color: #334155;">
+    <li>Email service connectivity issues</li>
+    <li>Invalid email addresses in the system</li>
+    <li>API rate limiting or quota exceeded</li>
+    <li>Misconfigured email templates</li>
+</ul>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn" style="background-color: #7c3aed;">Review System Logs</a>
+</div>
+
+<div class="divider"></div>
+
+<div style="background-color: #ede9fe; padding: 12px; border-radius: 4px; border-left: 4px solid #7c3aed;">
+    <p style="color: #6b21a8; margin: 0;"><strong>Error Summary:</strong></p>
+    <pre style="color: #6b21a8; font-size: 12px; margin: 8px 0 0; white-space: pre-wrap;">{{ error_summary }}</pre>
+</div>
+
+<p style="color: #64748b; font-size: 14px; margin-top: 20px;">
+    ℹ️ <strong>Note:</strong> Users who failed to receive email notifications have been notified through the FarmWise dashboard. Please investigate and resolve this issue to restore service.
+</p>
+{% endblock %}

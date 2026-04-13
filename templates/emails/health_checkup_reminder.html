@@ -1,0 +1,28 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Health Checkup Reminder{% endblock %}
+{% block header_subtitle %}Regular veterinary care for your livestock{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">🏥 Health Checkup Due</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<div class="alert-medium">
+    <p style="margin: 0;"><strong>Animal:</strong> {{ animal.name }} ({{ animal.tag_number }})</p>
+    <p style="margin: 10px 0 0;"><strong>Breed:</strong> {{ animal.animal_type.breed }}</p>
+    <p style="margin: 5px 0 0;"><strong>Checkup Type:</strong> {{ health_record.medication_name }}</p>
+    <p style="margin: 5px 0 0;"><strong>Days Until Due:</strong> {% if days_until <= 0 %}OVERDUE{% else %}{{ days_until }} days{% endif %}</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">Regular health checkups are crucial for early disease detection and ensuring your livestock remains in optimal condition.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">Schedule Checkup</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    ℹ️ <strong>Recommendation:</strong> Plan regular veterinary visits at least twice a year or as recommended by your veterinarian.
+</p>
+{% endblock %}

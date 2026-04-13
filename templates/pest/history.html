@@ -10,9 +10,14 @@
             <h1 class="text-4xl font-bold text-gray-900">Detection History</h1>
             <p class="text-gray-600 mt-2">All your past pest and disease detection reports</p>
         </div>
-        <a href="{% url 'core:pest_detection' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-medium flex items-center gap-2">
-            <i class="ri-camera-line"></i> New Detection
-        </a>
+        <div class="flex gap-3">
+            <a href="{% url 'core:pest_detection' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-medium flex items-center gap-2">
+                <i class="ri-camera-line"></i> New Detection
+            </a>
+            <button type="button" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium flex items-center gap-2" data-bs-toggle="modal" data-bs-target="#exportModal">
+                <i class="fas fa-download"></i> Export
+            </button>
+        </div>
     </div>
 
     <!-- Statistics Cards -->
@@ -149,4 +154,8 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Export Modal -->
+{% include "components/export_modal.html" with export_url=export_url title="Pest Detection Reports" %}
+
 {% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mark Milestone Achieved - FarmWise{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6 max-w-md">
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <!-- Success Icon -->
+        <div class="text-center mb-6">
+            <div class="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
+                <i class="ri-flag-line text-green-600 text-3xl"></i>
+            </div>
+        </div>
+
+        <!-- Message -->
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Mark Milestone Achieved?</h1>
+        <p class="text-gray-600 text-center mb-1">
+            Are you sure you want to mark <strong>"{{ milestone.name }}"</strong> as achieved?
+        </p>
+        <p class="text-gray-500 text-sm text-center mb-6">
+            Target date was: {{ milestone.target_date|date:"M d, Y" }}
+        </p>
+
+        <!-- Buttons -->
+        <div class="flex gap-4">
+            <form method="post" class="flex-1">
+                {% csrf_token %}
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg transition">
+                    <i class="ri-check-line"></i> Yes, Mark Achieved
+                </button>
+            </form>
+            <a href="{% url 'core:project_detail' project.id %}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-medium px-6 py-2 rounded-lg text-center transition">
+                <i class="ri-close-line"></i> Cancel
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

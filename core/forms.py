@@ -33,8 +33,10 @@ class UserRegistrationForm(UserCreationForm):
     )
     
     user_type = forms.ChoiceField(
-        choices=User.USER_TYPES,
+        choices=[choice for choice in User.USER_TYPES if choice[0] != 'admin'],
         required=True,
+        label='User Type',
+        help_text='Select your role on FarmWise',
         widget=forms.Select(attrs={
             'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
         })

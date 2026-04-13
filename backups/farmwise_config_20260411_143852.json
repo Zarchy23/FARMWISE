@@ -1,0 +1,11 @@
+{
+  "timestamp": "20260411_143852",
+  "database": {
+    "name": "farmwise_db",
+    "user": "postgres",
+    "host": "localhost"
+  },
+  "backup_dir": "C:\\Users\\Zarchy\\farmwise\\backups",
+  "media_dir": "C:\\Users\\Zarchy\\farmwise\\media",
+  "s3_bucket": ""
+}

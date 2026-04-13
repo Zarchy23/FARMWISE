@@ -1,0 +1,32 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Pest Alert!{% endblock %}
+{% block header_subtitle %}Immediate action required{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">🚨 Pest Alert!</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<div class="alert-{{ severity_class }}">
+    <p style="margin: 0;"><strong>Detected Pest/Disease:</strong> {{ report.ai_diagnosis }}</p>
+    <p style="margin: 10px 0 0;"><strong>Confidence Level:</strong> {{ report.confidence }}%</p>
+    <p style="margin: 5px 0 0;"><strong>Severity:</strong> {{ report.severity|upper }}</p>
+    <p style="margin: 5px 0 0;"><strong>Location:</strong> {{ report.field.name }} ({{ report.farm.name }})</p>
+</div>
+
+<h3 style="color: #1e293b; margin: 20px 0 10px;">🔬 Treatment Recommendation:</h3>
+<p style="color: #334155;">{{ report.treatment_recommended }}</p>
+
+<h3 style="color: #1e293b; margin: 20px 0 10px;">🛡️ Prevention Tips:</h3>
+<p style="color: #334155;">{{ report.prevention_tips|default:"Regular field scouting and early detection are key to preventing pest outbreaks." }}</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">View Details & Take Action</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    <strong>⚠️ Important:</strong> Early intervention is critical. Please address this issue as soon as possible to minimize crop damage.
+</p>
+{% endblock %}

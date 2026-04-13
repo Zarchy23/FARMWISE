@@ -1,0 +1,28 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Feed Supplementation Reminder{% endblock %}
+{% block header_subtitle %}Nutritional support for your livestock{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">🌾 Feed Supplementation Due</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<div class="alert-medium">
+    <p style="margin: 0;"><strong>Animal:</strong> {{ animal.name }} ({{ animal.tag_number }})</p>
+    <p style="margin: 10px 0 0;"><strong>Breed:</strong> {{ animal.animal_type.breed }}</p>
+    <p style="margin: 5px 0 0;"><strong>Supplement:</strong> {{ health_record.medication_name }}</p>
+    <p style="margin: 5px 0 0;"><strong>Days Until Due:</strong> {% if days_until <= 0 %}OVERDUE{% else %}{{ days_until }} days{% endif %}</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">Proper supplementation ensures your {{ animal.animal_type.breed|lower }} receives all necessary nutrients for optimal growth and health.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">Record Supplementation</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    ℹ️ <strong>Tip:</strong> Follow feeding guidelines for {{ animal.animal_type.breed|lower }} to ensure proper nutrition and prevent overfeeding.
+</p>
+{% endblock %}

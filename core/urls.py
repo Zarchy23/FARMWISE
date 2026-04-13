@@ -146,6 +146,7 @@ urlpatterns = [
     path('marketplace/sell/', views.create_listing, name='create_listing'),
     path('marketplace/<int:pk>/edit/', views.edit_listing, name='edit_listing'),
     path('marketplace/<int:pk>/delete/', views.delete_listing, name='delete_listing'),
+    path('marketplace/<int:pk>/toggle-stock/', views.toggle_out_of_stock, name='toggle_out_of_stock'),
     path('marketplace/<int:pk>/', views.listing_detail, name='listing_detail'),
     path('marketplace/<int:pk>/buy/', views.buy_product, name='buy_product'),
     path('marketplace/my-listings/', views.my_listings, name='my_listings'),
@@ -259,7 +260,8 @@ urlpatterns = [
     path('mapping/livestock-tracking/', views.livestock_tracking, name='livestock_tracking'),
     path('mapping/livestock/<int:livestock_id>/locations/', views.livestock_locations, name='livestock_locations'),
     path('mapping/geofence-alerts/', views.geofence_alerts, name='geofence_alerts'),
-    path('mapping/geofence-alerts/<int:pk>/resolve/', views.resolve_geofence_alert, name='resolve_geofence_alert'),
+    path('mapping/geofences/<int:geofence_id>/alerts/', views.geofence_alerts, name='geofence_alerts_detail'),
+    path('mapping/geofence-alerts/<int:alert_id>/resolve/', views.resolve_geofence_alert, name='resolve_geofence_alert'),
     
     # ============================================================
     # FEATURE 13: OFFLINE SYNC & DATA MANAGEMENT
@@ -280,6 +282,39 @@ urlpatterns = [
     path('reminders/<int:pk>/edit/', views.reminder_edit, name='reminder_edit'),
     path('reminders/<int:pk>/complete/', views.reminder_complete, name='reminder_complete'),
     path('reminders/<int:pk>/delete/', views.reminder_delete, name='reminder_delete'),
+    
+    # ============================================================
+    # EXPORT ENDPOINTS
+    # ============================================================
+    path('export/crops/', views.export_crops, name='export_crops'),
+    path('export/livestock/', views.export_livestock, name='export_livestock'),
+    path('export/equipment/', views.export_equipment, name='export_equipment'),
+    path('export/insurance/policies/', views.export_insurance_policies, name='export_insurance_policies'),
+    path('export/payroll/', views.export_payroll, name='export_payroll'),
+    path('export/pest/reports/', views.export_pest_reports, name='export_pest_reports'),
+    path('export/carbon/report/', views.export_carbon_report, name='export_carbon_report'),
+    path('export/reminders/', views.export_reminders, name='export_reminders'),
+    path('export/marketplace/products/', views.export_marketplace_products, name='export_marketplace_products'),
+    
+    # ============================================================
+    # FARM PROJECTS MANAGEMENT
+    # ============================================================
+    path('projects/', views.project_list, name='project_list'),
+    path('projects/dashboard/', views.project_dashboard, name='project_dashboard'),
+    path('projects/create/', views.project_create, name='project_create'),
+    path('projects/<int:pk>/', views.project_detail, name='project_detail'),
+    path('projects/<int:pk>/edit/', views.project_edit, name='project_edit'),
+    path('projects/<int:pk>/delete/', views.project_delete, name='project_delete'),
+    path('projects/<int:pk>/task/add/', views.project_add_task, name='project_add_task'),
+    path('projects/<int:pk>/task/<int:task_id>/complete/', views.project_complete_task, name='project_complete_task'),
+    path('projects/<int:pk>/resource/add/', views.project_add_resource, name='project_add_resource'),
+    path('projects/<int:pk>/milestone/add/', views.project_add_milestone, name='project_add_milestone'),
+    path('projects/<int:pk>/milestone/<int:milestone_id>/achieve/', views.project_achieve_milestone, name='project_achieve_milestone'),
+    
+    # ============================================================
+    # SUPERMARKET MANAGEMENT
+    # ============================================================
+    path('supermarket/', include('core.urls_supermarket')),
     
     # ============================================================
     # LEGACY API ENDPOINTS (for AJAX/JavaScript)

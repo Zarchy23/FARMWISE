@@ -942,106 +942,154 @@ class OfflineSyncQueueAdmin(admin.ModelAdmin):
             'fields': ('user', 'model_name', 'operation', 'object_id')
         }),
         ('Data', {
-            'fields': ('data_payload',)
+            'fields': ('payload',)
         }),
-        ('Sync Status', {
-            'fields': ('is_synced', 'sync_attempted_at', 'sync_error')
+        ('Status', {
+            'fields': ('is_synced', 'sync_error', 'sync_attempted_at', 'created_at', 'updated_at')
         }),
-        ('Timestamps', {
+    )
+
+
+# ============================================================
+# SECTION 17: FARM PROJECTS MANAGEMENT
+# ============================================================
+
+class ProjectTaskInline(admin.TabularInline):
+    model = ProjectTask
+    extra = 1
+    fields = ('name', 'description', 'assigned_to', 'due_date', 'completed')
+    readonly_fields = ('created_at',)
+
+
+class ProjectResourceInline(admin.TabularInline):
+    model = ProjectResource
+    extra = 1
+    fields = ('resource_type', 'name', 'quantity', 'unit', 'cost')
+    readonly_fields = ('created_at',)
+
+
+class ProjectMilestoneInline(admin.TabularInline):
+    model = ProjectMilestone
+    extra = 1
+    fields = ('name', 'target_date', 'achieved_date', 'achieved')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(FarmProject)
+class FarmProjectAdmin(admin.ModelAdmin):
+    list_display = ('name', 'farm', 'category', 'priority', 'status', 'get_budget_display', 'start_date', 'get_progress')
+    list_filter = ('category', 'priority', 'status', 'start_date')
+    search_fields = ('name', 'farm__name', 'description')
+    readonly_fields = ('created_at', 'updated_at')
+    inlines = [ProjectTaskInline, ProjectResourceInline, ProjectMilestoneInline]
+    
+    fieldsets = (
+        ('Project Info', {
+            'fields': ('farm', 'name', 'category', 'description')
+        }),
+        ('Project Details', {
+            'fields': ('priority', 'status', 'budget', 'notes')
+        }),
+        ('Timeline', {
+            'fields': ('start_date', 'target_end_date')
+        }),
+        ('Metadata', {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
     
-    actions = ['reset_sync_status', 'clear_sync_error']
+    def get_budget_display(self, obj):
+        return f"KES {obj.budget:,.0f}" if obj.budget else "—"
+    get_budget_display.short_description = "Budget"
     
-    def reset_sync_status(self, request, queryset):
-        queryset.update(is_synced=False, sync_attempted_at=None, sync_error='')
-        self.message_user(request, f"{queryset.count()} sync entries reset.")
-    reset_sync_status.short_description = "Reset sync status"
-    
-    def clear_sync_error(self, request, queryset):
-        queryset.update(sync_error='')
-        self.message_user(request, f"{queryset.count()} sync errors cleared.")
-    clear_sync_error.short_description = "Clear sync errors"
+    def get_progress(self, obj):
+        tasks = obj.tasks.all()
+        if not tasks.exists():
+            return "0%"
+        completed = tasks.filter(status='completed').count()
+        progress = int((completed / tasks.count()) * 100)
+        color = 'green' if progress == 100 else 'orange' if progress >= 50 else 'red'
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}%</span>',
+            color,
+            progress
+        )
+    get_progress.short_description = "Task Completion"
 
 
-@admin.register(SyncConflict)
-class SyncConflictAdmin(admin.ModelAdmin):
-    list_display = ('sync_entry', 'resolution_status', 'resolved_by', 'created_at')
-    list_filter = ('resolution_status', 'created_at')
-    search_fields = ('sync_entry__model_name', 'sync_entry__user__username')
+@admin.register(ProjectTask)
+class ProjectTaskAdmin(admin.ModelAdmin):
+    list_display = ('name', 'project', 'assigned_to', 'due_date', 'completed')
+    list_filter = ('completed', 'due_date')
+    search_fields = ('name', 'project__name', 'assigned_to__username')
+    readonly_fields = ('created_at', 'completed_date')
+    
+    fieldsets = (
+        ('Task Info', {
+            'fields': ('project', 'title', 'description')
+        }),
+        ('Assignment', {
+            'fields': ('assigned_to', 'priority')
+        }),
+        ('Status', {
+            'fields': ('status', 'due_date', 'completed_date')
+        }),
+        ('Metadata', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(ProjectResource)
+class ProjectResourceAdmin(admin.ModelAdmin):
+    list_display = ('resource_type', 'project', 'name', 'quantity', 'unit', 'cost')
+    list_filter = ('resource_type',)
+    search_fields = ('project__name', 'name')
     readonly_fields = ('created_at',)
     
     fieldsets = (
-        ('Conflict Information', {
-            'fields': ('sync_entry',)
+        ('Resource Info', {
+            'fields': ('project', 'resource_type', 'name', 'quantity', 'unit')
         }),
-        ('Versions', {
-            'fields': ('server_version', 'local_version', 'conflicting_fields')
+        ('Cost', {
+            'fields': ('cost',)
         }),
-        ('Resolution', {
-            'fields': ('resolution_status', 'resolved_data', 'resolved_by')
+        ('Details', {
+            'fields': ('notes',)
         }),
-        ('Timestamps', {
+        ('Metadata', {
             'fields': ('created_at',),
             'classes': ('collapse',)
         }),
     )
     
-    actions = ['mark_auto_resolved', 'mark_pending']
-    
-    def mark_auto_resolved(self, request, queryset):
-        queryset.update(resolution_status='resolved_auto')
-        self.message_user(request, f"{queryset.count()} conflicts marked as auto-resolved.")
-    mark_auto_resolved.short_description = "Mark as auto-resolved"
-    
-    def mark_pending(self, request, queryset):
-        queryset.update(resolution_status='pending')
-        self.message_user(request, f"{queryset.count()} conflicts marked as pending.")
-    mark_pending.short_description = "Mark as pending"
+    def formfield_for_dbfield(self, db_field, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, **kwargs)
+        if db_field.name == 'cost':
+            formfield.label = 'Cost (KES)'
+        return formfield
 
 
-# ============================================================
-# SECTION 17: WEATHER ENHANCEMENT - DETAILED FORECASTS (FEATURE 14)
-# ============================================================
-
-@admin.register(WeatherForecast)
-class WeatherForecastAdmin(admin.ModelAdmin):
-    list_display = ('farm', 'forecast_date', 'forecast_time', 'temperature_celsius', 'humidity_percent', 'rainfall_mm', 'created_at')
-    list_filter = ('forecast_date', 'weather_condition', 'farm')
-    search_fields = ('farm__name', 'description', 'farming_recommendation')
+@admin.register(ProjectMilestone)
+class ProjectMilestoneAdmin(admin.ModelAdmin):
+    list_display = ('name', 'project', 'target_date', 'achieved_date', 'achieved')
+    list_filter = ('achieved', 'target_date')
+    search_fields = ('name', 'project__name')
     readonly_fields = ('created_at',)
     
     fieldsets = (
-        ('Farm & Timing', {
-            'fields': ('farm', 'forecast_date', 'forecast_time', 'recorded_at')
+        ('Milestone Info', {
+            'fields': ('project', 'name')
         }),
-        ('Location', {
-            'fields': ('latitude', 'longitude')
+        ('Timeline', {
+            'fields': ('target_date', 'achieved_date', 'achieved')
         }),
-        ('Temperature', {
-            'fields': ('temperature_celsius', 'feels_like_celsius', 'min_temp_celsius', 'max_temp_celsius')
+        ('Details', {
+            'fields': ('notes',)
         }),
-        ('Humidity & Pressure', {
-            'fields': ('humidity_percent', 'pressure_hpa')
-        }),
-        ('Wind', {
-            'fields': ('wind_speed_kmh', 'wind_direction_degrees', 'wind_gust_kmh')
-        }),
-        ('Rainfall & Visibility', {
-            'fields': ('rainfall_mm', 'rainfall_probability_percent', 'visibility_km')
-        }),
-        ('Atmosphere', {
-            'fields': ('cloud_coverage_percent', 'uv_index')
-        }),
-        ('Conditions', {
-            'fields': ('weather_condition', 'description')
-        }),
-        ('Growing Degree Days & Recommendations', {
-            'fields': ('gdd', 'farming_recommendation')
-        }),
-        ('Timestamps', {
+        ('Metadata', {
             'fields': ('created_at',),
             'classes': ('collapse',)
         }),

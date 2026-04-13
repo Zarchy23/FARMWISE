@@ -1,0 +1,46 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Daily Summary{% endblock %}
+{% block header_subtitle %}Your farm at a glance{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">📊 Daily Farm Summary</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Hello {{ user.get_full_name|default:user.username }},</p>
+
+<p style="color: #334155;">Here's your farm activity summary for <strong>{{ summary.date }}</strong>:</p>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ summary.total_farms }}</div>
+        <div class="stat-label">Active Farms</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ summary.active_crops }}</div>
+        <div class="stat-label">Active Crops</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ summary.total_livestock }}</div>
+        <div class="stat-label">Livestock</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">${{ summary.yesterday_revenue|floatformat:2 }}</div>
+        <div class="stat-label">Yesterday's Revenue</div>
+    </div>
+</div>
+
+{% if summary.pending_alerts > 0 %}
+<div class="alert-medium">
+    <p style="margin: 0;"><strong>⚠️ You have {{ summary.pending_alerts }} pending alerts</strong> that require your attention.</p>
+</div>
+{% endif %}
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">View Full Dashboard</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    💡 Visit your dashboard for detailed analytics and reports.
+</p>
+{% endblock %}

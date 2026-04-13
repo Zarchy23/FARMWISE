@@ -1,0 +1,30 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Urgent: Health Record Overdue{% endblock %}
+{% block header_subtitle %}Immediate action required{% endblock %}
+
+{% block content %}
+<div style="background-color: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+    <h2 style="color: #991b1b; margin: 0; font-size: 18px;">⚠️ URGENT: Health Record Overdue</h2>
+</div>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<div class="alert-high">
+    <p style="margin: 0;"><strong>Animal:</strong> {{ animal.name }} ({{ animal.tag_number }})</p>
+    <p style="margin: 10px 0 0;"><strong>Breed:</strong> {{ animal.animal_type.breed }}</p>
+    <p style="margin: 5px 0 0;"><strong>Health Record Type:</strong> {{ health_record.medication_name }}</p>
+    <p style="margin: 5px 0 0;"><strong>Days Overdue:</strong> <span style="color: #dc2626; font-weight: bold;">{{ days_overdue }} DAYS</span></p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">This health record is now <strong>{{ days_overdue }} days overdue</strong>. Immediate action is required to maintain the health and well-being of your livestock.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn" style="background-color: #dc2626;">Record Now</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #7f1d1d; font-size: 14px; background-color: #fef2f2; padding: 12px; border-radius: 4px;">
+    <strong>⚠️ Important:</strong> Overdue health records may indicate health issues with your animal. Contact a veterinarian immediately if you have any concerns about {{ animal.name }}'s health.
+</p>
+{% endblock %}

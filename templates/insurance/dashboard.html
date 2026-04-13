@@ -10,10 +10,16 @@
             <h1 class="text-3xl font-bold">My Insurance Policies</h1>
             <p class="text-gray-600">Protect your farm against unexpected losses</p>
         </div>
-        <a href="{% url 'core:buy_insurance' %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
-            <i class="ri-add-line"></i>
-            <span>Buy Policy</span>
-        </a>
+        <div class="flex gap-3">
+            <a href="{% url 'core:buy_insurance' %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+                <i class="ri-add-line"></i>
+                <span>Buy Policy</span>
+            </a>
+            <button type="button" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition flex items-center space-x-2" data-bs-toggle="modal" data-bs-target="#exportModal">
+                <i class="fas fa-download"></i>
+                <span>Export</span>
+            </button>
+        </div>
     </div>
 
     <!-- Insurance Cards -->
@@ -69,6 +75,11 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Export Modal -->
+<!-- Export Modal -->
+{% include "components/export_modal.html" with export_url=export_url title="Insurance Policies" %}
+
     <a href="{% url 'core:buy_insurance' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
         <i class="ri-add-line"></i>
         <span>Buy Policy</span>

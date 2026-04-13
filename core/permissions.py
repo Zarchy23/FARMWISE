@@ -89,6 +89,11 @@ ROLE_PERMISSIONS = {
         'soil_testing': ['view_pending', 'record_results', 'generate_reports'],
         'marketplace': ['view_all', 'buy'],
     },
+    'supermarket': {
+        'marketplace': ['view_all', 'create_listings', 'buy', 'sell', 'manage_own_listings'],
+        'reports': ['sales', 'inventory', 'transactions', 'export_all'],
+        'transactions': ['view_own', 'view_detailed'],
+    },
     'admin': {
         # System admin has full access
         'all': ['full_access'],

@@ -1,0 +1,36 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Harvest Reminder{% endblock %}
+{% block header_subtitle %}Your crops are ready!{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">🌾 Harvest Time!</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<div class="alert-low">
+    <p style="margin: 0;"><strong>Crop:</strong> {{ crop.crop_type.name }} ({{ crop.variety|default:"Standard" }})</p>
+    <p style="margin: 10px 0 0;"><strong>Field:</strong> {{ field.name }}</p>
+    <p style="margin: 5px 0 0;"><strong>Planting Date:</strong> {{ crop.planting_date }}</p>
+    <p style="margin: 5px 0 0;"><strong>Expected Yield:</strong> {{ crop.estimated_yield_kg|default:"N/A" }} kg</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">Your crop is now ready for harvest! Timely harvesting ensures optimal quality and prevents losses.</p>
+
+<h3 style="color: #1e293b; margin: 20px 0 10px;">✅ Harvest Checklist:</h3>
+<ul class="feature-list">
+    <li>Prepare harvesting equipment and labor</li>
+    <li>Check weather forecast for optimal harvest conditions</li>
+    <li>Arrange storage or delivery to buyers</li>
+    <li>Record harvest data in FarmWise</li>
+</ul>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">Record Harvest Now</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    💡 <strong>Tip:</strong> Record your harvest in FarmWise to track yields and analyze crop performance over time.
+</p>
+{% endblock %}

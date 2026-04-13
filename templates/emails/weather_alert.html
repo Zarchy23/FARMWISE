@@ -1,0 +1,27 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Weather Alert{% endblock %}
+{% block header_subtitle %}Stay prepared for changing weather{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">🌤️ Weather Alert</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<div class="alert-medium">
+    <p style="margin: 0;"><strong>Alert:</strong> {{ alert.title }}</p>
+    <p style="margin: 10px 0 0;"><strong>Description:</strong> {{ alert.description }}</p>
+    <p style="margin: 5px 0 0;"><strong>Severity:</strong> {{ alert.severity|upper|default:"MODERATE" }}</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">Take necessary precautions to protect your farm and livestock from the forecasted weather conditions.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">View Weather Details</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    💡 <strong>Tip:</strong> Visit the Weather page for 14-day forecasts and detailed weather analytics.
+</p>
+{% endblock %}

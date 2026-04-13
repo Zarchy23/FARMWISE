@@ -9,6 +9,10 @@
             <h1 class="text-2xl font-bold">Payroll</h1>
             <p class="text-gray-500">Process and manage worker payments</p>
         </div>
+        <button type="button" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition flex items-center space-x-2" data-bs-toggle="modal" data-bs-target="#exportModal">
+            <i class="fas fa-download"></i>
+            <span>Export</span>
+        </button>
     </div>
 
     <!-- Payroll Summary -->
@@ -75,4 +79,8 @@
         </div>
     </div>
 </div>
+
+<!-- Export Modal -->
+{% include "components/export_modal.html" with export_url=export_url title="Payroll Records" %}
+
 {% endblock %}

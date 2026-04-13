@@ -1,0 +1,28 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Parasite Control Reminder{% endblock %}
+{% block header_subtitle %}Protect your livestock from parasites{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">🛡️ Parasite Control Due</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<div class="alert-medium">
+    <p style="margin: 0;"><strong>Animal:</strong> {{ animal.name }} ({{ animal.tag_number }})</p>
+    <p style="margin: 10px 0 0;"><strong>Breed:</strong> {{ animal.animal_type.breed }}</p>
+    <p style="margin: 5px 0 0;"><strong>Treatment:</strong> {{ health_record.medication_name }}</p>
+    <p style="margin: 5px 0 0;"><strong>Days Until Due:</strong> {% if days_until <= 0 %}OVERDUE{% else %}{{ days_until }} days{% endif %}</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">Regular parasite control treatments prevent internal and external parasites, ensuring your livestock remains healthy and productive.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">Record Treatment</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    ⚠️ <strong>Important:</strong> Follow your veterinarian's dosage recommendations and treatment schedule for best results.
+</p>
+{% endblock %}

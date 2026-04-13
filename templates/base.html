@@ -84,6 +84,22 @@
             </a>
             {% endif %}
 
+            <!-- Farm Projects (Farmers & Admin Only) -->
+            {% if user.user_type == 'farmer' or user.user_type == 'large_farmer' or user.is_superuser or user.user_type == 'admin' %}
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'projects' ? null : 'projects'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-projector-line"></i><span>Projects</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'projects' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'projects'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:project_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="{% url 'core:project_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">All Projects</a>
+                    <a href="{% url 'core:project_create' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">New Project</a>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Crops (if user can view crops) -->
             {% if user|has_module_permission:"crops.view_own" or user|has_module_permission:"crops.view_coop" or user|has_module_permission:"crops.view_assigned" %}
             <div>

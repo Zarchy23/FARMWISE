@@ -1,117 +1,353 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Livestock Tracking - FarmWise{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 <style>
-    #map { height: 500px; border-radius: 4px; margin-bottom: 20px; }
-    .location-history { max-height: 400px; overflow-y: auto; }
+    /* Map Container */
+    #livestock-map {
+        height: 550px;
+        width: 100%;
+        border-radius: 1rem;
+        z-index: 1;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    /* Stats Cards */
+    .stat-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.25rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+    }
+    
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    
+    /* Livestock Card */
+    .livestock-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1rem;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+        cursor: pointer;
+    }
+    
+    .livestock-card:hover {
+        transform: translateX(5px);
+        background: #f0fdf4;
+    }
+    
+    .livestock-card.active {
+        border-color: #16a34a;
+        background: #f0fdf4;
+    }
+    
+    .livestock-card.outside {
+        border-left: 4px solid #ef4444;
+    }
+    
+    .livestock-card.inside {
+        border-left: 4px solid #10b981;
+    }
+    
+    /* Location History Timeline */
+    .timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 0.5rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e5e7eb;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1rem;
+    }
+    
+    .timeline-dot {
+        position: absolute;
+        left: -1.25rem;
+        top: 0.25rem;
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 50%;
+        background: #16a34a;
+        border: 2px solid white;
+        box-shadow: 0 0 0 2px #16a34a;
+    }
+    
+    .timeline-dot.warning {
+        background: #f59e0b;
+        box-shadow: 0 0 0 2px #f59e0b;
+    }
+    
+    /* Filter Buttons */
+    .filter-btn {
+        transition: all 0.2s;
+        border: 1px solid #e5e7eb;
+        background: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+    }
+    
+    .filter-btn.active {
+        background: #16a34a;
+        color: white;
+        border-color: #16a34a;
+    }
+    
+    .filter-btn:hover:not(.active) {
+        background: #f3f4f6;
+    }
+    
+    /* Custom Marker Popup */
+    .custom-popup h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    .custom-popup p {
+        margin: 0.25rem 0;
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+    
+    /* Pulse Animation for Active Animal */
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.3); opacity: 0.7; }
+    }
+    
+    .pulse-marker {
+        animation: pulse 1.5s infinite;
+    }
+    
+    /* Refresh Button */
+    .refresh-btn {
+        transition: all 0.3s;
+    }
+    
+    .refresh-btn.spinning i {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Scrollbar */
+    .location-history::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .location-history::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .location-history::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <h1>Real-Time Livestock Tracking</h1>
-            <p class="text-muted">Monitor the exact location of your livestock in real-time</p>
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-wrap justify-between items-center gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <i class="ri-cow-line text-2xl text-green-600"></i>
+                <h1 class="text-2xl font-bold text-gray-800">Livestock Tracking</h1>
+            </div>
+            <p class="text-gray-500 mt-1">Monitor real-time location of your livestock with GPS tracking</p>
         </div>
-        <div class="col-md-4 text-end">
-            <button class="btn btn-outline-primary" onclick="location.reload()">
-                <i class="fas fa-sync"></i> Refresh
+        <div class="flex gap-3">
+            <button onclick="refreshLocations()" id="refreshBtn" class="refresh-btn bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+                <i class="ri-refresh-line"></i> Refresh
             </button>
+            <a href="{% url 'core:animal_list' %}" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition flex items-center gap-2">
+                <i class="ri-list-view"></i> Manage Livestock
+            </a>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-8">
-            <div id="map"></div>
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="stat-card">
+            <div class="flex items-center gap-3">
+                <div class="stat-icon bg-blue-100 text-blue-600">
+                    <i class="ri-cow-line text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-800">{{ total_livestock }}</div>
+                    <div class="text-sm text-gray-500">Total Livestock</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="flex items-center gap-3">
+                <div class="stat-icon bg-green-100 text-green-600">
+                    <i class="ri-map-pin-line text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-green-600">{{ active_tracking }}</div>
+                    <div class="text-sm text-gray-500">Active Trackers</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="flex items-center gap-3">
+                <div class="stat-icon bg-green-100 text-green-600">
+                    <i class="ri-shield-check-line text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-green-600">{{ inside_geofence }}</div>
+                    <div class="text-sm text-gray-500">Inside Geofence</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="flex items-center gap-3">
+                <div class="stat-icon bg-red-100 text-red-600">
+                    <i class="ri-alert-line text-xl"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-red-600">{{ outside_geofence }}</div>
+                    <div class="text-sm text-gray-500">Outside Geofence</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="grid lg:grid-cols-3 gap-6">
+        <!-- Left Column - Map -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-gray-50 flex flex-wrap justify-between items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <i class="ri-map-line text-green-600"></i>
+                        <span class="font-medium">Live Location Map</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="setMapLayer('street')" id="streetBtn" class="filter-btn text-sm active">Street</button>
+                        <button onclick="setMapLayer('satellite')" id="satelliteBtn" class="filter-btn text-sm">Satellite</button>
+                        <button onclick="zoomToAll()" class="filter-btn text-sm">
+                            <i class="ri-zoom-in-line"></i> Fit All
+                        </button>
+                    </div>
+                </div>
+                <div id="livestock-map"></div>
+                <div class="p-3 bg-gray-50 text-xs text-gray-500 flex justify-between">
+                    <span><i class="ri-information-line"></i> Click on any marker to see animal details</span>
+                    <span id="lastUpdateTime">Last updated: Just now</span>
+                </div>
+            </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Livestock</h5>
+        <!-- Right Column - Livestock List & Details -->
+        <div class="space-y-6">
+            <!-- Filter -->
+            <div class="bg-white rounded-xl shadow-sm p-4">
+                <div class="flex gap-2">
+                    <input type="text" id="searchInput" placeholder="Search livestock..." 
+                           class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500">
+                    <select id="statusFilter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="all">All</option>
+                        <option value="inside">Inside Geofence</option>
+                        <option value="outside">Outside Geofence</option>
+                    </select>
                 </div>
-                <ul class="list-group list-group-flush">
-                    {% for animal in livestock %}
-                    <li class="list-group-item">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="livestock_{{ animal.id }}" 
-                                   value="{{ animal.id }}" checked onclick="toggleLivestock({{ animal.id }})">
-                            <label class="form-check-label" for="livestock_{{ animal.id }}">
-                                <strong>{{ animal.name }}</strong><br>
-                                <small class="text-muted">{{ animal.get_type_display }}</small>
-                            </label>
-                        </div>
-                    </li>
-                    {% endfor %}
-                </ul>
             </div>
 
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Location Details</h5>
+            <!-- Livestock List -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-gray-50">
+                    <h3 class="font-semibold flex items-center gap-2">
+                        <i class="ri-group-line text-green-600"></i> Tracked Livestock
+                    </h3>
                 </div>
-                <div class="card-body location-history">
-                    {% if current_location %}
-                    <dl class="row">
-                        <dt class="col-sm-6">Latitude:</dt>
-                        <dd class="col-sm-6">{{ current_location.latitude }}</dd>
-
-                        <dt class="col-sm-6">Longitude:</dt>
-                        <dd class="col-sm-6">{{ current_location.longitude }}</dd>
-
-                        <dt class="col-sm-6">Accuracy:</dt>
-                        <dd class="col-sm-6">
-                            {% if current_location.accuracy_meters %}
-                            ±{{ current_location.accuracy_meters }}m
-                            {% else %}
-                            Unknown
-                            {% endif %}
-                        </dd>
-
-                        <dt class="col-sm-6">Signal:</dt>
-                        <dd class="col-sm-6">
-                            {% if current_location.signal_strength %}
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar" style="width: {{ current_location.signal_strength }}%">
-                                    {{ current_location.signal_strength }}%
-                                </div>
+                <div id="livestockList" class="divide-y max-h-[400px] overflow-y-auto">
+                    {% for animal in livestock %}
+                    <div class="livestock-card p-4 {% if animal.is_outside %}outside{% else %}inside{% endif %} cursor-pointer"
+                         data-id="{{ animal.id }}"
+                         data-lat="{{ animal.last_location.latitude|default:'' }}"
+                         data-lng="{{ animal.last_location.longitude|default:'' }}"
+                         onclick="focusOnAnimal({{ animal.id }}, {{ animal.last_location.latitude|default:'null' }}, {{ animal.last_location.longitude|default:'null' }})">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 {% if animal.is_outside %}bg-red-100{% else %}bg-green-100{% endif %} rounded-full flex items-center justify-center">
+                                <i class="ri-cow-line {% if animal.is_outside %}text-red-600{% else %}text-green-600{% endif %} text-xl"></i>
                             </div>
-                            {% else %}
-                            N/A
-                            {% endif %}
-                        </dd>
-
-                        <dt class="col-sm-6">Geofence:</dt>
-                        <dd class="col-sm-6">
-                            {% if current_location.is_inside_assigned_geofence %}
-                            <span class="badge bg-success">Inside</span>
-                            {% else %}
-                            <span class="badge bg-danger">Outside</span>
-                            {% endif %}
-                        </dd>
-
-                        <dt class="col-sm-6">Last Update:</dt>
-                        <dd class="col-sm-6">{{ current_location.recorded_at|date:"M d, H:i" }}</dd>
-                    </dl>
-
-                    <h6 class="mt-3">Location History</h6>
-                    {% if location_history %}
-                    <div class="list-group list-group-sm">
-                        {% for loc in location_history %}
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <small>{{ loc.recorded_at|date:"H:i" }}</small><br>
-                            <small class="text-muted">{{ loc.latitude|floatformat:4 }}, {{ loc.longitude|floatformat:4 }}</small>
-                        </a>
-                        {% endfor %}
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-800">{{ animal.name|default:animal.tag_number }}</div>
+                                <div class="text-xs text-gray-500">{{ animal.animal_type.breed|default:"Livestock" }}</div>
+                            </div>
+                            <div class="text-right">
+                                {% if animal.last_location %}
+                                <div class="text-xs text-gray-500">{{ animal.last_location.recorded_at|date:"H:i" }}</div>
+                                {% if animal.is_outside %}
+                                <span class="text-xs text-red-600 font-medium">⚠️ Outside</span>
+                                {% else %}
+                                <span class="text-xs text-green-600 font-medium">✓ Inside</span>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-xs text-gray-400">No signal</span>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
-                    {% endif %}
-                    {% else %}
-                    <p class="text-muted text-center py-3">No location data available</p>
-                    {% endif %}
+                    {% empty %}
+                    <div class="p-8 text-center">
+                        <i class="ri-cow-line text-4xl text-gray-300 mb-2"></i>
+                        <p class="text-gray-500">No livestock with GPS tracking found</p>
+                        <a href="{% url 'animal_add' %}" class="text-green-600 text-sm hover:underline mt-2 inline-block">Add GPS-enabled livestock</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Location Details Panel -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden" id="detailsPanel" style="display: none;">
+                <div class="p-4 border-b bg-gray-50">
+                    <h3 class="font-semibold flex items-center gap-2">
+                        <i class="ri-information-line text-green-600"></i> Location Details
+                    </h3>
+                </div>
+                <div class="p-4" id="detailsContent">
+                    <!-- Dynamically populated -->
                 </div>
             </div>
         </div>
@@ -119,36 +355,315 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
 <script>
-    const map = L.map('map').setView([{{ farm_lat }}, {{ farm_lon }}], 13);
+    // ============================================================
+    // MAP INITIALIZATION
+    // ============================================================
     
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19
-    }).addTo(map);
-
-    // Add livestock markers
-    {% for location in livestock_locations %}
-    const marker = L.circleMarker([{{ location.latitude }}, {{ location.longitude }}], {
-        radius: 12,
-        color: 'green',
-        weight: 3,
-        opacity: 1,
-        fillOpacity: 0.8,
-        popup: '<strong>{{ location.livestock.name }}</strong><br>Recorded: {{ location.recorded_at|date:"M d, H:i" }}'
-    }).addTo(map);
+    let map;
+    let currentLayer = 'street';
+    let markers = {};
+    let activeAnimalId = null;
     
-    marker.bindPopup(`
-        <strong>{{ location.livestock.name }}</strong><br>
-        Lat: {{ location.latitude }}<br>
-        Lon: {{ location.longitude }}<br>
-        Updated: {{ location.recorded_at|date:"M d, H:i" }}
-    `);
-    {% endfor %}
-
-    function toggleLivestock(id) {
-        // Would trigger AJAX to filter livestock
-        console.log('Toggle livestock:', id);
+    // Farm location (from Django context)
+    const defaultCenter = [{{ farm_lat|default:"-1.286389" }}, {{ farm_lon|default:"36.817223" }}];
+    const defaultZoom = 13;
+    
+    // Livestock data from Django
+    const livestockData = {{ livestock_data|safe|default:'[]' }};
+    
+    function initMap() {
+        map = L.map('livestock-map').setView(defaultCenter, defaultZoom);
+        updateMapLayer();
+        
+        // Add scale control
+        L.control.scale({ metric: true, imperial: false }).addTo(map);
+        
+        // Load all livestock markers
+        loadAllMarkers();
+        
+        // Add geofences if available
+        loadGeofences();
     }
+    
+    function updateMapLayer() {
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.TileLayer) {
+                map.removeLayer(layer);
+            }
+        });
+        
+        if (currentLayer === 'street') {
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+                maxZoom: 19
+            }).addTo(map);
+        } else {
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 19
+            }).addTo(map);
+        }
+    }
+    
+    function setMapLayer(type) {
+        currentLayer = type;
+        updateMapLayer();
+        
+        document.getElementById('streetBtn').classList.remove('active');
+        document.getElementById('satelliteBtn').classList.remove('active');
+        document.getElementById(`${type}Btn`).classList.add('active');
+    }
+    
+    // ============================================================
+    // LOAD MARKERS
+    // ============================================================
+    
+    function loadAllMarkers() {
+        livestockData.forEach(animal => {
+            if (animal.latitude && animal.longitude) {
+                addMarker(animal);
+            }
+        });
+    }
+    
+    function addMarker(animal) {
+        const isOutside = animal.is_outside;
+        const markerColor = isOutside ? '#ef4444' : '#10b981';
+        
+        // Create custom icon
+        const icon = L.divIcon({
+            html: `<div class="relative">
+                    <i class="ri-cow-line text-2xl" style="color: ${markerColor}"></i>
+                    ${isOutside ? '<div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>' : ''}
+                   </div>`,
+            className: 'custom-marker',
+            iconSize: [30, 30],
+            popupAnchor: [0, -15]
+        });
+        
+        const marker = L.marker([animal.latitude, animal.longitude], { icon: icon }).addTo(map);
+        
+        marker.bindPopup(`
+            <div class="custom-popup">
+                <h4><i class="ri-cow-line"></i> ${animal.name || animal.tag_number}</h4>
+                <p>🐮 ${animal.breed || 'Unknown breed'}</p>
+                <p>📍 ${animal.latitude.toFixed(6)}, ${animal.longitude.toFixed(6)}</p>
+                <p>🕐 Updated: ${animal.last_updated || 'Recently'}</p>
+                <p>${animal.is_outside ? '⚠️ Outside designated area' : '✅ Inside safe area'}</p>
+                <a href="/livestock/${animal.id}/" class="text-green-600 text-xs">View Details →</a>
+            </div>
+        `);
+        
+        marker.on('click', () => {
+            showAnimalDetails(animal);
+        });
+        
+        markers[animal.id] = marker;
+    }
+    
+    function loadGeofences() {
+        const geofencesData = {{ geofences_data|safe|default:'[]' }};
+        
+        geofencesData.forEach(geofence => {
+            if (geofence.boundary) {
+                try {
+                    const boundary = JSON.parse(geofence.boundary);
+                    L.polygon(boundary.coordinates[0].map(coord => [coord[1], coord[0]]), {
+                        color: geofence.color || '#9333ea',
+                        weight: 2,
+                        dashArray: '5, 5',
+                        fillColor: geofence.color || '#9333ea',
+                        fillOpacity: 0.1
+                    }).addTo(map).bindPopup(`
+                        <div class="custom-popup">
+                            <h4>🛡️ ${geofence.name}</h4>
+                            <p>${geofence.description || 'Geofence boundary'}</p>
+                            <p>${geofence.is_active ? 'Active' : 'Inactive'}</p>
+                        </div>
+                    `);
+                } catch(e) {
+                    console.error('Error loading geofence:', geofence.name);
+                }
+            }
+        });
+    }
+    
+    // ============================================================
+    // ANIMAL INTERACTIONS
+    // ============================================================
+    
+    function focusOnAnimal(animalId, lat, lng) {
+        if (lat && lng) {
+            map.setView([lat, lng], 16);
+            if (markers[animalId]) {
+                markers[animalId].openPopup();
+            }
+        }
+        
+        // Highlight active card
+        document.querySelectorAll('.livestock-card').forEach(card => {
+            card.classList.remove('active');
+        });
+        const activeCard = document.querySelector(`.livestock-card[data-id="${animalId}"]`);
+        if (activeCard) {
+            activeCard.classList.add('active');
+        }
+        
+        // Find and show animal details
+        const animal = livestockData.find(a => a.id == animalId);
+        if (animal) {
+            showAnimalDetails(animal);
+        }
+    }
+    
+    function showAnimalDetails(animal) {
+        const panel = document.getElementById('detailsPanel');
+        const content = document.getElementById('detailsContent');
+        
+        panel.style.display = 'block';
+        
+        content.innerHTML = `
+            <div class="space-y-3">
+                <div class="flex items-center gap-3 pb-3 border-b">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="ri-cow-line text-2xl text-green-600"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-lg">${animal.name || animal.tag_number}</div>
+                        <div class="text-sm text-gray-500">${animal.breed || 'Livestock'}</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <div class="text-gray-500">Tag Number</div>
+                        <div class="font-medium">${animal.tag_number || 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500">Gender</div>
+                        <div class="font-medium">${animal.gender || 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500">Status</div>
+                        <div class="font-medium">
+                            <span class="${animal.is_outside ? 'text-red-600' : 'text-green-600'}">
+                                ${animal.is_outside ? '⚠️ Outside Geofence' : '✓ Inside Geofence'}
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500">Last Update</div>
+                        <div class="font-medium">${animal.last_updated || 'N/A'}</div>
+                    </div>
+                </div>
+                
+                <div class="pt-3 border-t">
+                    <div class="text-sm text-gray-500 mb-2">Current Location</div>
+                    <div class="bg-gray-50 rounded-lg p-2 font-mono text-xs">
+                        Lat: ${animal.latitude?.toFixed(6) || 'N/A'}<br>
+                        Lng: ${animal.longitude?.toFixed(6) || 'N/A'}
+                    </div>
+                </div>
+                
+                <div class="pt-2">
+                    <a href="/livestock/${animal.id}/" class="text-green-600 text-sm hover:underline">View Full Profile →</a>
+                </div>
+            </div>
+        `;
+    }
+    
+    // ============================================================
+    // UTILITY FUNCTIONS
+    // ============================================================
+    
+    function zoomToAll() {
+        const bounds = [];
+        livestockData.forEach(animal => {
+            if (animal.latitude && animal.longitude) {
+                bounds.push([animal.latitude, animal.longitude]);
+            }
+        });
+        
+        if (bounds.length > 0) {
+            map.fitBounds(bounds);
+        } else {
+            map.setView(defaultCenter, defaultZoom);
+        }
+    }
+    
+    function refreshLocations() {
+        const btn = document.getElementById('refreshBtn');
+        btn.classList.add('spinning');
+        
+        fetch(window.location.href + '?ajax=1')
+            .then(response => response.json())
+            .then(data => {
+                // Update markers
+                Object.values(markers).forEach(marker => map.removeLayer(marker));
+                markers = {};
+                
+                if (data.livestock) {
+                    data.livestock.forEach(animal => {
+                        if (animal.latitude && animal.longitude) {
+                            addMarker(animal);
+                        }
+                    });
+                }
+                
+                document.getElementById('lastUpdateTime').innerHTML = `Last updated: ${new Date().toLocaleTimeString()}`;
+                
+                setTimeout(() => {
+                    btn.classList.remove('spinning');
+                }, 500);
+            })
+            .catch(error => {
+                console.error('Refresh failed:', error);
+                btn.classList.remove('spinning');
+            });
+    }
+    
+    // Search and filter
+    document.getElementById('searchInput')?.addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('.livestock-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+        });
+    });
+    
+    document.getElementById('statusFilter')?.addEventListener('change', function(e) {
+        const filter = e.target.value;
+        document.querySelectorAll('.livestock-card').forEach(card => {
+            if (filter === 'all') {
+                card.style.display = 'flex';
+            } else if (filter === 'inside' && !card.classList.contains('outside')) {
+                card.style.display = 'flex';
+            } else if (filter === 'outside' && card.classList.contains('outside')) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+    
+    // Auto-refresh every 30 seconds
+    let autoRefreshInterval = setInterval(() => {
+        refreshLocations();
+    }, 30000);
+    
+    // Cleanup interval on page unload
+    window.addEventListener('beforeunload', () => {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+    });
+    
+    // Initialize map when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+    });
 </script>
 {% endblock %}

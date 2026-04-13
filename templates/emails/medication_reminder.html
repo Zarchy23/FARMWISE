@@ -1,0 +1,28 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Medication Reminder{% endblock %}
+{% block header_subtitle %}Keep your livestock on schedule{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">💊 Medication Reminder</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<div class="alert-medium">
+    <p style="margin: 0;"><strong>Animal:</strong> {{ animal.name }} ({{ animal.tag_number }})</p>
+    <p style="margin: 10px 0 0;"><strong>Breed:</strong> {{ animal.animal_type.breed }}</p>
+    <p style="margin: 5px 0 0;"><strong>Medication:</strong> {{ health_record.medication_name }}</p>
+    <p style="margin: 5px 0 0;"><strong>Days Until Due:</strong> {% if days_until <= 0 %}OVERDUE{% else %}{{ days_until }} days{% endif %}</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">Staying on schedule with your livestock's medications is essential for maintaining their health and preventing complications.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">Log Medication</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    ℹ️ <strong>Note:</strong> Always consult with your veterinarian before administering any medication.
+</p>
+{% endblock %}

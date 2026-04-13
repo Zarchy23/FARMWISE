@@ -426,7 +426,10 @@
             <h1>🌱 Carbon Footprint Report</h1>
             <p>Comprehensive analysis of your farm's environmental impact</p>
         </div>
-        <div style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 2;">
+        <div style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 2; display: flex; gap: 1rem;">
+            <button type="button" class="btn-print-report" data-bs-toggle="modal" data-bs-target="#exportModal">
+                <i class="fas fa-download"></i> Export
+            </button>
             <button class="btn-print-report" onclick="window.print()">
                 <i class="ri-printer-line"></i> Print Report
             </button>
@@ -565,4 +568,8 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Export Modal -->
+{% include "components/export_modal.html" with export_url=export_url title="Carbon Footprint Report" %}
+
 {% endblock %}

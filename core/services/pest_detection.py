@@ -293,6 +293,143 @@ class GroqPestDetector:
             return RuleBasedPestDetector.get_fallback_response("Response parsing failed")
 
 
+class OpenAIPestDetector:
+    """
+    Pest detection using OpenAI Vision API
+    - Powerful image analysis
+    - Backup for when free APIs unavailable
+    - Paid tier (only used as fallback)
+    """
+    
+    def __init__(self, api_key: str):
+        logger.info(f"[OPENAI INIT] Starting initialization...")
+        logger.info(f"[OPENAI INIT] API Key provided: {bool(api_key) and len(str(api_key)) > 0}")
+        try:
+            import openai
+            logger.info(f"[OPENAI INIT] openai module imported successfully")
+            openai.api_key = api_key
+            self.client = openai
+            self.available = True
+            logger.info("[OPENAI INIT] ✓ OpenAI pest detector initialized")
+        except ImportError as ie:
+            logger.warning(f"[OPENAI INIT] ImportError: openai not installed. {str(ie)}")
+            self.available = False
+        except Exception as e:
+            logger.error(f"[OPENAI INIT] Error: {str(e)}", exc_info=True)
+            self.available = False
+    
+    def detect_pest(self, image_file) -> Dict:
+        """Analyze crop image for pests using OpenAI Vision"""
+        logger.info(f"[OPENAI] Starting pest detection...")
+        logger.info(f"[OPENAI] Available: {self.available}")
+        
+        if not self.available:
+            logger.warning("[OPENAI] OpenAI detector not available")
+            return RuleBasedPestDetector.get_fallback_response("OpenAI API not available")
+        
+        try:
+            import base64
+            import io
+            
+            # Reset file pointer and read image
+            if hasattr(image_file, 'seek'):
+                image_file.seek(0)
+            
+            # Convert image to base64
+            logger.info("[OPENAI] Encoding image to base64...")
+            image_data = image_file.read()
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+            
+            # Create the message for OpenAI
+            prompt = """You are an expert agricultural pest detection AI with 20+ years of experience.
+Analyze this crop image and identify any pests, diseases, nutrient deficiencies, or other agricultural issues.
+Be precise and practical for African farming conditions.
+
+Respond in this EXACT JSON format (no other text):
+{
+    "detected_issue": "specific pest/disease/deficiency name or 'Healthy Crop'",
+    "confidence": 0-100,
+    "severity": "none/low/medium/high/severe",
+    "description": "2-3 sentences about what you see",
+    "treatment": "practical treatment options available locally",
+    "prevention": "how to prevent this in the future",
+    "organic_options": "organic/non-chemical alternatives"
+}
+
+If you don't see any issues, set detected_issue to "Healthy Crop" and confidence to 100.
+Be accurate - farmers depend on this information."""
+            
+            logger.info(f"[OPENAI] Sending request to OpenAI Vision API...")
+            
+            # Call OpenAI API with retry logic
+            from tenacity import retry, stop_after_attempt, wait_exponential
+            
+            @retry(
+                stop=stop_after_attempt(3),
+                wait=wait_exponential(multiplier=1, min=2, max=10)
+            )
+            def call_openai_api():
+                response = self.client.ChatCompletion.create(
+                    model="gpt-4-vision-preview",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": prompt},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{image_base64}"
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    max_tokens=500,
+                    temperature=0.7
+                )
+                return response
+            
+            response = call_openai_api()
+            logger.info(f"[OPENAI] Response received successfully")
+            
+            # Parse response
+            response_text = response.choices[0].message.content
+            result = self._parse_openai_response(response_text)
+            logger.info(f"[OPENAI] ✓ Result: {result.get('detected_issue')}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"[OPENAI] Error: {str(e)}", exc_info=True)
+            return RuleBasedPestDetector.get_fallback_response(f"OpenAI error: {str(e)[:100]}")
+    
+    def _parse_openai_response(self, response_text: str) -> Dict:
+        """Extract JSON from OpenAI response"""
+        try:
+            # Try to find JSON in response
+            start = response_text.find('{')
+            end = response_text.rfind('}') + 1
+            
+            if start != -1 and end > start:
+                json_str = response_text[start:end]
+                result = json.loads(json_str)
+                
+                # Validate required fields
+                required_fields = ['detected_issue', 'confidence', 'severity', 'description', 'treatment', 'prevention']
+                for field in required_fields:
+                    if field not in result:
+                        result[field] = ""
+                
+                return result
+            else:
+                logger.error("No JSON found in OpenAI response")
+                return RuleBasedPestDetector.get_fallback_response("Invalid response format")
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {str(e)}")
+            return RuleBasedPestDetector.get_fallback_response("Response parsing failed")
+
+
 class RuleBasedPestDetector:
     """
     Completely free pest detection using rules and knowledge base
@@ -409,20 +546,24 @@ class RuleBasedPestDetector:
 
 class PestDetectionService:
     """
-    Main pest detection service with fallback strategy
-    1. Try Gemini API (if configured)
-    2. Try Groq API (if configured)
-    3. Fall back to rule-based detection
-    4. Guide user to manual consultation
+    Main pest detection service with intelligent fallback strategy
+    1. Try Gemini API (FREE, best for images)
+    2. Try Groq API (FREE, fast alternative)
+    3. Try OpenAI Vision (PAID, powerful backup)
+    4. Fall back to rule-based detection (100% FREE, offline)
+    
+    Cost optimization: Only uses paid APIs if free ones fail
     """
     
-    def __init__(self, gemini_api_key: str = None, groq_api_key: str = None):
-        logger.info(f"=== PestDetectionService INIT ===")
+    def __init__(self, gemini_api_key: str = None, groq_api_key: str = None, openai_api_key: str = None):
+        logger.info(f"=== PestDetectionService INIT (with 3-AI fallback) ===")
         logger.info(f"[SERVICE INIT] Gemini API key provided: {bool(gemini_api_key) and len(str(gemini_api_key)) > 0}")
         logger.info(f"[SERVICE INIT] Groq API key provided: {bool(groq_api_key) and len(str(groq_api_key)) > 0}")
+        logger.info(f"[SERVICE INIT] OpenAI API key provided: {bool(openai_api_key) and len(str(openai_api_key)) > 0}")
         
         self.gemini_detector = None
         self.groq_detector = None
+        self.openai_detector = None
         
         if gemini_api_key:
             logger.info(f"[SERVICE INIT] Creating Gemini detector...")
@@ -438,67 +579,86 @@ class PestDetectionService:
         else:
             logger.info(f"[SERVICE INIT] Skipping Groq (no API key)")
         
+        if openai_api_key:
+            logger.info(f"[SERVICE INIT] Creating OpenAI detector...")
+            self.openai_detector = OpenAIPestDetector(openai_api_key)
+            logger.info(f"[SERVICE INIT] OpenAI detector ready: {self.openai_detector.available}")
+        else:
+            logger.info(f"[SERVICE INIT] Skipping OpenAI (no API key)")
+        
         self.rule_detector = RuleBasedPestDetector()
-        logger.info("Pest detection service initialized")
+        logger.info("✓ Pest detection service initialized (Gemini → Groq → OpenAI → Rule-Based)")
     
     def detect_from_image(self, image_file) -> Dict:
         """Detect pest from image using best available method"""
-        logger.info(f"=== PEST DETECTION START ===")
+        logger.info(f"=== PEST DETECTION START (4-Tier Fallback) ===")
+        logger.info(f"Priority: Gemini (FREE) → Groq (FREE) → OpenAI (PAID) → Rule-Based (FREE offline)")
         logger.info(f"Production safety check: IS_PRODUCTION={IS_PRODUCTION}, DISABLE_GEMINI={DISABLE_GEMINI_ON_PRODUCTION}")
         
-        # CRITICAL: If Gemini is disabled on production, skip straight to fallback
+        # CRITICAL: If Gemini is disabled on production, skip to paid APIs
         if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
-            logger.warning("🚫 PRODUCTION MODE - GEMINI DISABLED - Using fallback only")
-            logger.info("=== PEST DETECTION COMPLETE (FALLBACK - PRODUCTION) ===")
-            return RuleBasedPestDetector.get_fallback_response(
-                "Production environment: Using offline analysis. Please provide clear photos showing: affected leaves, whole plant, and any visible insects"
-            )
+            logger.warning("🚫 PRODUCTION MODE - GEMINI DISABLED - Trying alternatives...")
         
-        logger.info(f"Gemini detector available: {self.gemini_detector is not None and self.gemini_detector.available}")
-        logger.info(f"Groq detector available: {self.groq_detector is not None and self.groq_detector.available}")
-        
-        # Try Gemini first (only if not disabled on production)
-        if self.gemini_detector and self.gemini_detector.available:
-            logger.info("→ Attempting Gemini AI detection...")
+        # ========== TIER 1: Try Gemini (FREE) ==========
+        if not (IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION) and self.gemini_detector and self.gemini_detector.available:
+            logger.info("🟢 TIER 1: Attempting Gemini AI detection (FREE)...")
             result = self.gemini_detector.detect_pest(image_file)
             logger.info(f"→ Gemini response: error_fallback={result.get('error_fallback')}, rate_limited={result.get('rate_limited')}")
             
-            # If successful (not fallback and not rate limited), return it
             if result and not result.get('error_fallback'):
-                logger.info("✓ GEMINI DETECTION SUCCESSFUL")
-                logger.info(f"=== PEST DETECTION COMPLETE ===")
+                logger.info("✅ GEMINI DETECTION SUCCESSFUL")
+                logger.info(f"=== PEST DETECTION COMPLETE (Tier 1: Gemini) ===")
                 return result
             
-            # If rate limited, log it but try next service
             if result.get('rate_limited'):
-                logger.warning("⚠ Gemini rate limited (free tier quota), trying alternative...")
+                logger.warning("⚠ Gemini rate limited, trying next provider...")
             else:
-                logger.info("✗ Gemini detection failed, trying Groq...")
+                logger.info("✗ Gemini detection failed, trying next provider...")
         else:
-            logger.info(f"✗ Gemini not available: detector={self.gemini_detector is not None}, available={self.gemini_detector.available if self.gemini_detector else 'N/A'}")
+            logger.info(f"⚪ TIER 1 SKIPPED: Gemini unavailable/disabled")
         
-        # Try Groq if Gemini failed (NOTE: Groq free tier doesn't have vision)
+        # ========== TIER 2: Try Groq (FREE) ==========
         if self.groq_detector and self.groq_detector.available:
-            logger.info("→ Attempting Groq AI detection (text-based)...")
+            logger.info("🟢 TIER 2: Attempting Groq AI detection (FREE)...")
             try:
-                image_file.seek(0)  # Reset file pointer
+                if hasattr(image_file, 'seek'):
+                    image_file.seek(0)
             except:
-                pass  # File might not be seekable
+                pass
             result = self.groq_detector.detect_pest(image_file)
             logger.info(f"→ Groq response: error_fallback={result.get('error_fallback') if result else 'None'}")
             if result and not result.get('error_fallback'):
-                logger.info("✓ GROQ DETECTION SUCCESSFUL")
-                logger.info(f"=== PEST DETECTION COMPLETE ===")
+                logger.info("✅ GROQ DETECTION SUCCESSFUL")
+                logger.info(f"=== PEST DETECTION COMPLETE (Tier 2: Groq) ===")
                 return result
-            logger.info("✗ Groq detection failed, using rule-based detection...")
+            logger.info("✗ Groq detection failed, trying next provider...")
         else:
-            logger.info(f"✗ Groq not available: detector={self.groq_detector is not None}, available={self.groq_detector.available if self.groq_detector else 'N/A'}")
+            logger.info(f"⚪ TIER 2 SKIPPED: Groq unavailable")
         
-        # Fall back to rule-based
-        logger.info("→ Using offline rule-based detection")
-        logger.info("=== PEST DETECTION COMPLETE (FALLBACK) ===")
+        # ========== TIER 3: Try OpenAI (PAID - used as last resort) ==========
+        if self.openai_detector and self.openai_detector.available:
+            logger.info("🟡 TIER 3: Attempting OpenAI Vision detection (PAID but powerful)...")
+            logger.info("💰 Note: This will incur costs. Using only because free APIs failed.")
+            try:
+                if hasattr(image_file, 'seek'):
+                    image_file.seek(0)
+            except:
+                pass
+            result = self.openai_detector.detect_pest(image_file)
+            logger.info(f"→ OpenAI response: error_fallback={result.get('error_fallback') if result else 'None'}")
+            if result and not result.get('error_fallback'):
+                logger.info("✅ OPENAI DETECTION SUCCESSFUL")
+                logger.info(f"=== PEST DETECTION COMPLETE (Tier 3: OpenAI) ===")
+                return result
+            logger.info("✗ OpenAI detection failed, using offline fallback...")
+        else:
+            logger.info(f"⚪ TIER 3 SKIPPED: OpenAI unavailable")
+        
+        # ========== TIER 4: Use Rule-Based Detection (100% FREE, OFFLINE) ==========
+        logger.info("🔵 TIER 4: Using offline rule-based detection (100% FREE)")
+        logger.info("=== PEST DETECTION COMPLETE (Tier 4: Rule-Based) ===")
         return RuleBasedPestDetector.get_fallback_response(
-            "Using offline analysis. Please provide clear photos showing: affected leaves, whole plant, and any visible insects"
+            "All AI services currently unavailable. Using offline analysis. Please provide clear photos showing: affected leaves, whole plant, and any visible insects"
         )
     
     def detect_from_symptoms(self, symptoms: List[str]) -> Dict:
@@ -508,6 +668,17 @@ class PestDetectionService:
 
 
 # Singleton instance factory
-def get_pest_detection_service(gemini_api_key: str = None) -> PestDetectionService:
-    """Factory function to get pest detection service"""
-    return PestDetectionService(gemini_api_key)
+def get_pest_detection_service(gemini_api_key: str = None, groq_api_key: str = None, openai_api_key: str = None) -> PestDetectionService:
+    """
+    Factory function to get pest detection service with all 3 AI providers
+    
+    Usage:
+        from django.conf import settings
+        service = get_pest_detection_service(
+            gemini_api_key=settings.GEMINI_API_KEY,
+            groq_api_key=settings.GROQ_API_KEY,
+            openai_api_key=settings.OPENAI_API_KEY
+        )
+        result = service.detect_from_image(image_file)
+    """
+    return PestDetectionService(gemini_api_key, groq_api_key, openai_api_key)

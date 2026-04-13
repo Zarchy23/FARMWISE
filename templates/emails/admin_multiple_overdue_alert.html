@@ -1,0 +1,38 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Alert: Multiple Overdue Health Records{% endblock %}
+{% block header_subtitle %}Farm health status alert{% endblock %}
+
+{% block content %}
+<div style="background-color: #b45309; border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 20px; color: white;">
+    <h2 style="color: white; margin: 0; font-size: 18px;">⚠️ FARM ALERT</h2>
+</div>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<p style="color: #b45309; font-weight: bold; margin-bottom: 15px;">Multiple animals on your farm have overdue health records.</p>
+
+<div class="alert-high">
+    <p style="margin: 0;"><strong>Farm:</strong> {{ farm.name }}</p>
+    <p style="margin: 10px 0 0;"><strong>Overdue Health Records:</strong> <span style="color: #dc2626; font-weight: bold;">{{ overdue_count }} animals</span></p>
+    <p style="margin: 5px 0 0;"><strong>Alert Time:</strong> {{ "now"|date:"M d, Y H:i" }} UTC</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">{{ overdue_count }} animals on your farm have health records that are past their due dates. This pattern suggests a potential issue with your health management system or animal care.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn" style="background-color: #f59e0b;">View Overdue Animals</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #78350f; font-size: 14px; background-color: #fef3c7; padding: 12px; border-radius: 4px;">
+    <strong>📋 Recommended Actions:</strong>
+    <ul>
+        <li>Review all {{ overdue_count }} animals with overdue health records</li>
+        <li>Prioritize critical health procedures</li>
+        <li>Schedule veterinary visits for affected animals</li>
+        <li>Update all health records in the system</li>
+        <li>Review your health management schedule</li>
+    </ul>
+</p>
+{% endblock %}

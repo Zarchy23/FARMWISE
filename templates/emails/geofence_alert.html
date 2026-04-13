@@ -1,0 +1,30 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Geofence Alert{% endblock %}
+{% block header_subtitle %}Livestock location alert{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">⚠️ Geofence Breach Alert</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<div class="alert-high">
+    <p style="margin: 0;"><strong>Animal:</strong> {{ alert.livestock.name|default:alert.livestock.tag_number }}</p>
+    <p style="margin: 10px 0 0;"><strong>Alert Type:</strong> 
+        {% if alert.alert_type == 'exit' %}🚪 Exited safe zone{% else %}🚶 Entered restricted zone{% endif %}
+    </p>
+    <p style="margin: 5px 0 0;"><strong>Location:</strong> {{ alert.latitude|floatformat:6 }}, {{ alert.longitude|floatformat:6 }}</p>
+    <p style="margin: 5px 0 0;"><strong>Time:</strong> {{ alert.alert_time|date:"F j, Y g:i A" }}</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">This animal has moved outside its designated safe zone. Please take appropriate action.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">Track Animal Now</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    <strong>Note:</strong> You can adjust geofence boundaries or disable alerts from the Farm Map settings.
+</p>
+{% endblock %}

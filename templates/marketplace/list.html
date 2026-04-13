@@ -13,11 +13,16 @@
                 <h1 class="text-3xl font-bold">Marketplace</h1>
                 <p class="text-green-100 mt-1">Browse and buy farm products from local farmers</p>
             </div>
-            {% if user|has_module_permission:"marketplace.create_listing" %}
-            <a href="{% url 'core:create_listing' %}" class="bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition">
-                <i class="ri-add-line"></i> List Product
-            </a>
-            {% endif %}
+            <div class="flex gap-3">
+                {% if user|has_module_permission:"marketplace.create_listing" %}
+                <a href="{% url 'core:create_listing' %}" class="bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition">
+                    <i class="ri-add-line"></i> List Product
+                </a>
+                {% endif %}
+                <button onclick="openExportModal()" class="bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition">
+                    <i class="fas fa-download"></i> Export
+                </button>
+            </div>
         </div>
     </div>
 
@@ -237,6 +242,9 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Export Modal -->
+{% include "components/export_modal.html" with export_url=export_url title="Marketplace Products" %}
 
 {% if user.is_authenticated %}
 <!-- Quick Links -->

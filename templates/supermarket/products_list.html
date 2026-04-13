@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My Products - FarmWise Supermarket{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="fas fa-boxes"></i> My Products</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{% url 'supermarket:product_add' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add New Product
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>{{ total_products }}</h5>
+                    <p class="text-muted mb-0">Total Products</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h5>{{ active_products }}</h5>
+                    <p class="mb-0">Active</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-danger text-white">
+                <div class="card-body">
+                    <h5>{{ out_of_stock_products }}</h5>
+                    <p class="mb-0">Out of Stock</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-warning text-dark">
+                <div class="card-body">
+                    <h5>{{ unpublished_products }}</h5>
+                    <p class="mb-0">Unpublished</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters & Export -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h6 class="mb-0"><i class="fas fa-filter"></i> Filters & Search</h6>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="{% url 'supermarket:export_products' %}" class="btn btn-sm btn-outline-success" title="Download all products as CSV">
+                        <i class="fas fa-download"></i> Export All (CSV)
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Status</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                        <option value="sold" {% if status_filter == 'sold' %}selected{% endif %}>Sold</option>
+                        <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>Expired</option>
+                        <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="stock" class="form-label">Stock Status</label>
+                    <select name="stock" id="stock" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Stock</option>
+                        <option value="in_stock" {% if stock_filter == 'in_stock' %}selected{% endif %}>In Stock</option>
+                        <option value="out_of_stock" {% if stock_filter == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary" style="margin-top: 30px;">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
+                    <a href="{% url 'supermarket:products_list' %}" class="btn btn-secondary" style="margin-top: 30px;">
+                        <i class="fas fa-sync"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Advanced Export Options -->
+    <div class="card mb-4 border-info">
+        <div class="card-header bg-info text-white">
+            <h6 class="mb-0"><i class="fas fa-file-export"></i> Advanced Export Options</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="btn-group-vertical w-100" role="group">
+                        <form method="get" action="{% url 'supermarket:export_products' %}" class="mb-2">
+                            <input type="hidden" name="status" value="{{ status_filter }}">
+                            <input type="hidden" name="format" value="csv">
+                            <button type="submit" class="btn btn-outline-info w-100">
+                                <i class="fas fa-file-csv"></i> Export as CSV
+                            </button>
+                        </form>
+                        <form method="get" action="{% url 'supermarket:export_products' %}" class="mb-2">
+                            <input type="hidden" name="status" value="{{ status_filter }}">
+                            <input type="hidden" name="format" value="xlsx">
+                            <button type="submit" class="btn btn-outline-info w-100">
+                                <i class="fas fa-file-excel"></i> Export as Excel
+                            </button>
+                        </form>
+                        <form method="get" action="{% url 'supermarket:export_products' %}" class="mb-2">
+                            <input type="hidden" name="status" value="{{ status_filter }}">
+                            <input type="hidden" name="format" value="pdf">
+                            <button type="submit" class="btn btn-outline-info w-100">
+                                <i class="fas fa-file-pdf"></i> Export as PDF
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <p class="text-muted mb-0">
+                        <strong>Note:</strong> The current filters (status: {{ status_filter|default:"all" }}, stock: {{ stock_filter|default:"all" }}) 
+                        will be applied to your export. Set your filters above before exporting to get the data you need.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">Product Listings</h6>
+        </div>
+        <div class="table-responsive">
+            {% if products %}
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Quantity</th>
+                            <th>Price/Unit</th>
+                            <th>Total Price</th>
+                            <th>Status</th>
+                            <th>Stock</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                            <tr>
+                                <td>
+                                    <strong>{{ product.product_name }}</strong>
+                                    {% if product.is_organic %}<span class="badge bg-success ms-2">Organic</span>{% endif %}
+                                </td>
+                                <td>{{ product.category }}</td>
+                                <td>{{ product.quantity }} {{ product.unit }}</td>
+                                <td>{{ product.price_per_unit|floatformat:2 }}</td>
+                                <td>
+                                    <strong>{{ product.total_price|floatformat:2 }}</strong>
+                                </td>
+                                <td>
+                                    {% if product.status == 'active' %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% elif product.status == 'sold' %}
+                                        <span class="badge bg-secondary">Sold</span>
+                                    {% elif product.status == 'expired' %}
+                                        <span class="badge bg-warning">Expired</span>
+                                    {% else %}
+                                        <span class="badge bg-dark">{{ product.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if product.is_out_of_stock %}
+                                        <span class="badge bg-danger">Out of Stock</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Available</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{% url 'supermarket:product_edit' product.pk %}" class="btn btn-outline-primary" title="Edit product">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'supermarket:product_toggle_stock' product.pk %}" class="btn btn-outline-warning" title="Toggle stock status">
+                                            <i class="fas fa-exchange-alt"></i>
+                                        </a>
+                                        <a href="{% url 'supermarket:product_delete' product.pk %}" class="btn btn-outline-danger" onclick="return confirm('Are you sure?');" title="Delete product">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="card-body">
+                    <div class="alert alert-info text-center mb-0">
+                        <p>No products found with your current filters.</p>
+                        <p>Try adjusting your filters or <a href="{% url 'supermarket:product_add' %}" class="alert-link">add a new product</a></p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

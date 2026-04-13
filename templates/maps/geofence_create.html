@@ -1,161 +1,803 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Create Geofence - FarmWise{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
 <style>
-    #map { height: 400px; border-radius: 4px; margin-bottom: 20px; }
+    /* Map Container */
+    #geofence-map {
+        height: 450px;
+        width: 100%;
+        border-radius: 1rem;
+        z-index: 1;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Form Container */
+    .form-container {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .form-header {
+        background: linear-gradient(135deg, #16a34a, #15803d);
+        padding: 1.25rem 1.5rem;
+        color: white;
+    }
+    
+    /* Step Indicator */
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        padding: 0 1rem;
+    }
+    
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+        position: relative;
+    }
+    
+    .step-number {
+        width: 40px;
+        height: 40px;
+        background: #e5e7eb;
+        color: #6b7280;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s;
+    }
+    
+    .step.active .step-number {
+        background: #16a34a;
+        color: white;
+    }
+    
+    .step.completed .step-number {
+        background: #10b981;
+        color: white;
+    }
+    
+    .step-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-align: center;
+    }
+    
+    .step.active .step-label {
+        color: #16a34a;
+        font-weight: 500;
+    }
+    
+    .step-line {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background: #e5e7eb;
+        z-index: -1;
+    }
+    
+    .step:last-child .step-line {
+        display: none;
+    }
+    
+    /* Form Sections */
+    .form-section {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .form-section.active {
+        display: block;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Drawing Tools Panel */
+    .draw-tools-panel {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        padding: 0.5rem;
+    }
+    
+    .draw-btn {
+        background: #f3f4f6;
+        border: none;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .draw-btn.active {
+        background: #16a34a;
+        color: white;
+    }
+    
+    .draw-btn:hover:not(.active) {
+        background: #e5e7eb;
+    }
+    
+    /* Selected Points Display */
+    .points-preview {
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        max-height: 150px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 0.75rem;
+    }
+    
+    /* Color Picker */
+    .color-option {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+    
+    .color-option:hover {
+        transform: scale(1.1);
+    }
+    
+    .color-option.selected {
+        border-color: #1f2937;
+        transform: scale(1.1);
+    }
+    
+    /* Livestock Multi-select */
+    .livestock-select {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .livestock-option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        cursor: pointer;
+        border-radius: 0.5rem;
+        transition: background 0.2s;
+    }
+    
+    .livestock-option:hover {
+        background: #f0fdf4;
+    }
+    
+    .livestock-option.selected {
+        background: #dcfce7;
+    }
+    
+    /* Toggle Switch */
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.3s;
+        border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: #16a34a;
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8">
-            <h1>Create Geofence</h1>
-            <p class="text-muted">Define a boundary for livestock tracking and alerts</p>
-
-            <form method="post" class="mt-4">
-                {% csrf_token %}
-
-                <div class="mb-3">
-                    <label for="name" class="form-label">Geofence Name *</label>
-                    <input type="text" class="form-control" id="name" name="name" 
-                           placeholder="e.g., North Pasture" required>
-                </div>
-
-                <div class="mb-3">
-                    <label for="field" class="form-label">Associated Field (Optional)</label>
-                    <select class="form-select" id="field" name="field">
-                        <option value="">Select a field...</option>
-                        {% for field in fields %}
-                        <option value="{{ field.id }}">{{ field.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="mb-3">
-                    <label for="map" class="form-label">Draw Boundary on Map *</label>
-                    <p class="text-muted small">Click to add points, double-click to finish</p>
-                    <div id="map"></div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="geojson_data" class="form-label">Boundary Data</label>
-                    <textarea class="form-control" id="geojson_data" name="geojson_boundary" 
-                              rows="3" readonly placeholder="Automatically populated"></textarea>
-                </div>
-
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h5 class="mb-0">Alert Settings</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="exit_alerts" 
-                                   name="enable_exit_alerts" checked>
-                            <label class="form-check-label" for="exit_alerts">
-                                Enable Exit Alerts
-                            </label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="entry_alerts" 
-                                   name="enable_entry_alerts">
-                            <label class="form-check-label" for="entry_alerts">
-                                Enable Entry Alerts
-                            </label>
-                        </div>
-
-                        <label class="form-label mt-3">Alert Channels</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="alert_sms" 
-                                   name="alert_channels" value="sms">
-                            <label class="form-check-label" for="alert_sms">SMS</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="alert_email" 
-                                   name="alert_channels" value="email" checked>
-                            <label class="form-check-label" for="alert_email">Email</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="alert_push" 
-                                   name="alert_channels" value="push">
-                            <label class="form-check-label" for="alert_push">Push Notification</label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="livestock" class="form-label">Assign Livestock (Optional)</label>
-                    <select class="form-select" id="livestock" name="livestock" multiple>
-                        {% for animal in livestock %}
-                        <option value="{{ animal.id }}">{{ animal.name }} ({{ animal.get_type_display }})</option>
-                        {% endfor %}
-                    </select>
-                    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple</small>
-                </div>
-
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">Create Geofence</button>
-                    <a href="{% url 'farm_map' %}" class="btn btn-outline-secondary">Cancel</a>
-                </div>
-            </form>
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center gap-3 mb-2">
+            <i class="ri-fence-line text-3xl text-green-600"></i>
+            <h1 class="text-2xl font-bold text-gray-800">Create Geofence</h1>
         </div>
+        <p class="text-gray-500">Define virtual boundaries to monitor livestock movements and receive alerts</p>
+    </div>
 
-        <div class="col-md-4">
-            <div class="card bg-light">
-                <div class="card-body">
-                    <h5 class="card-title">How to Create</h5>
-                    <ol class="small">
-                        <li>Enter a name for the geofence</li>
-                        <li>Draw the boundary on the map</li>
-                        <li>Configure alert preferences</li>
-                        <li>Assign livestock (optional)</li>
-                        <li>Click Create</li>
-                    </ol>
+    <!-- Step Indicator -->
+    <div class="step-indicator mb-8">
+        <div class="step active" id="step1Indicator">
+            <div class="step-number">1</div>
+            <div class="step-label">Draw Boundary</div>
+            <div class="step-line"></div>
+        </div>
+        <div class="step" id="step2Indicator">
+            <div class="step-number">2</div>
+            <div class="step-label">Configure Alerts</div>
+            <div class="step-line"></div>
+        </div>
+        <div class="step" id="step3Indicator">
+            <div class="step-number">3</div>
+            <div class="step-label">Assign Livestock</div>
+            <div class="step-line"></div>
+        </div>
+        <div class="step" id="step4Indicator">
+            <div class="step-number">4</div>
+            <div class="step-label">Review & Create</div>
+        </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Left Column - Map -->
+        <div class="form-container">
+            <div class="form-header">
+                <h3 class="font-semibold flex items-center gap-2">
+                    <i class="ri-map-line"></i> Draw Geofence Boundary
+                </h3>
+                <p class="text-sm text-green-100 mt-1">Click on the map to draw your boundary. Double-click to finish.</p>
+            </div>
+            <div class="relative p-4">
+                <div id="geofence-map"></div>
+                
+                <!-- Drawing Tools -->
+                <div class="draw-tools-panel">
+                    <button onclick="clearDrawing()" class="draw-btn" title="Clear Drawing">
+                        <i class="ri-eraser-line"></i> Clear
+                    </button>
+                    <button onclick="undoLastPoint()" class="draw-btn" title="Undo Last Point">
+                        <i class="ri-arrow-go-back-line"></i> Undo
+                    </button>
                 </div>
             </div>
+            
+            <!-- Points Preview -->
+            <div class="px-4 pb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Boundary Points</label>
+                <div id="pointsPreview" class="points-preview">
+                    <span class="text-gray-400">No points added yet. Click on the map to start drawing.</span>
+                </div>
+                <input type="hidden" id="geojson_boundary" name="geojson_boundary">
+            </div>
+        </div>
+
+        <!-- Right Column - Form -->
+        <div class="form-container">
+            <div class="form-header">
+                <h3 class="font-semibold flex items-center gap-2">
+                    <i class="ri-settings-line"></i> Geofence Settings
+                </h3>
+            </div>
+            
+            <form method="post" id="geofenceForm" class="p-6">
+                {% csrf_token %}
+                
+                <!-- Section 1: Basic Info (Always visible) -->
+                <div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Geofence Name <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" name="name" id="geofenceName" required
+                               class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                               placeholder="e.g., North Pasture, River Boundary, Crop Field A">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+                        <textarea name="description" id="description" rows="2"
+                                  class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                  placeholder="Describe this geofence's purpose..."></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Associated Field (Optional)</label>
+                        <select name="field" id="field" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500">
+                            <option value="">-- Select a field --</option>
+                            {% for field in fields %}
+                            <option value="{{ field.id }}">{{ field.farm.name }} - {{ field.name }} ({{ field.area_hectares }} ha)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Geofence Color</label>
+                        <div class="flex gap-3 flex-wrap">
+                            <div class="color-option selected" style="background: #9333ea;" data-color="#9333ea" onclick="selectColor(this)"></div>
+                            <div class="color-option" style="background: #ef4444;" data-color="#ef4444" onclick="selectColor(this)"></div>
+                            <div class="color-option" style="background: #3b82f6;" data-color="#3b82f6" onclick="selectColor(this)"></div>
+                            <div class="color-option" style="background: #f59e0b;" data-color="#f59e0b" onclick="selectColor(this)"></div>
+                            <div class="color-option" style="background: #10b981;" data-color="#10b981" onclick="selectColor(this)"></div>
+                            <div class="color-option" style="background: #ec4899;" data-color="#ec4899" onclick="selectColor(this)"></div>
+                        </div>
+                        <input type="hidden" name="color" id="selectedColor" value="#9333ea">
+                    </div>
+                </div>
+                
+                <!-- Section 2: Alert Settings (Step 2) -->
+                <div id="alertSection" style="display: none;">
+                    <div class="border-t border-gray-200 my-4"></div>
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <i class="ri-notification-line text-green-600"></i> Alert Configuration
+                    </h4>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <div class="font-medium">Exit Alerts</div>
+                                <div class="text-xs text-gray-500">Notify when livestock leave this area</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_exit_alerts" id="exitAlerts" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <div class="font-medium">Entry Alerts</div>
+                                <div class="text-xs text-gray-500">Notify when livestock enter this area</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_entry_alerts" id="entryAlerts">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notification Channels</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="checkbox" name="alert_channels" value="sms" class="rounded border-gray-300">
+                                <i class="ri-message-line text-blue-500"></i>
+                                <span class="text-sm">SMS</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="checkbox" name="alert_channels" value="email" checked class="rounded border-gray-300">
+                                <i class="ri-mail-line text-red-500"></i>
+                                <span class="text-sm">Email</span>
+                            </label>
+                            <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="checkbox" name="alert_channels" value="push" class="rounded border-gray-300">
+                                <i class="ri-notification-line text-green-500"></i>
+                                <span class="text-sm">Push</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section 3: Assign Livestock (Step 3) -->
+                <div id="livestockSection" style="display: none;">
+                    <div class="border-t border-gray-200 my-4"></div>
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <i class="ri-cow-line text-green-600"></i> Assign Livestock
+                    </h4>
+                    
+                    {% if livestock %}
+                    <div class="livestock-select" id="livestockList">
+                        {% for animal in livestock %}
+                        <div class="livestock-option" data-id="{{ animal.id }}" onclick="toggleLivestock(this)">
+                            <input type="checkbox" name="livestock" value="{{ animal.id }}" id="livestock_{{ animal.id }}" class="hidden">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                <i class="ri-cow-line text-green-600"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-medium text-sm">{{ animal.name|default:animal.tag_number }}</div>
+                                <div class="text-xs text-gray-500">{{ animal.animal_type.breed|default:"Livestock" }}</div>
+                            </div>
+                            <i class="ri-checkbox-blank-circle-line text-gray-300"></i>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="ri-information-line"></i> Only livestock with GPS tracking will be monitored
+                    </p>
+                    {% else %}
+                    <div class="text-center py-8 bg-gray-50 rounded-lg">
+                        <i class="ri-cow-line text-4xl text-gray-300 mb-2"></i>
+                        <p class="text-gray-500">No livestock with GPS tracking found</p>
+                        <a href="{% url 'core:animal_add' %}" class="text-green-600 text-sm hover:underline">Add GPS-enabled livestock</a>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Section 4: Review (Step 4) -->
+                <div id="reviewSection" style="display: none;">
+                    <div class="border-t border-gray-200 my-4"></div>
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <i class="ri-checkbox-circle-line text-green-600"></i> Review & Create
+                    </h4>
+                    
+                    <div id="reviewContent" class="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                        <!-- Review content populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Navigation Buttons -->
+                <div class="flex justify-between gap-3 mt-6 pt-4 border-t">
+                    <button type="button" id="prevBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition hidden">
+                        <i class="ri-arrow-left-line"></i> Previous
+                    </button>
+                    <button type="button" id="nextBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition ml-auto">
+                        Next <i class="ri-arrow-right-line"></i>
+                    </button>
+                    <button type="submit" id="submitBtn" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition hidden">
+                        <i class="ri-check-line"></i> Create Geofence
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
 <script>
-    const map = L.map('map').setView([{{ farm_lat }}, {{ farm_lon }}], 13);
+    // ============================================================
+    // MAP INITIALIZATION
+    // ============================================================
     
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19
-    }).addTo(map);
-
-    let polygon = null;
+    let map;
+    let drawnPolygon = null;
     let points = [];
-
-    map.on('click', function(e) {
-        points.push([e.latlng.lat, e.latlng.lng]);
+    
+    // Default center (use farm location or default)
+    const defaultCenter = [{{ farm_lat|default:"-1.286389" }}, {{ farm_lon|default:"36.817223" }}];
+    const defaultZoom = 14;
+    
+    function initMap() {
+        map = L.map('geofence-map').setView(defaultCenter, defaultZoom);
         
-        if (polygon) map.removeLayer(polygon);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Add scale control
+        L.control.scale({ metric: true, imperial: false }).addTo(map);
+        
+        // Add click handler
+        map.on('click', addPoint);
+        map.on('dblclick', finishDrawing);
+    }
+    
+    function addPoint(e) {
+        points.push([e.latlng.lat, e.latlng.lng]);
+        updatePolygon();
+        updatePointsPreview();
+    }
+    
+    function updatePolygon() {
+        if (drawnPolygon) {
+            map.removeLayer(drawnPolygon);
+        }
         
         if (points.length > 2) {
-            polygon = L.polygon([...points, points[0]], {
-                color: 'red',
-                fillColor: 'red',
-                fillOpacity: 0.2,
-                weight: 2
+            drawnPolygon = L.polygon(points, {
+                color: document.getElementById('selectedColor').value,
+                weight: 3,
+                fillColor: document.getElementById('selectedColor').value,
+                fillOpacity: 0.2
             }).addTo(map);
         }
-    });
-
-    map.on('dblclick', function() {
+    }
+    
+    function updatePointsPreview() {
+        const previewDiv = document.getElementById('pointsPreview');
+        if (points.length === 0) {
+            previewDiv.innerHTML = '<span class="text-gray-400">No points added yet. Click on the map to start drawing.</span>';
+            document.getElementById('geojson_boundary').value = '';
+            return;
+        }
+        
+        let html = '<div class="space-y-1">';
+        points.forEach((point, idx) => {
+            html += `<div class="text-xs font-mono">Point ${idx + 1}: ${point[0].toFixed(6)}, ${point[1].toFixed(6)}</div>`;
+        });
+        html += '</div>';
+        previewDiv.innerHTML = html;
+        
+        // Create GeoJSON
         if (points.length > 2) {
-            const geoJSON = {
-                type: 'Polygon',
+            const geojson = {
+                type: "Polygon",
                 coordinates: [[...points.map(p => [p[1], p[0]]), [points[0][1], points[0][0]]]]
             };
-            document.getElementById('geojson_data').value = JSON.stringify(geoJSON);
+            document.getElementById('geojson_boundary').value = JSON.stringify(geojson);
         }
+    }
+    
+    function finishDrawing() {
+        if (points.length < 3) {
+            alert('Please add at least 3 points to create a valid boundary.');
+            return;
+        }
+        // Automatically move to next step
+        if (currentStep === 1) {
+            nextStep();
+        }
+    }
+    
+    function clearDrawing() {
+        points = [];
+        if (drawnPolygon) {
+            map.removeLayer(drawnPolygon);
+            drawnPolygon = null;
+        }
+        updatePointsPreview();
+    }
+    
+    function undoLastPoint() {
+        points.pop();
+        updatePolygon();
+        updatePointsPreview();
+    }
+    
+    // ============================================================
+    // STEPPER NAVIGATION
+    // ============================================================
+    
+    let currentStep = 1;
+    const totalSteps = 4;
+    
+    const step1Indicator = document.getElementById('step1Indicator');
+    const step2Indicator = document.getElementById('step2Indicator');
+    const step3Indicator = document.getElementById('step3Indicator');
+    const step4Indicator = document.getElementById('step4Indicator');
+    
+    const alertSection = document.getElementById('alertSection');
+    const livestockSection = document.getElementById('livestockSection');
+    const reviewSection = document.getElementById('reviewSection');
+    
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    function updateStepDisplay() {
+        // Update indicators
+        [step1Indicator, step2Indicator, step3Indicator, step4Indicator].forEach((step, idx) => {
+            step.classList.remove('active', 'completed');
+            if (idx + 1 < currentStep) {
+                step.classList.add('completed');
+            } else if (idx + 1 === currentStep) {
+                step.classList.add('active');
+            }
+        });
+        
+        // Show/hide sections
+        alertSection.style.display = currentStep === 2 ? 'block' : 'none';
+        livestockSection.style.display = currentStep === 3 ? 'block' : 'none';
+        reviewSection.style.display = currentStep === 4 ? 'block' : 'none';
+        
+        // Show/hide buttons
+        prevBtn.style.display = currentStep > 1 ? 'inline-flex' : 'none';
+        nextBtn.style.display = currentStep < totalSteps ? 'inline-flex' : 'none';
+        submitBtn.style.display = currentStep === totalSteps ? 'inline-flex' : 'none';
+        
+        // Update review content
+        if (currentStep === 4) {
+            updateReviewContent();
+        }
+    }
+    
+    function validateStep() {
+        switch(currentStep) {
+            case 1:
+                if (points.length < 3) {
+                    alert('Please draw a boundary with at least 3 points on the map.');
+                    return false;
+                }
+                if (!document.getElementById('geofenceName').value.trim()) {
+                    alert('Please enter a geofence name.');
+                    return false;
+                }
+                break;
+            case 2:
+                // Alert settings are optional
+                break;
+            case 3:
+                // Livestock assignment is optional
+                break;
+        }
+        return true;
+    }
+    
+    function nextStep() {
+        if (validateStep()) {
+            currentStep++;
+            updateStepDisplay();
+        }
+    }
+    
+    function prevStep() {
+        currentStep--;
+        updateStepDisplay();
+    }
+    
+    function updateReviewContent() {
+        const content = document.getElementById('reviewContent');
+        const name = document.getElementById('geofenceName').value || 'Not specified';
+        const description = document.getElementById('description').value || 'No description';
+        const field = document.getElementById('field');
+        const fieldName = field.options[field.selectedIndex]?.text || 'Not associated';
+        const color = document.getElementById('selectedColor').value;
+        const exitAlerts = document.getElementById('exitAlerts').checked ? 'Yes' : 'No';
+        const entryAlerts = document.getElementById('entryAlerts').checked ? 'Yes' : 'No';
+        
+        // Get selected livestock
+        const selectedLivestock = [];
+        document.querySelectorAll('input[name="livestock"]:checked').forEach(cb => {
+            const parent = cb.closest('.livestock-option');
+            if (parent) {
+                selectedLivestock.push(parent.querySelector('.font-medium')?.textContent || cb.value);
+            }
+        });
+        
+        content.innerHTML = `
+            <div class="flex justify-between py-2 border-b">
+                <span class="text-gray-600">Geofence Name:</span>
+                <span class="font-medium">${escapeHtml(name)}</span>
+            </div>
+            <div class="flex justify-between py-2 border-b">
+                <span class="text-gray-600">Description:</span>
+                <span class="text-gray-700">${escapeHtml(description)}</span>
+            </div>
+            <div class="flex justify-between py-2 border-b">
+                <span class="text-gray-600">Associated Field:</span>
+                <span>${escapeHtml(fieldName)}</span>
+            </div>
+            <div class="flex justify-between py-2 border-b">
+                <span class="text-gray-600">Boundary Points:</span>
+                <span>${points.length} points</span>
+            </div>
+            <div class="flex justify-between py-2 border-b">
+                <span class="text-gray-600">Geofence Color:</span>
+                <div class="w-6 h-6 rounded-full" style="background: ${color}"></div>
+            </div>
+            <div class="flex justify-between py-2 border-b">
+                <span class="text-gray-600">Exit Alerts:</span>
+                <span class="${exitAlerts === 'Yes' ? 'text-green-600' : 'text-gray-400'}">${exitAlerts}</span>
+            </div>
+            <div class="flex justify-between py-2 border-b">
+                <span class="text-gray-600">Entry Alerts:</span>
+                <span class="${entryAlerts === 'Yes' ? 'text-green-600' : 'text-gray-400'}">${entryAlerts}</span>
+            </div>
+            <div class="flex justify-between py-2">
+                <span class="text-gray-600">Assigned Livestock:</span>
+                <span>${selectedLivestock.length > 0 ? selectedLivestock.join(', ') : 'None'}</span>
+            </div>
+        `;
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // ============================================================
+    // UI HELPERS
+    // ============================================================
+    
+    function selectColor(element) {
+        document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+        element.classList.add('selected');
+        const color = element.getAttribute('data-color');
+        document.getElementById('selectedColor').value = color;
+        
+        // Update polygon color if exists
+        if (drawnPolygon) {
+            drawnPolygon.setStyle({
+                color: color,
+                fillColor: color
+            });
+        }
+    }
+    
+    function toggleLivestock(element) {
+        const checkbox = element.querySelector('input[type="checkbox"]');
+        const icon = element.querySelector('.ri-checkbox-blank-circle-line, .ri-checkbox-circle-line');
+        
+        checkbox.checked = !checkbox.checked;
+        
+        if (checkbox.checked) {
+            element.classList.add('selected');
+            if (icon) {
+                icon.classList.remove('ri-checkbox-blank-circle-line');
+                icon.classList.add('ri-checkbox-circle-line');
+                icon.classList.add('text-green-600');
+            }
+        } else {
+            element.classList.remove('selected');
+            if (icon) {
+                icon.classList.remove('ri-checkbox-circle-line');
+                icon.classList.remove('text-green-600');
+                icon.classList.add('ri-checkbox-blank-circle-line');
+            }
+        }
+    }
+    
+    // Event listeners
+    prevBtn.addEventListener('click', prevStep);
+    nextBtn.addEventListener('click', nextStep);
+    
+    // Form submission validation
+    document.getElementById('geofenceForm').addEventListener('submit', function(e) {
+        if (points.length < 3) {
+            e.preventDefault();
+            alert('Please draw a valid boundary on the map before creating the geofence.');
+            return false;
+        }
+        if (!document.getElementById('geojson_boundary').value) {
+            e.preventDefault();
+            alert('Boundary data is missing. Please draw the boundary again.');
+            return false;
+        }
+        return true;
+    });
+    
+    // Initialize map when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+        updateStepDisplay();
     });
 </script>
 {% endblock %}

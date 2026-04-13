@@ -51,6 +51,7 @@ class User(AbstractUser):
         ('market_trader', 'Market Trader'),
         ('veterinarian', 'Veterinarian'),
         ('lab_technician', 'Soil Lab Technician'),
+        ('supermarket', 'Supermarket/Agricultural Shop'),
         ('admin', 'System Administrator'),
     ]
     
@@ -314,6 +315,60 @@ class FarmHistory(models.Model):
 
 
 # ============================================================
+# SUPERMARKET MANAGEMENT
+# ============================================================
+
+class Supermarket(models.Model):
+    """Supermarket/Agricultural Shop Profile"""
+    
+    BUSINESS_TYPES = [
+        ('retail', 'Retail Shop'),
+        ('wholesale', 'Wholesale Distributor'),
+        ('cooperative_shop', 'Cooperative Shop'),
+        ('agro_dealer', 'Agro-Dealer'),
+        ('hardware', 'Agricultural Hardware'),
+        ('other', 'Other'),
+    ]
+    
+    owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name='supermarket_profile')
+    shop_name = models.CharField(max_length=255)
+    business_type = models.CharField(max_length=20, choices=BUSINESS_TYPES)
+    registration_number = models.CharField(max_length=100, blank=True, unique=True, null=True)
+    phone_number = models.CharField(max_length=20)
+    physical_address = models.TextField()
+    location_lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    location_lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    shop_image = models.ImageField(upload_to='supermarket/logos/', null=True, blank=True)
+    description = models.TextField(blank=True)
+    website = models.URLField(blank=True)
+    operating_hours = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Store hours in JSON format: {"monday": "08:00-17:00", ...}'
+    )
+    products_categories = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of product categories they sell'
+    )
+    is_verified = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'supermarkets'
+        indexes = [
+            models.Index(fields=['owner']),
+            models.Index(fields=['is_verified']),
+            models.Index(fields=['is_active']),
+        ]
+    
+    def __str__(self):
+        return f"{self.shop_name} ({self.business_type})"
+
+
+# ============================================================
 # SECTION 2: FARM & FIELD MANAGEMENT
 # ============================================================
 
@@ -526,8 +581,10 @@ class CropSeason(models.Model):
     
     STATUS = [
         ('planned', 'Planned'),
+        ('planting', 'Planting'),
         ('planted', 'Planted'),
         ('growing', 'Growing'),
+        ('ready_for_harvest', 'Ready for Harvest'),
         ('harvested', 'Harvested'),
         ('failed', 'Failed'),
         ('abandoned', 'Abandoned'),
@@ -1002,6 +1059,10 @@ class ProductListing(models.Model):
     delivery_available = models.BooleanField(default=False)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS, default='active')
+    is_out_of_stock = models.BooleanField(
+        default=False,
+        help_text='When marked out of stock: hidden from public marketplace but visible in seller dashboard'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -1009,6 +1070,7 @@ class ProductListing(models.Model):
         db_table = 'product_listings'
         indexes = [
             models.Index(fields=['seller', 'status']),
+            models.Index(fields=['seller', 'is_out_of_stock']),
             models.Index(fields=['category']),
             models.Index(fields=['created_at']),
         ]
@@ -2867,3 +2929,178 @@ class WeatherForecast(models.Model):
     
     def __str__(self):
         return f"Forecast for {self.farm.name} - {self.forecast_date}"
+
+
+# ============================================================
+# FEATURE 15: FARM PROJECTS MANAGEMENT
+# ============================================================
+
+class FarmProject(models.Model):
+    """Track farm projects across all 12 categories"""
+    
+    CATEGORIES = [
+        ('crop', '🌾 Crop Production'),
+        ('livestock', '🐄 Livestock Production'),
+        ('processing', '🏭 Agro-processing'),
+        ('infrastructure', '🏗️ Farm Infrastructure'),
+        ('soil', '🌱 Soil & Land Management'),
+        ('pest', '🐛 Pest & Disease Management'),
+        ('mechanization', '🚜 Farm Mechanization'),
+        ('marketing', '📢 Marketing & Sales'),
+        ('tourism', '🏕️ Farm Tourism'),
+        ('sustainability', '🌍 Organic & Sustainability'),
+        ('training', '📚 Training & Capacity Building'),
+        ('financial', '💰 Financial & Business'),
+    ]
+    
+    PRIORITY = [
+        ('critical', '🔴 Critical'),
+        ('high', '🟠 High'),
+        ('medium', '🟡 Medium'),
+        ('low', '🟢 Low'),
+    ]
+    
+    STATUS = [
+        ('planning', '📋 Planning'),
+        ('in_progress', '⚙️ In Progress'),
+        ('on_hold', '⏸️ On Hold'),
+        ('completed', '✅ Completed'),
+        ('cancelled', '❌ Cancelled'),
+    ]
+    
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='projects')
+    name = models.CharField(max_length=255)
+    category = models.CharField(max_length=20, choices=CATEGORIES)
+    description = models.TextField()
+    start_date = models.DateField()
+    target_end_date = models.DateField()
+    actual_end_date = models.DateField(null=True, blank=True)
+    budget = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    actual_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    priority = models.CharField(max_length=10, choices=PRIORITY, default='medium')
+    status = models.CharField(max_length=20, choices=STATUS, default='planning')
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_projects')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'farm_projects'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['farm', 'status']),
+            models.Index(fields=['category', 'priority']),
+            models.Index(fields=['target_end_date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} - {self.farm.name}"
+    
+    @property
+    def progress(self):
+        """Calculate project progress percentage"""
+        tasks = self.tasks.all()
+        if not tasks.exists():
+            return 0
+        completed = tasks.filter(completed=True).count()
+        return int((completed / tasks.count()) * 100)
+    
+    @property
+    def budget_variance(self):
+        """Calculate budget variance"""
+        if self.budget and self.actual_cost:
+            return float(self.actual_cost - self.budget)
+        return None
+    
+    @property
+    def days_remaining(self):
+        """Calculate days until target end date"""
+        if self.target_end_date and self.status != 'completed':
+            remaining = (self.target_end_date - timezone.now().date()).days
+            return max(0, remaining)
+        return None
+    
+    @property
+    def is_overdue(self):
+        """Check if project is overdue"""
+        if self.status in ['planning', 'in_progress'] and self.target_end_date < timezone.now().date():
+            return True
+        return False
+
+
+class ProjectTask(models.Model):
+    """Individual tasks within a project"""
+    
+    project = models.ForeignKey(FarmProject, on_delete=models.CASCADE, related_name='tasks')
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_project_tasks')
+    due_date = models.DateField()
+    completed = models.BooleanField(default=False)
+    completed_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'project_tasks'
+        ordering = ['due_date']
+        indexes = [
+            models.Index(fields=['project', 'completed']),
+            models.Index(fields=['assigned_to', 'due_date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} - {self.project.name}"
+
+
+class ProjectResource(models.Model):
+    """Resources allocated to projects"""
+    
+    RESOURCE_TYPES = [
+        ('labor', '👥 Labor'),
+        ('equipment', '🚜 Equipment'),
+        ('material', '📦 Material'),
+        ('capital', '💰 Capital'),
+        ('land', '🗺️ Land'),
+        ('water', '💧 Water'),
+    ]
+    
+    project = models.ForeignKey(FarmProject, on_delete=models.CASCADE, related_name='resources')
+    resource_type = models.CharField(max_length=20, choices=RESOURCE_TYPES)
+    name = models.CharField(max_length=255)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    unit = models.CharField(max_length=50, blank=True)
+    cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'project_resources'
+        indexes = [
+            models.Index(fields=['project', 'resource_type']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} - {self.project.name}"
+
+
+class ProjectMilestone(models.Model):
+    """Key milestones for tracking progress"""
+    
+    project = models.ForeignKey(FarmProject, on_delete=models.CASCADE, related_name='milestones')
+    name = models.CharField(max_length=255)
+    target_date = models.DateField()
+    achieved_date = models.DateField(null=True, blank=True)
+    achieved = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'project_milestones'
+        ordering = ['target_date']
+        indexes = [
+            models.Index(fields=['project', 'achieved']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} - {self.project.name}"

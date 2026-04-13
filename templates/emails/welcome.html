@@ -1,0 +1,34 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Welcome to FarmWise!{% endblock %}
+{% block header_subtitle %}Your farming journey starts here{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">Hello {{ user.get_full_name|default:user.username }},</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Welcome to <strong>FarmWise</strong>! We're thrilled to have you join our community of smart farmers.</p>
+
+<div class="alert-low">
+    <p style="margin: 0;"><strong>✅ Account successfully created!</strong> You can now start managing your farm.</p>
+</div>
+
+<h3 style="color: #1e293b; margin: 20px 0 10px;">Here's what you can do with FarmWise:</h3>
+
+<ul class="feature-list">
+    <li>🌱 <strong>Track crops</strong> from planting to harvest</li>
+    <li>🐄 <strong>Monitor livestock</strong> health and location</li>
+    <li>📊 <strong>Generate reports</strong> to analyze farm performance</li>
+    <li>🛡️ <strong>Set up geofences</strong> for livestock tracking</li>
+    <li>📈 <strong>Access marketplace</strong> to buy and sell products</li>
+    <li>🔔 <strong>Receive alerts</strong> for weather, pests, and more</li>
+</ul>
+
+<div style="text-align: center;">
+    <a href="{{ app_url }}/dashboard/" class="btn">Go to Dashboard</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    <strong>Need help?</strong> Check out our <a href="{{ app_url }}/help/" style="color: #16a34a;">Help Center</a> or contact us at <a href="mailto:{{ support_email }}" style="color: #16a34a;">{{ support_email }}</a>
+</p>
+{% endblock %}

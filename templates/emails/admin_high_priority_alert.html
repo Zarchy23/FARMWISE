@@ -1,0 +1,39 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}High Priority Alert: Animal Requires Attention{% endblock %}
+{% block header_subtitle %}Immediate action recommended{% endblock %}
+
+{% block content %}
+<div style="background-color: #b91c1c; border: 2px solid #dc2626; border-radius: 8px; padding: 16px; margin-bottom: 20px; color: white;">
+    <h2 style="color: white; margin: 0; font-size: 18px;">🚨 HIGH PRIORITY ALERT</h2>
+</div>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<p style="color: #b91c1c; font-weight: bold; margin-bottom: 15px;">{{ animal.name }} requires immediate attention.</p>
+
+<div class="alert-high">
+    <p style="margin: 0;"><strong>Animal:</strong> {{ animal.name }} ({{ animal.tag_number }})</p>
+    <p style="margin: 10px 0 0;"><strong>Breed:</strong> {{ animal.animal_type.breed }}</p>
+    <p style="margin: 5px 0 0;"><strong>Farm:</strong> {{ farm.name }}</p>
+    <p style="margin: 5px 0 0;"><strong>Status:</strong> {{ animal.status }}</p>
+    <p style="margin: 5px 0 0;"><strong>Reason:</strong> {{ priority_reason }}</p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">This is a high-priority alert about {{ animal.name }}. The animal requires immediate attention for the reason(s) listed above.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn" style="background-color: #dc2626;">View Animal Details</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #7f1d1d; font-size: 14px; background-color: #fef2f2; padding: 12px; border-radius: 4px;">
+    <strong>⚠️ Next Steps:</strong>
+    <ul>
+        <li>Inspect the animal immediately</li>
+        <li>Contact your veterinarian if health issues are suspected</li>
+        <li>Document any observations in the animal's record</li>
+        <li>Update all relevant health and status information</li>
+    </ul>
+</p>
+{% endblock %}

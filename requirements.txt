@@ -43,3 +43,7 @@ django-sendgrid-v5
 coreapi
 google-generativeai
 groq
+openpyxl
+reportlab
+tenacity
+apscheduler

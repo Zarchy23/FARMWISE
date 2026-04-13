@@ -957,3 +957,656 @@ def generate_export_file(export_type, user_id, filters):
     )
     
     return f"Export {filename} generated for user {user_id}"
+
+
+
+
+# ============================================================
+# SUPERMARKET AUTOMATION & OUT-OF-STOCK MANAGEMENT
+# ============================================================
+
+@shared_task
+def check_out_of_stock_products():
+    """Alert supermarket managers when products are out of stock"""
+    from .models import ProductListing, Notification
+    
+    out_of_stock = ProductListing.objects.filter(
+        is_out_of_stock=True,
+        status='active'
+    ).select_related('seller__owner')
+    
+    count = 0
+    for product in out_of_stock:
+        # Create notification for supermarket owner
+        existing = Notification.objects.filter(
+            user=product.seller.owner,
+            title=f'Out of Stock: {product.product_name}',
+            link=f'/supermarket/products/{product.id}/edit/'
+        ).exists()
+        
+        if not existing:
+            Notification.objects.create(
+                user=product.seller.owner,
+                notification_type='warning',
+                title=f'Out of Stock: {product.product_name}',
+                message=f'Product "{product.product_name}" is marked as out of stock. Update inventory or restock soon!',
+                link=f'/supermarket/products/{product.id}/edit/'
+            )
+            count += 1
+    
+    logger.info(f"Notified supermarket owners about {count} out-of-stock products")
+    return f"Sent {count} out-of-stock notifications"
+
+
+# ============================================================
+# MARKETPLACE AUTOMATION & OUT-OF-STOCK MANAGEMENT (ALL FARMERS)
+# ============================================================
+
+@shared_task
+def check_marketplace_out_of_stock():
+    """Alert marketplace farmers when products run out of stock"""
+    from .models import ProductListing, Notification
+    
+    # Check products with quantity <= 0
+    out_of_stock = ProductListing.objects.filter(
+        status='active',
+        quantity__lte=0
+    ).select_related('seller__owner')
+    
+    count = 0
+    for product in out_of_stock:
+        # Auto mark as out of stock
+        if not product.is_out_of_stock:
+            product.is_out_of_stock = True
+            product.save()
+        
+        # Create notification for seller
+        existing = Notification.objects.filter(
+            user=product.seller.owner,
+            notification_type='warning',
+            title=f'Product Sold Out: {product.product_name}',
+            link=f'/marketplace/{product.id}/edit/'
+        ).filter(created_at__gte=timezone.now() - timedelta(hours=6)).exists()
+        
+        if not existing:
+            Notification.objects.create(
+                user=product.seller.owner,
+                notification_type='warning',
+                title=f'Product Sold Out: {product.product_name}',
+                message=f'Your listing "{product.product_name}" has sold out! Restock or create a new listing.',
+                link=f'/marketplace/{product.id}/edit/'
+            )
+            count += 1
+    
+    logger.info(f"Notified farmers about {count} sold-out products")
+    return f"Sent {count} sold-out notifications"
+
+
+@shared_task
+def check_marketplace_low_stock():
+    """Alert farmers when marketplace products are running low (quantity < 5)"""
+    from .models import ProductListing, Notification, Reminder
+    
+    low_stock = ProductListing.objects.filter(
+        status='active',
+        quantity__gt=0,
+        quantity__lt=5,
+        is_out_of_stock=False
+    ).select_related('seller__owner')
+    
+    count = 0
+    for product in low_stock:
+        # Create notification
+        existing = Notification.objects.filter(
+            user=product.seller.owner,
+            notification_type='warning',
+            title=f'Low Stock Alert: {product.product_name}',
+        ).filter(created_at__gte=timezone.now() - timedelta(hours=12)).exists()
+        
+        if not existing:
+            Notification.objects.create(
+                user=product.seller.owner,
+                notification_type='warning',
+                title=f'Low Stock Alert: {product.product_name}',
+                message=f'Only {product.quantity} units of "{product.product_name}" left! You may sell out soon.',
+                link=f'/marketplace/{product.id}/edit/'
+            )
+            
+            # Create reminder to restock
+            Reminder.objects.get_or_create(
+                farm=product.seller,
+                user=product.seller.owner,
+                title=f'Restock: {product.product_name}',
+                reminder_type='general',
+                due_date=timezone.now().date(),
+                defaults={
+                    'is_active': True,
+                    'description': f'Product "{product.product_name}" is running low with only {product.quantity} units. Consider restocking to meet demand.'
+                }
+            )
+            count += 1
+    
+    logger.info(f"Notified {count} farmers about low stock on marketplace")
+    return f"Sent {count} low stock alerts"
+
+
+@shared_task
+def check_marketplace_expiring_listings():
+    """Alert marketplace farmers about listings expiring soon"""
+    from .models import ProductListing, Notification
+    
+    today = timezone.now().date()
+    expiring = ProductListing.objects.filter(
+        status='active',
+        expiry_date__isnull=False,
+        expiry_date__gte=today,
+        expiry_date__lte=today + timedelta(days=3)
+    ).select_related('seller__owner')
+    
+    count = 0
+    for listing in expiring:
+        days_until = (listing.expiry_date - today).days
+        
+        existing = Notification.objects.filter(
+            user=listing.seller.owner,
+            notification_type='warning',
+            title=f'Listing Expiring: {listing.product_name}',
+        ).filter(created_at__gte=timezone.now() - timedelta(hours=24)).exists()
+        
+        if not existing:
+            Notification.objects.create(
+                user=listing.seller.owner,
+                notification_type='warning',
+                title=f'Listing Expiring: {listing.product_name}',
+                message=f'Your listing for "{listing.product_name}" expires in {days_until} days. Renew it to keep selling!',
+                link=f'/marketplace/{listing.id}/edit/'
+            )
+            count += 1
+    
+    logger.info(f"Notified {count} farmers about expiring listings")
+    return f"Sent {count} listing expiration alerts"
+
+
+@shared_task
+def auto_expire_marketplace_listings():
+    """Automatically expire marketplace listings past their expiry date"""
+    from .models import ProductListing, Notification
+    
+    today = timezone.now().date()
+    expired = ProductListing.objects.filter(
+        status='active',
+        expiry_date__isnull=False,
+        expiry_date__lt=today
+    )
+    
+    count = 0
+    for listing in expired:
+        listing.status = 'expired'
+        listing.save()
+        
+        # Create notification
+        Notification.objects.create(
+            user=listing.seller.owner,
+            notification_type='info',
+            title='Marketplace Listing Expired',
+            message=f'Your listing for "{listing.product_name}" has expired and is no longer visible. Create a new listing to continue selling!',
+            link=f'/marketplace/'
+        )
+        count += 1
+    
+    logger.info(f"Auto-expired {count} marketplace listings")
+    return f"Expired {count} marketplace listings"
+
+
+@shared_task
+def create_supermarket_restock_reminders():
+    """Create reminders for supermarket products needing restocking"""
+    from .models import ProductListing, Reminder, Supermarket
+    from django.contrib.auth import get_user_model
+    
+    User = get_user_model()
+    today = timezone.now().date()
+    
+    # Find products with low stock or recently marked out of stock
+    low_stock = ProductListing.objects.filter(
+        status='active',
+        is_out_of_stock=True,
+        seller__owner__user_type='supermarket_admin'
+    )
+    
+    count = 0
+    for product in low_stock:
+        user = product.seller.owner
+        farm = product.seller  # The supermarket is stored as seller (Farm)
+        
+        # Check if reminder already exists
+        existing = Reminder.objects.filter(
+            farm=farm,
+            user=user,
+            title=f'Restock: {product.product_name}',
+            is_completed=False,
+            is_active=True
+        ).exists()
+        
+        if not existing:
+            Reminder.objects.create(
+                farm=farm,
+                user=user,
+                title=f'Restock: {product.product_name}',
+                reminder_type='general',
+                due_date=today,
+                is_active=True,
+                description=f'Product "{product.product_name}" is out of stock. Please restock it to maintain inventory levels.'
+            )
+            count += 1
+    
+    logger.info(f"Created {count} supermarket restock reminders")
+    return f"Created {count} restock reminders"
+
+
+@shared_task
+def check_low_inventory_products():
+    """Alert for products with inventory below reorder level"""
+    from .models import ProductListing, Notification
+    
+    # Check products with quantity below threshold (assuming threshold is 10)
+    low_inventory = ProductListing.objects.filter(
+        status='active',
+        is_out_of_stock=False,
+        quantity__lte=10
+    ).select_related('seller__owner')
+    
+    count = 0
+    for product in low_inventory:
+        # Create notification
+        existing = Notification.objects.filter(
+            user=product.seller.owner,
+            notification_type='warning',
+            title=f'Low Inventory: {product.product_name}',
+        ).filter(created_at__gte=timezone.now() - timedelta(hours=6)).exists()
+        
+        if not existing:
+            Notification.objects.create(
+                user=product.seller.owner,
+                notification_type='warning',
+                title=f'Low Inventory Alert: {product.product_name}',
+                message=f'Product "{product.product_name}" has only {product.quantity} units left. Consider restocking!',
+                link=f'/supermarket/products/{product.id}/edit/'
+            )
+            count += 1
+    
+    logger.info(f"Notified about {count} low inventory products")
+    return f"Sent {count} low inventory alerts"
+
+
+@shared_task
+def auto_mark_expired_listings():
+    """Automatically mark expired product listings as expired"""
+    from .models import ProductListing
+    
+    today = timezone.now().date()
+    expired_count = 0
+    
+    # Get all active listings with expiry_date in the past
+    expired_listings = ProductListing.objects.filter(
+        status='active',
+        expiry_date__isnull=False,
+        expiry_date__lt=today
+    )
+    
+    for listing in expired_listings:
+        listing.status = 'expired'
+        listing.save()
+        
+        # Create notification
+        Notification.objects.create(
+            user=listing.seller.owner,
+            notification_type='info',
+            title='Listing Expired',
+            message=f'Your listing for "{listing.product_name}" has expired. Renew or create a new listing to continue selling.',
+            link=f'/supermarket/products/{listing.id}/edit/'
+        )
+        expired_count += 1
+    
+    logger.info(f"Auto-expired {expired_count} listings")
+    return f"Expired {expired_count} product listings"
+
+
+# ============================================================
+# FARM PROJECTS AUTOMATION
+# ============================================================
+
+@shared_task
+def check_overdue_milestones():
+    """Check for project milestones that are overdue"""
+    today = timezone.now().date()
+    overdue_milestones = ProjectMilestone.objects.filter(
+        target_date__lt=today,
+        achieved_date__isnull=True
+    )
+    
+    count = 0
+    for milestone in overdue_milestones:
+        days_overdue = (today - milestone.target_date).days
+        
+        # Create notification
+        Notification.objects.create(
+            user=milestone.project.farm.owner,
+            notification_type='warning',
+            title='Project Milestone Overdue',
+            message=f'Milestone "{milestone.name}" in project "{milestone.project.name}" is {days_overdue} days overdue!',
+            link=f'/projects/{milestone.project.id}/'
+        )
+        
+        # Create reminder
+        Reminder.objects.get_or_create(
+            farm=milestone.project.farm,
+            user=milestone.project.created_by,
+            title=f'Overdue: {milestone.name}',
+            reminder_type='general',
+            due_date=today,
+            is_active=True,
+            defaults={
+                'description': f'Milestone "{milestone.name}" in project "{milestone.project.name}" is {days_overdue} days overdue. Please review and update the milestone status.'
+            }
+        )
+        count += 1
+    
+    logger.info(f"Checked overdue milestones: {count} notifications sent")
+    return f"Sent {count} overdue milestone notifications"
+
+
+@shared_task
+def check_upcoming_milestones():
+    """Check for upcoming project milestones and create reminders"""
+    today = timezone.now().date()
+    upcoming = ProjectMilestone.objects.filter(
+        target_date__gte=today,
+        target_date__lte=today + timedelta(days=14),
+        achieved_date__isnull=True
+    )
+    
+    count = 0
+    for milestone in upcoming:
+        days_until = (milestone.target_date - today).days
+        
+        # Create reminder for upcoming milestone
+        existing = Reminder.objects.filter(
+            farm=milestone.project.farm,
+            user=milestone.project.created_by,
+            title=f'Upcoming: {milestone.name}',
+            is_completed=False,
+            is_active=True
+        ).exists()
+        
+        if not existing:
+            Reminder.objects.create(
+                farm=milestone.project.farm,
+                user=milestone.project.created_by,
+                title=f'Upcoming: {milestone.name}',
+                reminder_type='general',
+                due_date=milestone.target_date,
+                is_active=True,
+                description=f'Milestone "{milestone.name}" for project "{milestone.project.name}" is due in {days_until} days. {milestone.description if milestone.description else ""}'
+            )
+            count += 1
+    
+    logger.info(f"Created {count} upcoming milestone reminders")
+    return f"Created {count} milestone reminders"
+
+
+@shared_task
+def check_overdue_projects():
+    """Check for projects that are overdue on target end date"""
+    today = timezone.now().date()
+    overdue_projects = FarmProject.objects.filter(
+        target_end_date__lt=today,
+        status__in=['planning', 'in_progress']
+    )
+    
+    count = 0
+    for project in overdue_projects:
+        days_overdue = (today - project.target_end_date).days
+        
+        # Create notification
+        Notification.objects.create(
+            user=project.farm.owner,
+            notification_type='alert',
+            title='Project Overdue',
+            message=f'Project "{project.name}" is {days_overdue} days overdue. Current status: {project.get_status_display()}',
+            link=f'/projects/{project.id}/'
+        )
+        count += 1
+    
+    logger.info(f"Checked overdue projects: {count} notifications sent")
+    return f"Sent {count} overdue project notifications"
+
+
+@shared_task
+def auto_update_project_progress():
+    """Automatically update project progress based on completed tasks"""
+    projects = FarmProject.objects.filter(status__in=['planning', 'in_progress'])
+    
+    updated_count = 0
+    for project in projects:
+        tasks = project.tasks.all()
+        
+        if tasks.exists():
+            completed = tasks.filter(completed=True).count()
+            progress = int((completed / tasks.count()) * 100)
+            
+            # Update project status based on progress
+            if progress == 100 and project.status == 'in_progress':
+                # Don't auto-complete, just notify
+                Notification.objects.create(
+                    user=project.farm.owner,
+                    notification_type='success',
+                    title='Project Tasks Complete',
+                    message=f'All tasks in project "{project.name}" are now complete! Review and mark project as completed.',
+                    link=f'/projects/{project.id}/'
+                )
+                updated_count += 1
+    
+    logger.info(f"Updated progress for {updated_count} projects")
+    return f"Updated {updated_count} projects"
+
+
+@shared_task
+def check_project_budget():
+    """Monitor project budgets and alert if exceeded"""
+    projects = FarmProject.objects.filter(
+        budget__isnull=False,
+        actual_cost__isnull=False,
+        status__in=['planning', 'in_progress']
+    )
+    
+    count = 0
+    for project in projects:
+        if project.actual_cost > project.budget:
+            budget_variance = float(project.actual_cost - project.budget)
+            percentage_over = (budget_variance / float(project.budget)) * 100
+            
+            # Alert if more than 10% over budget
+            if percentage_over > 10:
+                Notification.objects.create(
+                    user=project.farm.owner,
+                    notification_type='warning',
+                    title='Project Budget Exceeded',
+                    message=f'Project "{project.name}" is {percentage_over:.1f}% over budget. Actual: ${float(project.actual_cost):.2f}, Budget: ${float(project.budget):.2f}',
+                    link=f'/projects/{project.id}/'
+                )
+                count += 1
+    
+    logger.info(f"Checked project budgets: {count} alerts sent")
+    return f"Sent {count} budget alerts"
+
+
+# ============================================================
+# HEALTH REMINDER EMAIL TASKS
+# ============================================================
+
+@shared_task
+def send_health_reminder_emails():
+    """Send email reminders for health records due soon"""
+    from core.services.email_service import EmailService
+    
+    today = timezone.now().date()
+    
+    # Check for health records due in the next 7 days
+    health_records = HealthRecord.objects.filter(
+        next_due_date__gte=today,
+        next_due_date__lte=today + timedelta(days=7),
+        animal__status='alive'
+    )
+    
+    email_count = 0
+    notification_count = 0
+    
+    for record in health_records:
+        try:
+            animal = record.animal
+            user = animal.farm.owner
+            days_until = (record.next_due_date - today).days
+            
+            if not user.email:
+                logger.warning(f"User {user.id} has no email address")
+                continue
+            
+            # Determine which type of reminder to send based on record type
+            record_type = record.get_record_type_display() if hasattr(record, 'get_record_type_display') else record.record_type
+            
+            # Send appropriate email
+            if 'vaccination' in record_type.lower() or record.record_type == 'vaccination':
+                EmailService.send_vaccination_reminder_email(user, animal, record)
+            elif 'feed' in record_type.lower() or 'supplement' in record_type.lower() or record.record_type == 'feed_supplementation':
+                EmailService.send_feed_supplementation_reminder_email(user, animal, record)
+            elif 'checkup' in record_type.lower() or 'health check' in record_type.lower() or record.record_type == 'health_checkup':
+                EmailService.send_health_checkup_reminder_email(user, animal, record)
+            elif 'parasite' in record_type.lower() or record.record_type == 'parasite_control':
+                EmailService.send_parasite_control_reminder_email(user, animal, record)
+            else:
+                EmailService.send_medication_reminder_email(user, animal, record)
+            
+            email_count += 1
+            
+            # Also create in-app notification
+            notification_title = f'{record_type} Due: {animal.name}'
+            notification_message = f'{animal.name} ({animal.tag_number}) is due for {record_type} in {days_until} days'
+            
+            Notification.objects.create(
+                user=user,
+                notification_type='reminder',
+                title=notification_title,
+                message=notification_message,
+                link=f'/livestock/{animal.id}/'
+            )
+            notification_count += 1
+            
+            logger.info(f"Sent {record_type} reminder email and notification for {animal.name} to {user.email}")
+            
+        except Exception as e:
+            logger.error(f"Error sending health reminder email for record {record.id}: {str(e)}")
+    
+    logger.info(f"Sent {email_count} health reminder emails and {notification_count} in-app notifications")
+    return f"Sent {email_count} health reminder emails and {notification_count} notifications"
+
+
+@shared_task
+def send_overdue_health_emails():
+    """Send urgent emails for overdue health records"""
+    from core.services.email_service import EmailService
+    from core.services.admin_alert_service import AdminAlertService
+    
+    today = timezone.now().date()
+    
+    # Check for overdue health records
+    overdue_records = HealthRecord.objects.filter(
+        next_due_date__lt=today,
+        animal__status='alive'
+    )
+    
+    email_count = 0
+    notification_count = 0
+    
+    # Track overdue records by farm
+    overdue_by_farm = {}
+    critical_alerts_sent = set()
+    
+    for record in overdue_records:
+        try:
+            animal = record.animal
+            user = animal.farm.owner
+            
+            if not user.email:
+                logger.warning(f"User {user.id} has no email address")
+                continue
+            
+            # Send urgent reminder
+            days_overdue = (today - record.next_due_date).days
+            subject = f'⚠️ URGENT: {animal.name} {record.get_record_type_display() or record.record_type} is {days_overdue} days OVERDUE'
+            
+            from django.core.mail import send_mail
+            from django.template.loader import render_to_string
+            from django.conf import settings
+            from django.utils.html import strip_tags
+            
+            html_content = render_to_string('emails/urgent_health_overdue.html', {
+                'user': user,
+                'animal': animal,
+                'health_record': record,
+                'days_overdue': days_overdue,
+                'action_link': f'{settings.APP_URL}/livestock/{animal.id}/health/',
+                'support_email': settings.DEFAULT_FROM_EMAIL,
+            })
+            
+            EmailService._send_email(
+                subject=subject,
+                message=subject,  # Fallback plain text
+                html_message=html_content,
+                recipient_list=[user.email]
+            )
+            
+            email_count += 1
+            
+            # Create urgent in-app notification
+            Notification.objects.create(
+                user=user,
+                notification_type='alert',
+                title=f'⚠️ OVERDUE: {animal.name} health record overdue',
+                message=f'{animal.name} ({animal.tag_number}) {record.get_record_type_display()} is {days_overdue} days overdue. Immediate action required!',
+                link=f'/livestock/{animal.id}/'
+            )
+            notification_count += 1
+            
+            # Track for admin alerts
+            farm_id = animal.farm.id
+            if farm_id not in overdue_by_farm:
+                overdue_by_farm[farm_id] = {
+                    'farm': animal.farm,
+                    'count': 0,
+                    'critical_animals': []
+                }
+            
+            overdue_by_farm[farm_id]['count'] += 1
+            
+            # Alert on critical overdue (>14 days)
+            if days_overdue > 14 and animal.id not in critical_alerts_sent:
+                AdminAlertService.send_critical_health_alert(animal, days_overdue)
+                critical_alerts_sent.add(animal.id)
+            
+            logger.info(f"Sent overdue {record.get_record_type_display()} reminder for {animal.name} to {user.email}")
+            
+        except Exception as e:
+            logger.error(f"Error sending overdue health reminder email for record {record.id}: {str(e)}")
+    
+    # Send admin alerts for farms with multiple overdue records
+    for farm_id, farm_data in overdue_by_farm.items():
+        if farm_data['count'] >= 3:  # Alert if 3+ animals are overdue
+            try:
+                AdminAlertService.send_multiple_overdue_alert(farm_data['farm'], farm_data['count'])
+                logger.info(f"Sent multiple overdue alert for farm {farm_data['farm'].name}")
+            except Exception as e:
+                logger.error(f"Error sending multiple overdue alert: {str(e)}")
+    
+    logger.info(f"Sent {email_count} overdue health reminder emails and {notification_count} urgent notifications")
+    return f"Sent {email_count} overdue health reminder emails and {notification_count} notifications"

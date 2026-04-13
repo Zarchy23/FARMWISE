@@ -1,0 +1,38 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Critical Alert: Overdue Health Record{% endblock %}
+{% block header_subtitle %}Immediate attention required{% endblock %}
+
+{% block content %}
+<div style="background-color: #7f1d1d; border: 2px solid #dc2626; border-radius: 8px; padding: 16px; margin-bottom: 20px; color: white;">
+    <h2 style="color: white; margin: 0; font-size: 18px;">🚨 CRITICAL ALERT</h2>
+</div>
+
+<p style="color: #334155; margin-bottom: 20px;">Dear {{ user.get_full_name|default:user.username }},</p>
+
+<p style="color: #7f1d1d; font-weight: bold; margin-bottom: 15px;">A critical health record is severely overdue and requires immediate attention.</p>
+
+<div class="alert-high">
+    <p style="margin: 0;"><strong>Animal:</strong> {{ animal.name }} ({{ animal.tag_number }})</p>
+    <p style="margin: 10px 0 0;"><strong>Breed:</strong> {{ animal.animal_type.breed }}</p>
+    <p style="margin: 5px 0 0;"><strong>Farm:</strong> {{ farm.name }}</p>
+    <p style="margin: 5px 0 0;"><strong>Days Overdue:</strong> <span style="color: #dc2626; font-weight: bold;">{{ days_overdue }} DAYS</span></p>
+</div>
+
+<p style="color: #334155; margin: 20px 0;">This animal's health record is critically overdue. This may indicate a serious health issue or risk to the animal's well-being.</p>
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn" style="background-color: #dc2626;">View Animal Record</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #7f1d1d; font-size: 14px; background-color: #fef2f2; padding: 12px; border-radius: 4px;">
+    <strong>⚠️ Recommended Actions:</strong>
+    <ul>
+        <li>Contact veterinarian immediately</li>
+        <li>Inspect the animal for health issues</li>
+        <li>Record the health status and update in FarmWise</li>
+        <li>Consider isolating the animal if health issues are suspected</li>
+    </ul>
+</p>
+{% endblock %}

@@ -9,6 +9,7 @@ from django.contrib.auth import login
 from django.db.models import Sum, Count, Q, Avg, F
 from django.utils import timezone
 from django.http import JsonResponse
+from django.urls import reverse
 from django.core.paginator import Paginator
 from datetime import timedelta
 from decimal import Decimal
@@ -22,7 +23,13 @@ from io import BytesIO
 
 from .models import *
 from .forms import *
+from .forms_projects import *
 from .throttling import throttle_pest_detection
+from .export_service import ExportService
+from .services.crop_automation_service import CropAutomationService
+from .services.livestock_automation_service import LivestockAutomationService
+from .services.insurance_automation_service import InsuranceAutomationService
+from .services.payroll_automation_service import PayrollAutomationService
 
 # ============================================================
 # HOME & DASHBOARD
@@ -471,6 +478,15 @@ def field_delete(request, pk):
 @login_required
 def crop_list(request):
     """List all crops"""
+    from .services.crop_automation_service import CropAutomationService
+    
+    # Run automation checks (status updates + reminders)
+    try:
+        CropAutomationService.run_automation_checks(user=request.user)
+    except Exception as e:
+        import logging
+        logging.error(f"Error running crop automation: {str(e)}")
+    
     crops = CropSeason.objects.filter(field__farm__owner=request.user)
     
     # Filter by status
@@ -482,7 +498,10 @@ def crop_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'crops/list.html', {'crops': page_obj})
+    return render(request, 'crops/list.html', {
+        'crops': page_obj,
+        'export_url': reverse('core:export_crops'),
+    })
 
 
 @login_required
@@ -516,6 +535,15 @@ def crop_plant(request):
 @login_required
 def crop_detail(request, pk):
     """Crop details view"""
+    from .services.crop_automation_service import CropAutomationService
+    
+    # Run automation checks when viewing a specific crop
+    try:
+        CropAutomationService.run_automation_checks(user=request.user)
+    except Exception as e:
+        import logging
+        logging.error(f"Error running crop automation: {str(e)}")
+    
     crop = get_object_or_404(CropSeason, pk=pk, field__farm__owner=request.user)
     inputs = InputApplication.objects.filter(crop_season=crop)
     harvests = Harvest.objects.filter(crop_season=crop)
@@ -607,6 +635,9 @@ def input_add(request, crop_id):
 @login_required
 def animal_list(request):
     """List all animals"""
+    # Run livestock automation checks
+    LivestockAutomationService.run_automation_checks(user=request.user)
+    
     animals = Animal.objects.filter(farm__owner=request.user)
     
     # Filter by species
@@ -614,7 +645,10 @@ def animal_list(request):
     if species_filter:
         animals = animals.filter(animal_type__species=species_filter)
     
-    return render(request, 'livestock/list.html', {'animals': animals})
+    return render(request, 'livestock/list.html', {
+        'animals': animals,
+        'export_url': reverse('core:export_livestock'),
+    })
 
 
 @login_required
@@ -657,6 +691,9 @@ def animal_add(request):
 @login_required
 def animal_detail(request, pk):
     """Animal details view"""
+    # Run livestock automation checks
+    LivestockAutomationService.run_automation_checks(user=request.user)
+    
     animal = get_object_or_404(Animal, pk=pk, farm__owner=request.user)
     health_records = HealthRecord.objects.filter(animal=animal).order_by('-record_date')[:10]
     breeding_records = BreedingRecord.objects.filter(animal=animal).order_by('-breeding_date')[:5]
@@ -767,7 +804,11 @@ def equipment_list(request):
     if category_filter:
         equipment = equipment.filter(category=category_filter)
     
-    return render(request, 'equipment/list.html', {'equipment': equipment})
+    context = {
+        'equipment': equipment,
+        'export_url': reverse('core:export_equipment'),
+    }
+    return render(request, 'equipment/list.html', context)
 
 
 @login_required
@@ -889,8 +930,9 @@ def cancel_booking(request, pk):
 
 @login_required
 def marketplace_list(request):
-    """List all products for sale with search and filters"""
-    listings = ProductListing.objects.filter(status='active').order_by('-created_at')
+    """List all products for sale with search and filters - EXCLUDES OUT OF STOCK items"""
+    # Filter for active listings that are NOT marked as out of stock
+    listings = ProductListing.objects.filter(status='active', is_out_of_stock=False).order_by('-created_at')
     
     # Search - search by product name, description, or category
     search_query = request.GET.get('q', '').strip()
@@ -918,7 +960,7 @@ def marketplace_list(request):
         listings = listings.filter(delivery_available=True)
     
     # Get unique categories for filter dropdown
-    all_categories = ProductListing.objects.filter(status='active').values_list('category', flat=True).distinct().order_by('category')
+    all_categories = ProductListing.objects.filter(status='active', is_out_of_stock=False).values_list('category', flat=True).distinct().order_by('category')
     
     # Pagination
     paginator = Paginator(listings, 20)
@@ -936,6 +978,7 @@ def marketplace_list(request):
     if delivery == 'true':
         query_params += '&delivery=true'
     
+    
     context = {
         'listings': page_obj,
         'search_query': search_query,
@@ -943,7 +986,8 @@ def marketplace_list(request):
         'selected_category': category,
         'selected_organic': organic == 'true',
         'selected_delivery': delivery == 'true',
-        'query_params': query_params
+        'query_params': query_params,
+        'export_url': reverse('core:export_marketplace_products'),
     }
     
     return render(request, 'marketplace/list.html', context)
@@ -974,6 +1018,12 @@ def create_listing(request):
 def listing_detail(request, pk):
     """Product listing details"""
     listing = get_object_or_404(ProductListing, pk=pk)
+    
+    # Check if product is out of stock and user is not the seller
+    if listing.is_out_of_stock and listing.seller.owner != request.user:
+        messages.error(request, 'This product is no longer available.')
+        return redirect('core:marketplace')
+    
     return render(request, 'marketplace/detail.html', {'listing': listing})
 
 
@@ -987,10 +1037,49 @@ def edit_listing(request, pk):
         messages.error(request, 'You can only edit your own listings.')
         return redirect('core:listing_detail', pk=pk)
     
+    old_quantity = listing.quantity
+    
     if request.method == 'POST':
         form = ProductListingForm(request.POST, request.FILES, instance=listing, user=request.user)
         if form.is_valid():
             listing = form.save()
+            
+            # Check if quantity was updated and handle out of stock/low stock
+            if old_quantity != listing.quantity:
+                from .models import Reminder, Notification
+                
+                if listing.quantity <= 0:
+                    listing.status = 'sold'
+                    listing.is_out_of_stock = True
+                    listing.quantity = 0
+                    listing.save()
+                    
+                    # Create notification
+                    Notification.objects.create(
+                        user=listing.seller.owner,
+                        notification_type='warning',
+                        title=f'Out of Stock: {listing.product_name}',
+                        message=f'Your product "{listing.product_name}" is now out of stock.',
+                        link=f'/marketplace/'
+                    )
+                
+                elif listing.quantity < 5:
+                    # Check if we already notified recently
+                    existing = Notification.objects.filter(
+                        user=listing.seller.owner,
+                        notification_type='warning',
+                        title=f'Low Stock: {listing.product_name}'
+                    ).filter(created_at__gte=timezone.now() - timedelta(hours=6)).exists()
+                    
+                    if not existing:
+                        Notification.objects.create(
+                            user=listing.seller.owner,
+                            notification_type='warning',
+                            title=f'Low Stock: {listing.product_name}',
+                            message=f'Only {listing.quantity} units of "{listing.product_name}" left in stock!',
+                            link=f'/marketplace/{listing.id}/'
+                        )
+            
             messages.success(request, 'Product listing updated successfully!')
             return redirect('core:listing_detail', pk=listing.pk)
     else:
@@ -1019,9 +1108,54 @@ def delete_listing(request, pk):
 
 
 @login_required
+def toggle_out_of_stock(request, pk):
+    """Toggle product listing out of stock status"""
+    listing = get_object_or_404(ProductListing, pk=pk)
+    
+    # Check if user is the seller
+    if listing.seller.owner != request.user:
+        messages.error(request, 'You can only manage your own listings.')
+        return redirect('core:listing_detail', pk=pk)
+    
+    # Toggle out of stock status
+    listing.is_out_of_stock = not listing.is_out_of_stock
+    
+    if listing.is_out_of_stock:
+        listing.status = 'sold'
+        listing.quantity = 0
+        messages.success(request, f'"{listing.product_name}" marked as OUT OF STOCK and removed from marketplace!')
+        
+        # Create notification for seller
+        from .models import Notification
+        Notification.objects.create(
+            user=listing.seller.owner,
+            notification_type='warning',
+            title=f'Out of Stock: {listing.product_name}',
+            message=f'Product "{listing.product_name}" has been marked as out of stock and is no longer visible to buyers.',
+            link=f'/marketplace/{listing.id}/'
+        )
+    else:
+        listing.status = 'active'
+        messages.success(request, f'"{listing.product_name}" marked as BACK IN STOCK!')
+        
+        # Create notification for seller
+        from .models import Notification
+        Notification.objects.create(
+            user=listing.seller.owner,
+            notification_type='success',
+            title=f'Back in Stock: {listing.product_name}',
+            message=f'Product "{listing.product_name}" is now live on the marketplace!',
+            link=f'/marketplace/{listing.id}/'
+        )
+    
+    listing.save()
+    return redirect('core:my_listings')
+
+
+@login_required
 def buy_product(request, pk):
     """Purchase a product"""
-    listing = get_object_or_404(ProductListing, pk=pk, status='active')
+    listing = get_object_or_404(ProductListing, pk=pk, status='active', is_out_of_stock=False)
     
     if request.method == 'POST':
         form = OrderForm(request.POST)
@@ -1034,8 +1168,54 @@ def buy_product(request, pk):
             
             # Reduce quantity
             listing.quantity -= order.quantity
+            
+            # Handle out of stock
             if listing.quantity <= 0:
                 listing.status = 'sold'
+                listing.is_out_of_stock = True
+                listing.quantity = 0
+                
+                # Create notification and reminder for seller
+                from .models import Reminder, Notification
+                
+                Notification.objects.create(
+                    user=listing.seller.owner,
+                    notification_type='success',
+                    title=f'Sold Out: {listing.product_name}',
+                    message=f'Your product "{listing.product_name}" has sold out! Create a new listing to restock.',
+                    link=f'/marketplace/'
+                )
+                
+                # Create reminder to restock
+                today = timezone.now().date()
+                Reminder.objects.get_or_create(
+                    farm=listing.seller,
+                    user=listing.seller.owner,
+                    title=f'Restock: {listing.product_name}',
+                    reminder_type='general',
+                    due_date=today,
+                    defaults={
+                        'is_active': True,
+                        'description': f'Product "{listing.product_name}" sold out on marketplace. Consider harvesting more or sourcing additional stock.'
+                    }
+                )
+            elif listing.quantity < 5:
+                # Low stock warning
+                existing = Notification.objects.filter(
+                    user=listing.seller.owner,
+                    notification_type='warning',
+                    title=f'Low Stock: {listing.product_name}'
+                ).filter(created_at__gte=timezone.now() - timedelta(hours=6)).exists()
+                
+                if not existing:
+                    Notification.objects.create(
+                        user=listing.seller.owner,
+                        notification_type='warning',
+                        title=f'Low Stock: {listing.product_name}',
+                        message=f'Only {listing.quantity} units of "{listing.product_name}" left in stock!',
+                        link=f'/marketplace/{listing.id}/'
+                    )
+            
             listing.save()
             
             messages.success(request, f'Order placed! Total: ${order.total_amount}')
@@ -1102,15 +1282,17 @@ def analyze_pest_with_ai(image_file, image_name):
         from django.conf import settings
         from core.services.pest_detection import PestDetectionService
         
-        # Use new unified pest detection service
+        # Use new unified pest detection service with 3-AI fallback
         gemini_api_key = getattr(settings, 'GEMINI_API_KEY', None)
         groq_api_key = getattr(settings, 'GROQ_API_KEY', None)
+        openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
         
         # Debug logging
         logger.info(f'GEMINI_API_KEY present: {bool(gemini_api_key) and len(str(gemini_api_key)) > 0}')
         logger.info(f'GROQ_API_KEY present: {bool(groq_api_key) and len(str(groq_api_key)) > 0}')
+        logger.info(f'OPENAI_API_KEY present: {bool(openai_api_key) and len(str(openai_api_key)) > 0}')
         
-        pest_service = PestDetectionService(gemini_api_key, groq_api_key)
+        pest_service = PestDetectionService(gemini_api_key, groq_api_key, openai_api_key)
         
         logger.info(f'Starting pest detection analysis for {image_name}')
         
@@ -1781,7 +1963,12 @@ def pest_history(request):
         'healthy': reports.filter(status='healthy').count(),
     }
     
-    return render(request, 'pest/history.html', {'page_obj': page_obj, 'stats': stats})
+    context = {
+        'page_obj': page_obj, 
+        'stats': stats,
+        'export_url': reverse('core:export_pest_reports'),
+    }
+    return render(request, 'pest/history.html', context)
 
 
 @login_required
@@ -2076,8 +2263,18 @@ def complete_irrigation(request, pk):
 @login_required
 def insurance_dashboard(request):
     """Insurance dashboard"""
+    # Run insurance automation checks
+    try:
+        InsuranceAutomationService.run_automation_checks(user=request.user)
+    except:
+        pass  # Fail silently if automation service has issues
+    
     policies = InsurancePolicy.objects.filter(farmer=request.user).order_by('-created_at')
-    return render(request, 'insurance/dashboard.html', {'policies': policies})
+    context = {
+        'policies': policies,
+        'export_url': reverse('core:export_insurance_policies'),
+    }
+    return render(request, 'insurance/dashboard.html', context)
 
 
 @login_required
@@ -2264,9 +2461,19 @@ def log_hours(request, worker_id):
 @login_required
 def payroll_list(request):
     """View payroll records"""
+    # Run payroll automation checks
+    try:
+        PayrollAutomationService.run_automation_checks(user=request.user)
+    except:
+        pass  # Fail silently if automation service has issues
+    
     farms = Farm.objects.filter(owner=request.user)
     payrolls = Payroll.objects.filter(worker__farm__in=farms).order_by('-period_start')
-    return render(request, 'labor/payroll.html', {'payrolls': payrolls})
+    context = {
+        'payrolls': payrolls,
+        'export_url': reverse('core:export_payroll'),
+    }
+    return render(request, 'labor/payroll.html', context)
 
 
 @login_required
@@ -2807,7 +3014,8 @@ def carbon_report(request):
         'available_years': available_years,
         'report': report,
         'selected_period': period,
-        'selected_year': year
+        'selected_year': year,
+        'export_url': reverse('core:export_carbon_report'),
     }
     return render(request, 'carbon/report.html', context)
 
@@ -2872,91 +3080,70 @@ def sequestration_create(request):
 
 @login_required
 def farm_map(request):
-    """Interactive farm map view with all assets"""
-    farms = request.user.farms.all()
+    """Enhanced farm map view with all data"""
     
-    # Get fields with boundaries
-    fields = list(Field.objects.filter(farm__owner=request.user).values(
-        'id', 'name', 'area_hectares', 'soil_type', 'boundary'
-    ))
+    farms = Farm.objects.filter(owner=request.user)
     
-    # Get crops with field boundaries
-    crops = list(CropSeason.objects.filter(
-        field__farm__owner=request.user
-    ).select_related('crop_type', 'field').values(
-        'id', 'crop_type__name', 'status', 'planting_date', 'expected_harvest_date'
-    ).annotate(
-        field_boundary=F('field__boundary')
-    ).values('id', 'crop_type__name', 'status', 'planting_date', 'expected_harvest_date', 'field_boundary'))
-    
-    # Rename fields and convert dates to strings for template
-    for crop in crops:
-        crop['crop_name'] = crop.pop('crop_type__name', 'Unknown Crop')
-        # Convert dates to ISO format strings
-        if crop.get('planting_date'):
-            crop['planting_date'] = crop['planting_date'].isoformat()
-        if crop.get('expected_harvest_date'):
-            crop['expected_harvest_date'] = crop['expected_harvest_date'].isoformat()
-    
-    # Get livestock with locations
-    livestock = list(Animal.objects.filter(
-        farm__owner=request.user, status='alive'
-    ).select_related('animal_type', 'farm').values(
-        'id', 'tag_number', 'name', 'animal_type__breed', 'status', 'location', 'farm__location'
-    ))
-    
-    # Rename fields and add farm location as fallback for template
-    for animal in livestock:
-        animal['animal_type'] = animal.pop('animal_type__breed', 'Unknown')
-        # Parse farm location if available
-        farm_location = animal.pop('farm__location', None)
-        if farm_location and isinstance(farm_location, dict):
-            animal['location_lat'] = farm_location.get('lat')
-            animal['location_lng'] = farm_location.get('lng')
-        else:
-            animal['location_lat'] = None
-            animal['location_lng'] = None
-    
-    # Get equipment with locations (use owner's default location)
-    equipment = list(Equipment.objects.filter(
-        owner=request.user, status='available'
-    ).select_related('owner').values(
-        'id', 'name', 'category', 'status', 'daily_rate', 'location', 'owner__location_lat', 'owner__location_lng'
-    ))
-    
-    # Add owner coordinates as fallback
-    for item in equipment:
-        item['location_lat'] = item.pop('owner__location_lat', None)
-        item['location_lng'] = item.pop('owner__location_lng', None)
-    
-    # Get geofences - using correct field name
-    geofences = list(Geofence.objects.filter(farm__owner=request.user).values(
-        'id', 'name', 'geojson_boundary'
-    ))
-    
-    # Rename geojson_boundary to boundary for template compatibility
-    for geofence in geofences:
-        geofence['boundary'] = geofence.pop('geojson_boundary')
-    
-    # Format farms data with location from JSON field
+    # Prepare farms data for map
     farms_data = []
     for farm in farms:
-        farm_dict = {'id': farm.id, 'name': farm.name}
-        if farm.location and isinstance(farm.location, dict):
-            farm_dict['location_lat'] = farm.location.get('lat')
-            farm_dict['location_lng'] = farm.location.get('lng')
-        else:
-            farm_dict['location_lat'] = None
-            farm_dict['location_lng'] = None
-        farms_data.append(farm_dict)
+        farms_data.append({
+            'id': farm.id,
+            'name': farm.name,
+            'lat': float(farm.latitude) if farm.latitude else None,
+            'lon': float(farm.longitude) if farm.longitude else None,
+            'address': farm.address,
+            'total_area_hectares': float(farm.total_area_hectares) if farm.total_area_hectares else None,
+        })
+    
+    # Prepare fields data
+    fields_data = []
+    for field in Field.objects.filter(farm__owner=request.user):
+        fields_data.append({
+            'id': field.id,
+            'name': field.name,
+            'farm_name': field.farm.name,
+            'area_hectares': float(field.area_hectares) if field.area_hectares else None,
+            'soil_type': field.soil_type,
+            'boundary': field.boundary if field.boundary else None,
+        })
+    
+    # Prepare livestock data with real-time locations
+    livestock_data = []
+    for animal in Animal.objects.filter(farm__owner=request.user, status='alive'):
+        # Get latest location from LivestockLocation tracking
+        latest_location = animal.location_history.order_by('-recorded_at').first()
+        
+        livestock_data.append({
+            'id': animal.id,
+            'name': animal.name,
+            'tag_number': animal.tag_number,
+            'breed': animal.animal_type.breed if hasattr(animal, 'animal_type') else None,
+            'lat': float(latest_location.latitude) if latest_location else None,
+            'lon': float(latest_location.longitude) if latest_location else None,
+            'last_updated': latest_location.recorded_at.strftime('%Y-%m-%d %H:%M') if latest_location else animal.updated_at.strftime('%Y-%m-%d %H:%M'),
+            'accuracy_meters': latest_location.accuracy_meters if latest_location else None,
+            'is_inside_geofence': latest_location.is_inside_assigned_geofence if latest_location else None,
+        })
+    
+    # Prepare geofences data
+    geofences_data = []
+    for geofence in Geofence.objects.filter(farm__owner=request.user):
+        geofences_data.append({
+            'id': geofence.id,
+            'name': geofence.name,
+            'is_active': geofence.is_active,
+            'enable_exit_alerts': geofence.enable_exit_alerts,
+            'enable_entry_alerts': geofence.enable_entry_alerts,
+            'alert_channels': geofence.alert_channels,
+            'boundary': geofence.geojson_boundary if geofence.geojson_boundary else None,
+        })
     
     context = {
-        'farms': farms_data,
-        'fields': fields,
-        'crops': crops,
-        'livestock': livestock,
-        'equipment': equipment,
-        'geofences': geofences,
+        'farms_data': json.dumps(farms_data),
+        'fields_data': json.dumps(fields_data),
+        'livestock_data': json.dumps(livestock_data),
+        'geofences_data': json.dumps(geofences_data),
     }
     
     return render(request, 'mapping/farm_map.html', context)
@@ -2982,16 +3169,41 @@ def geofence_list(request):
 
 @login_required
 def geofence_create(request):
-    """Create new geofence"""
-    farms = request.user.farms.all()
+    """Create a new geofence"""
+    
+    farms = Farm.objects.filter(owner=request.user)
+    
     if request.method == 'POST':
-        farm_id = request.POST.get('farm')
-        name = request.POST.get('name')
-        farm = get_object_or_404(Farm, pk=farm_id, owner=request.user)
-        geofence = Geofence.objects.create(farm=farm, name=name, geojson_boundary={})
-        return redirect('core:geofence_detail', pk=geofence.id)
-    context = {'farms': farms}
-    return render(request, 'mapping/geofence_form.html', context)
+        farm = farms.first()
+        geofence = Geofence.objects.create(
+            farm=farm,
+            name=request.POST.get('name'),
+            geojson_boundary=request.POST.get('geojson_boundary'),
+            enable_exit_alerts=request.POST.get('enable_exit_alerts') == 'on',
+            enable_entry_alerts=request.POST.get('enable_entry_alerts') == 'on',
+            alert_channels=['sms', 'email'] if request.POST.get('alert_channels') else [],
+        )
+        
+        field_id = request.POST.get('field')
+        if field_id:
+            geofence.field_id = field_id
+            geofence.save()
+        
+        livestock_ids = request.POST.getlist('livestock')
+        if livestock_ids:
+            geofence.assigned_livestock.set(livestock_ids)
+        
+        messages.success(request, f'Geofence "{geofence.name}" created successfully!')
+        return redirect('farm_map')
+    
+    context = {
+        'fields': Field.objects.filter(farm__owner=request.user),
+        'livestock': Animal.objects.filter(farm__owner=request.user, status='alive'),
+        'farm_lat': farms.first().latitude if farms.first() and farms.first().latitude else -1.286389,
+        'farm_lon': farms.first().longitude if farms.first() and farms.first().longitude else 36.817223,
+    }
+    
+    return render(request, 'geofence/create.html', context)
 
 
 @login_required
@@ -3022,11 +3234,80 @@ def geofence_edit(request, pk):
 
 @login_required
 def livestock_tracking(request):
-    """View livestock GPS tracking"""
-    farms = request.user.farms.all()
-    livestock = Animal.objects.filter(farm__in=farms)
-    context = {'livestock': livestock}
-    return render(request, 'mapping/livestock_tracking.html', context)
+    """Real-time livestock tracking map view"""
+    
+    farms = Farm.objects.filter(owner=request.user)
+    farm = farms.first()
+    
+    livestock = Animal.objects.filter(
+        farm__owner=request.user, 
+        status='alive'
+    ).select_related('animal_type')
+    
+    livestock_data = []
+    active_tracking = 0
+    inside_geofence = 0
+    outside_geofence = 0
+    
+    for animal in livestock:
+        last_location = None
+        if hasattr(animal, 'last_location'):
+            last_location = animal.last_location
+        
+        is_outside = False
+        if last_location and hasattr(animal, 'assigned_geofence'):
+            is_outside = not is_point_in_geofence(
+                last_location.latitude, 
+                last_location.longitude, 
+                animal.assigned_geofence
+            )
+        
+        if last_location:
+            active_tracking += 1
+            if is_outside:
+                outside_geofence += 1
+            else:
+                inside_geofence += 1
+        
+        livestock_data.append({
+            'id': animal.id,
+            'name': animal.name or animal.tag_number,
+            'tag_number': animal.tag_number,
+            'breed': animal.animal_type.breed if animal.animal_type else None,
+            'gender': animal.get_gender_display(),
+            'latitude': float(last_location.latitude) if last_location else None,
+            'longitude': float(last_location.longitude) if last_location else None,
+            'last_updated': last_location.recorded_at.strftime('%Y-%m-%d %H:%M:%S') if last_location else None,
+            'is_outside': is_outside,
+        })
+    
+    geofences_data = []
+    for geofence in Geofence.objects.filter(farm__owner=request.user, is_active=True):
+        geofences_data.append({
+            'id': geofence.id,
+            'name': geofence.name,
+            'is_active': geofence.is_active,
+            'enable_exit_alerts': geofence.enable_exit_alerts,
+            'enable_entry_alerts': geofence.enable_entry_alerts,
+            'boundary': geofence.geojson_boundary,
+        })
+    
+    context = {
+        'total_livestock': livestock.count(),
+        'active_tracking': active_tracking,
+        'inside_geofence': inside_geofence,
+        'outside_geofence': outside_geofence,
+        'livestock': livestock,
+        'livestock_data': json.dumps(livestock_data),
+        'geofences_data': json.dumps(geofences_data),
+        'farm_lat': float(farm.latitude) if farm and farm.latitude else -1.286389,
+        'farm_lon': float(farm.longitude) if farm and farm.longitude else 36.817223,
+    }
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('ajax'):
+        return JsonResponse({'livestock': livestock_data})
+    
+    return render(request, 'maps/livestock_tracking.html', context)
 
 
 @login_required
@@ -3040,30 +3321,102 @@ def livestock_locations(request, livestock_id):
     return render(request, 'mapping/livestock_locations.html', context)
 
 
-@login_required
-def geofence_alerts(request):
-    """View geofence breach alerts"""
-    farms = request.user.farms.all()
-    alerts = GeofenceAlert.objects.filter(geofence__farm__in=farms).order_by('-alert_time')
-    context = {'alerts': alerts}
-    return render(request, 'mapping/geofence_alerts.html', context)
+def is_point_in_geofence(lat, lng, geofence):
+    """Check if a point is inside a geofence polygon"""
+    if not geofence or not geofence.geojson_boundary:
+        return True
+    
+    try:
+        from shapely.geometry import Point, Polygon
+        
+        boundary = geofence.geojson_boundary if isinstance(geofence.geojson_boundary, dict) else json.loads(geofence.geojson_boundary) if isinstance(geofence.geojson_boundary, str) else geofence.geojson_boundary
+        if isinstance(boundary, str):
+            boundary = json.loads(boundary)
+        
+        coords = boundary['coordinates'][0]
+        polygon = Polygon([(c[1], c[0]) for c in coords])
+        point = Point(lat, lng)
+        return polygon.contains(point)
+    except Exception:
+        return True
 
 
 @login_required
-def resolve_geofence_alert(request, pk):
-    """Resolve geofence alert"""
-    alert = get_object_or_404(GeofenceAlert, pk=pk)
-    if alert.geofence.farm.owner != request.user:
-        return redirect('core:geofence_alerts')
+def geofence_alerts(request, geofence_id=None):
+    """View alerts for a specific geofence"""
+    
+    if geofence_id:
+        geofence = get_object_or_404(Geofence, id=geofence_id, farm__owner=request.user)
+        alerts = GeofenceAlert.objects.filter(geofence=geofence).order_by('-alert_time')
+    else:
+        farms = Farm.objects.filter(owner=request.user)
+        alerts = GeofenceAlert.objects.filter(geofence__farm__in=farms).order_by('-alert_time')
+        geofence = None
+    
+    status_filter = request.GET.get('status')
+    type_filter = request.GET.get('type')
+    
+    if status_filter == 'unresolved':
+        alerts = alerts.filter(is_resolved=False)
+    if type_filter == 'exit':
+        alerts = alerts.filter(alert_type='exit')
+    elif type_filter == 'entry':
+        alerts = alerts.filter(alert_type='entry')
+    
+    paginator = Paginator(alerts, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    total_alerts = alerts.count()
+    unresolved_count = alerts.filter(is_resolved=False).count()
+    exit_alerts_count = alerts.filter(alert_type='exit').count()
+    entry_alerts_count = alerts.filter(alert_type='entry').count()
+    
+    alert_timeline = []
+    for alert in alerts[:10]:
+        alert_timeline.append({
+            'type': alert.alert_type,
+            'title': f"{'Exit' if alert.alert_type == 'exit' else 'Entry'} Alert - {alert.livestock.name}",
+            'description': f"Animal moved {'outside' if alert.alert_type == 'exit' else 'inside'} geofence boundary",
+            'time': alert.alert_time
+        })
+    
+    context = {
+        'geofence': geofence,
+        'alerts': page_obj,
+        'total_alerts': total_alerts,
+        'unresolved_count': unresolved_count,
+        'exit_alerts_count': exit_alerts_count,
+        'entry_alerts_count': entry_alerts_count,
+        'alert_timeline': alert_timeline,
+    }
+    
+    return render(request, 'geofence/alerts.html', context)
+
+
+@login_required
+def resolve_geofence_alert(request, alert_id):
+    """Mark an alert as resolved"""
+    
+    alert = get_object_or_404(GeofenceAlert, id=alert_id, geofence__farm__owner=request.user)
+    
     if request.method == 'POST':
         alert.is_resolved = True
-        alert.resolved_by = request.user
         alert.resolved_at = timezone.now()
         alert.resolution_notes = request.POST.get('resolution_notes', '')
         alert.save()
-        messages.success(request, 'Alert resolved!')
-        return redirect('core:geofence_alerts')
-    return render(request, 'mapping/resolve_alert.html', {'alert': alert})
+        
+        messages.success(request, f'Alert for {alert.livestock.name} marked as resolved.')
+        
+        Notification.objects.create(
+            user=request.user,
+            notification_type='success',
+            title='Alert Resolved',
+            message=f'Geofence alert for {alert.livestock.name} has been resolved.',
+            link=f'/geofence/alerts/{alert.geofence.id}/'
+        )
+    
+    return redirect('geofence_alerts', geofence_id=alert.geofence.id)
 
 
 @login_required
@@ -3256,6 +3609,7 @@ def reminder_list(request):
         'reminders': reminders,
         'status': status,
         'farms': farms,
+        'export_url': reverse('core:export_reminders'),
     }
     return render(request, 'reminders/reminder_list.html', context)
 
@@ -3392,6 +3746,7 @@ def reminder_delete(request, pk):
 
 
 @login_required
+@login_required
 def reminder_dashboard(request):
     """Dashboard showing upcoming reminders"""
     farms = request.user.farms.all()
@@ -3405,6 +3760,348 @@ def reminder_dashboard(request):
         due_date__gte=today,
         due_date__lte=today + timedelta(days=30)
     ).order_by('due_date')
+    
+    # Get overdue reminders
+    overdue = Reminder.objects.filter(
+        farm__in=farms,
+        is_active=True,
+        is_completed=False,
+        due_date__lt=today
+    ).order_by('due_date')
+    
+    context = {
+        'upcoming': upcoming[:10],
+        'overdue': overdue,
+        'total_farms': farms.count(),
+    }
+    return render(request, 'reminders/reminder_dashboard.html', context)
+
+
+# ============================================================
+# FARM PROJECTS VIEWS
+# ============================================================
+
+@login_required
+def project_dashboard(request):
+    """View all projects and their status across user's farms"""
+    farms = Farm.objects.filter(owner=request.user)
+    projects = FarmProject.objects.filter(farm__in=farms).order_by('-created_at')
+    
+    # Get statistics
+    stats = {
+        'total': projects.count(),
+        'active': projects.filter(status__in=['planning', 'in_progress']).count(),
+        'completed': projects.filter(status='completed').count(),
+        'total_budget': projects.aggregate(Sum('budget'))['budget__sum'] or 0,
+    }
+    
+    # Pagination
+    paginator = Paginator(projects, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'projects': page_obj.object_list,
+        'stats': stats,
+    }
+    return render(request, 'projects/dashboard.html', context)
+
+
+@login_required
+def project_list(request):
+    """List all projects with filters"""
+    farms = Farm.objects.filter(owner=request.user)
+    projects = FarmProject.objects.filter(farm__in=farms)
+    
+    # Filters
+    farm_id = request.GET.get('farm')
+    category = request.GET.get('category')
+    status = request.GET.get('status')
+    priority = request.GET.get('priority')
+    
+    if farm_id:
+        projects = projects.filter(farm_id=farm_id)
+    if category:
+        projects = projects.filter(category=category)
+    if status:
+        projects = projects.filter(status=status)
+    if priority:
+        projects = projects.filter(priority=priority)
+    
+    projects = projects.order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(projects, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'projects': page_obj.object_list,
+        'farms': farms,
+        'categories': FarmProject.CATEGORIES,
+        'statuses': FarmProject.STATUS,
+        'priorities': FarmProject.PRIORITY,
+    }
+    return render(request, 'projects/list.html', context)
+
+
+@login_required
+def project_create(request):
+    """Create a new project"""
+    farms = Farm.objects.filter(owner=request.user)
+    
+    if request.method == 'POST':
+        form = FarmProjectForm(request.POST)
+        if form.is_valid():
+            project = form.save(commit=False)
+            # Verify farm belongs to user
+            if project.farm.owner != request.user:
+                messages.error(request, 'You do not have permission to create a project for this farm.')
+                return redirect('core:project_list')
+            project.save()
+            messages.success(request, f'Project "{project.name}" created successfully!')
+            return redirect('core:project_detail', pk=project.id)
+    else:
+        form = FarmProjectForm()
+        # Filter farms to user's farms
+        form.fields['farm'].queryset = farms
+    
+    context = {'form': form, 'title': 'Create New Project'}
+    return render(request, 'projects/form.html', context)
+
+
+@login_required
+def project_detail(request, pk):
+    """View project details with tasks, resources, and milestones"""
+    project = get_object_or_404(FarmProject, pk=pk)
+    
+    # Permission check
+    if project.farm.owner != request.user:
+        messages.error(request, 'You do not have permission to view this project.')
+        return redirect('core:dashboard')
+    
+    # Get related data
+    tasks = project.tasks.all().order_by('-created_at')
+    resources = project.resources.all().order_by('created_at')
+    milestones = project.milestones.all().order_by('target_date')
+    
+    # Calculate statistics
+    task_stats = {
+        'total': tasks.count(),
+        'completed': tasks.filter(completed=True).count(),
+        'pending': tasks.filter(completed=False).count(),
+    }
+    
+    milestone_stats = {
+        'total': milestones.count(),
+        'achieved': milestones.filter(achieved_date__isnull=False).count(),
+    }
+    
+    resource_costs = resources.aggregate(total=Sum('cost'))['total'] or 0
+    
+    context = {
+        'project': project,
+        'tasks': tasks,
+        'resources': resources,
+        'milestones': milestones,
+        'task_stats': task_stats,
+        'milestone_stats': milestone_stats,
+        'resource_costs': resource_costs,
+    }
+    return render(request, 'projects/detail.html', context)
+
+
+@login_required
+def project_edit(request, pk):
+    """Edit an existing project"""
+    project = get_object_or_404(FarmProject, pk=pk)
+    
+    # Permission check
+    if project.farm.owner != request.user:
+        messages.error(request, 'You do not have permission to edit this project.')
+        return redirect('core:dashboard')
+    
+    if request.method == 'POST':
+        form = FarmProjectForm(request.POST, instance=project)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Project "{project.name}" updated successfully!')
+            return redirect('core:project_detail', pk=project.id)
+    else:
+        form = FarmProjectForm(instance=project)
+    
+    context = {'form': form, 'project': project, 'title': f'Edit {project.name}'}
+    return render(request, 'projects/form.html', context)
+
+
+@login_required
+def project_delete(request, pk):
+    """Delete a project"""
+    project = get_object_or_404(FarmProject, pk=pk)
+    
+    # Permission check
+    if project.farm.owner != request.user:
+        messages.error(request, 'You do not have permission to delete this project.')
+        return redirect('core:dashboard')
+    
+    if request.method == 'POST':
+        project_name = project.name
+        project.delete()
+        messages.success(request, f'Project "{project_name}" deleted successfully!')
+        return redirect('core:project_list')
+    
+    context = {'project': project}
+    return render(request, 'projects/confirm_delete.html', context)
+
+
+@login_required
+def project_add_task(request, pk):
+    """Add a task to a project"""
+    project = get_object_or_404(FarmProject, pk=pk)
+    
+    # Permission check
+    if project.farm.owner != request.user:
+        messages.error(request, 'You do not have permission to modify this project.')
+        return redirect('core:dashboard')
+    
+    if request.method == 'POST':
+        form = ProjectTaskForm(request.POST)
+        if form.is_valid():
+            task = form.save(commit=False)
+            task.project = project
+            task.save()
+            
+            # Create automatic reminder for task if due date is set
+            if task.due_date:
+                Reminder.objects.get_or_create(
+                    farm=project.farm,
+                    user=request.user,
+                    title=f'Task: {task.name}',
+                    reminder_type='general',
+                    due_date=task.due_date,
+                    defaults={
+                        'is_active': True,
+                        'description': f'Task "{task.name}" is due for project "{project.name}". {task.description if task.description else ""}'
+                    }
+                )
+            
+            messages.success(request, f'Task "{task.name}" added to project!')
+            return redirect('core:project_detail', pk=project.id)
+    else:
+        form = ProjectTaskForm()
+    
+    context = {'form': form, 'project': project, 'title': 'Add Task'}
+    return render(request, 'projects/form.html', context)
+
+
+@login_required
+def project_complete_task(request, pk, task_id):
+    """Mark a task as complete"""
+    project = get_object_or_404(FarmProject, pk=pk)
+    task = get_object_or_404(ProjectTask, pk=task_id, project=project)
+    
+    # Permission check
+    if project.farm.owner != request.user:
+        messages.error(request, 'You do not have permission to modify this project.')
+        return redirect('core:dashboard')
+    
+    if request.method == 'POST':
+        task.status = 'completed'
+        task.completed_date = timezone.now()
+        task.save()
+        messages.success(request, f'Task "{task.name}" marked as complete!')
+        return redirect('core:project_detail', pk=project.id)
+    
+    context = {'task': task, 'project': project}
+    return render(request, 'projects/confirm_complete_task.html', context)
+
+
+@login_required
+def project_add_resource(request, pk):
+    """Add a resource allocation to a project"""
+    project = get_object_or_404(FarmProject, pk=pk)
+    
+    # Permission check
+    if project.farm.owner != request.user:
+        messages.error(request, 'You do not have permission to modify this project.')
+        return redirect('core:dashboard')
+    
+    if request.method == 'POST':
+        form = ProjectResourceForm(request.POST)
+        if form.is_valid():
+            resource = form.save(commit=False)
+            resource.project = project
+            resource.save()
+            messages.success(request, f'Resource "{resource.resource_type}" allocated to project!')
+            return redirect('core:project_detail', pk=project.id)
+    else:
+        form = ProjectResourceForm()
+    
+    context = {'form': form, 'project': project, 'title': 'Add Resource'}
+    return render(request, 'projects/form.html', context)
+
+
+@login_required
+def project_add_milestone(request, pk):
+    """Add a milestone to a project"""
+    project = get_object_or_404(FarmProject, pk=pk)
+    
+    # Permission check
+    if project.farm.owner != request.user:
+        messages.error(request, 'You do not have permission to modify this project.')
+        return redirect('core:dashboard')
+    
+    if request.method == 'POST':
+        form = ProjectMilestoneForm(request.POST)
+        if form.is_valid():
+            milestone = form.save(commit=False)
+            milestone.project = project
+            milestone.save()
+            
+            # Create automatic reminder for milestone
+            if milestone.target_date:
+                Reminder.objects.get_or_create(
+                    farm=project.farm,
+                    user=request.user,
+                    title=f'Milestone: {milestone.name}',
+                    reminder_type='general',
+                    due_date=milestone.target_date,
+                    defaults={
+                        'is_active': True,
+                        'description': f'Milestone "{milestone.name}" for project "{project.name}" is due. {milestone.description if milestone.description else ""}'
+                    }
+                )
+            
+            messages.success(request, f'Milestone "{milestone.name}" added to project!')
+            return redirect('core:project_detail', pk=project.id)
+    else:
+        form = ProjectMilestoneForm()
+    
+    context = {'form': form, 'project': project, 'title': 'Add Milestone'}
+    return render(request, 'projects/form.html', context)
+
+
+@login_required
+def project_achieve_milestone(request, pk, milestone_id):
+    """Mark a milestone as achieved"""
+    project = get_object_or_404(FarmProject, pk=pk)
+    milestone = get_object_or_404(ProjectMilestone, pk=milestone_id, project=project)
+    
+    # Permission check
+    if project.farm.owner != request.user:
+        messages.error(request, 'You do not have permission to modify this project.')
+        return redirect('core:dashboard')
+    
+    if request.method == 'POST':
+        milestone.achieved_date = timezone.now()
+        milestone.save()
+        messages.success(request, f'Milestone "{milestone.name}" marked as achieved!')
+        return redirect('core:project_detail', pk=project.id)
+    
+    context = {'milestone': milestone, 'project': project}
+    return render(request, 'projects/confirm_achieve_milestone.html', context)
     
     # Get overdue reminders
     overdue = Reminder.objects.filter(
@@ -3429,3 +4126,287 @@ def reminder_dashboard(request):
         'overdue_count': overdue.count(),
     }
     return render(request, 'reminders/reminder_dashboard.html', context)
+
+
+# ============================================================
+# EXPORT FUNCTIONS
+# ============================================================
+
+@login_required
+def export_crops(request):
+    """Export crops data"""
+    try:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        format_choice = request.GET.get('format', 'csv')
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        
+        logger.info(f"Export request - format: {format_choice}, start_date: {start_date}, end_date: {end_date}")
+        
+        if start_date:
+            try:
+                start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            except:
+                start_date = None
+        
+        if end_date:
+            try:
+                end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            except:
+                end_date = None
+        
+        logger.info(f"Parsed dates - start: {start_date}, end: {end_date}, user: {request.user}")
+        
+        # Use the SAME query as crop_list to get crops
+        from .models import CropSeason
+        crops_check = CropSeason.objects.filter(field__farm__owner=request.user)
+        
+        logger.info(f"Total crops for user: {crops_check.count()}")
+        
+        if crops_check.count() == 0:
+            messages.error(request, 'You do not have any crops to export.')
+            return redirect('core:crop_list')
+        
+        # Apply date filters if provided
+        if start_date and end_date:
+            crops_check = crops_check.filter(
+                planting_date__gte=start_date,
+                planting_date__lte=end_date
+            )
+            logger.info(f"Crops after date filter: {crops_check.count()}")
+        
+        # Get the farm from the first crop
+        if crops_check.exists():
+            farm = crops_check.first().field.farm
+        else:
+            messages.error(request, 'No crops found for the selected date range.')
+            return redirect('core:crop_list')
+        
+        response, filename = ExportService.export_crops(
+            farm=farm,
+            format=format_choice,
+            start_date=start_date,
+            end_date=end_date
+        )
+        messages.success(request, f'Successfully exported {filename}')
+        return response
+    except Exception as e:
+        import traceback
+        logger.error(f'Error exporting crops: {str(e)} - {traceback.format_exc()}')
+        messages.error(request, f'Error exporting crops: {str(e)}')
+        return redirect('core:crop_list')
+
+
+@login_required
+@login_required
+def export_livestock(request):
+    """Export livestock data"""
+    try:
+        format_choice = request.GET.get('format', 'csv')
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        
+        if start_date:
+            try:
+                start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            except:
+                start_date = None
+        
+        if end_date:
+            try:
+                end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            except:
+                end_date = None
+        
+        from .models import Animal
+        livestock_check = Animal.objects.filter(farm__owner=request.user)
+        
+        if livestock_check.count() == 0:
+            messages.error(request, 'You do not have any livestock to export.')
+            return redirect('core:animal_list')
+        
+        if start_date and end_date:
+            livestock_check = livestock_check.filter(
+                created_at__gte=start_date,
+                created_at__lte=end_date
+            )
+        
+        if livestock_check.exists():
+            farm = livestock_check.first().farm
+        else:
+            messages.error(request, 'No livestock found for the selected date range.')
+            return redirect('core:animal_list')
+        
+        response, filename = ExportService.export_livestock(
+            farm=farm,
+            format=format_choice,
+            start_date=start_date,
+            end_date=end_date
+        )
+        messages.success(request, f'Successfully exported {filename}')
+        return response
+    except Exception as e:
+        messages.error(request, f'Error exporting livestock: {str(e)}')
+        return redirect('core:animal_list')
+
+
+@login_required
+def export_equipment(request):
+    """Export equipment data"""
+    try:
+        format_choice = request.GET.get('format', 'csv')
+        from .models import Equipment
+        
+        equipment_check = Equipment.objects.filter(owner=request.user)
+        
+        if equipment_check.count() == 0:
+            messages.error(request, 'You do not have any equipment to export.')
+            return redirect('core:equipment_list')
+        
+        response, filename = ExportService.export_equipment(
+            user=request.user,
+            format=format_choice
+        )
+        messages.success(request, f'Successfully exported {filename}')
+        return response
+    except Exception as e:
+        messages.error(request, f'Error exporting equipment: {str(e)}')
+        return redirect('core:equipment_list')
+
+
+@login_required
+def export_insurance_policies(request):
+    """Export insurance policies"""
+    try:
+        format_choice = request.GET.get('format', 'csv')
+        from .models import InsurancePolicy
+        
+        policies_check = InsurancePolicy.objects.filter(farm__owner=request.user)
+        
+        if policies_check.count() == 0:
+            messages.error(request, 'You do not have any insurance policies to export.')
+            return redirect('core:insurance')
+        
+        response, filename = ExportService.export_insurance(
+            user=request.user,
+            format=format_choice
+        )
+        messages.success(request, f'Successfully exported {filename}')
+        return response
+    except Exception as e:
+        messages.error(request, f'Error exporting insurance policies: {str(e)}')
+        return redirect('core:insurance')
+
+
+@login_required
+def export_payroll(request):
+    """Export payroll records"""
+    try:
+        format_choice = request.GET.get('format', 'csv')
+        from .models import PayrollRecord
+        
+        payroll_check = PayrollRecord.objects.filter(farm__owner=request.user)
+        
+        if payroll_check.count() == 0:
+            messages.error(request, 'You do not have any payroll records to export.')
+            return redirect('core:payroll_list')
+        
+        response, filename = ExportService.export_payroll(
+            user=request.user,
+            format=format_choice
+        )
+        messages.success(request, f'Successfully exported {filename}')
+        return response
+    except Exception as e:
+        messages.error(request, f'Error exporting payroll: {str(e)}')
+        return redirect('core:payroll_list')
+
+
+@login_required
+def export_pest_reports(request):
+    """Export pest detection reports"""
+    try:
+        format_choice = request.GET.get('format', 'csv')
+        from .models import PestDetectionReport
+        
+        pest_check = PestDetectionReport.objects.filter(farm__owner=request.user)
+        
+        if pest_check.count() == 0:
+            messages.error(request, 'You do not have any pest reports to export.')
+            return redirect('core:pest_history')
+        
+        response, filename = ExportService.export_pest_reports(
+            user=request.user,
+            format=format_choice
+        )
+        messages.success(request, f'Successfully exported {filename}')
+        return response
+    except Exception as e:
+        messages.error(request, f'Error exporting pest reports: {str(e)}')
+        return redirect('core:pest_history')
+
+
+@login_required
+def export_carbon_report(request):
+    """Export carbon footprint report"""
+    try:
+        format_choice = request.GET.get('format', 'csv')
+        from .models import CarbonFootprint
+        
+        carbon_check = CarbonFootprint.objects.filter(farm__owner=request.user)
+        
+        if carbon_check.count() == 0:
+            messages.error(request, 'You do not have any carbon footprint data to export.')
+            return redirect('core:carbon_report')
+        
+        response, filename = ExportService.export_carbon(
+            user=request.user,
+            format=format_choice
+        )
+        messages.success(request, f'Successfully exported {filename}')
+        return response
+    except Exception as e:
+        messages.error(request, f'Error exporting carbon report: {str(e)}')
+        return redirect('core:carbon_report')
+
+
+@login_required
+def export_reminders(request):
+    """Export reminders"""
+    try:
+        format_choice = request.GET.get('format', 'csv')
+        from .models import Reminder
+        
+        reminders_check = Reminder.objects.filter(farm__owner=request.user)
+        
+        if reminders_check.count() == 0:
+            messages.error(request, 'You do not have any reminders to export.')
+            return redirect('core:reminder_list')
+        
+        response, filename = ExportService.export_reminders(
+            user=request.user,
+            format=format_choice
+        )
+        messages.success(request, f'Successfully exported {filename}')
+        return response
+    except Exception as e:
+        messages.error(request, f'Error exporting reminders: {str(e)}')
+        return redirect('core:reminder_list')
+
+
+@login_required
+def export_marketplace_products(request):
+    """Export marketplace products"""
+    try:
+        format_choice = request.GET.get('format', 'csv')
+        response, filename = ExportService.export_marketplace_products(
+            user=request.user,
+            format=format_choice
+        )
+        messages.success(request, f'Successfully exported {filename}')
+        return response
+    except Exception as e:
+        messages.error(request, f'Error exporting marketplace products: {str(e)}')
+        return redirect('core:marketplace')

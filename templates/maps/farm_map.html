@@ -1,130 +1,932 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Farm Map & Geofencing - FarmWise{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.css" />
 <style>
-    #map { height: 600px; border-radius: 4px; margin-bottom: 20px; }
-    .sidebar { max-height: 600px; overflow-y: auto; }
+    /* Map Container */
+    #farm-map {
+        height: 70vh;
+        width: 100%;
+        border-radius: 1rem;
+        z-index: 1;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    /* Map Controls Panel */
+    .map-controls-panel {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        background: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        padding: 0.75rem;
+        min-width: 180px;
+    }
+    
+    /* Legend Panel */
+    .map-legend {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 1000;
+        background: rgba(255,255,255,0.95);
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 0.75rem 1rem;
+        font-size: 0.75rem;
+        backdrop-filter: blur(4px);
+    }
+    
+    /* Info Panel */
+    .info-panel {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 1000;
+        background: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        width: 320px;
+        max-height: 80vh;
+        overflow-y: auto;
+        transition: all 0.3s ease;
+    }
+    
+    .info-panel-header {
+        background: linear-gradient(135deg, #16a34a, #15803d);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.75rem 0.75rem 0 0;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+    }
+    
+    .info-panel-header:hover {
+        background: linear-gradient(135deg, #15803d, #166534);
+    }
+    
+    .info-panel-content {
+        padding: 1rem;
+        display: none;
+    }
+    
+    .info-panel.expanded .info-panel-content {
+        display: block;
+    }
+    
+    /* Asset Cards */
+    .asset-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        border-bottom: 1px solid #e5e7eb;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .asset-card:hover {
+        background: #f0fdf4;
+        transform: translateX(4px);
+    }
+    
+    .asset-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    
+    .asset-icon.farm { background: #dbeafe; color: #2563eb; }
+    .asset-icon.field { background: #dcfce7; color: #16a34a; }
+    .asset-icon.livestock { background: #fef3c7; color: #d97706; }
+    .asset-icon.geofence { background: #f3e8ff; color: #9333ea; }
+    
+    /* Draw Tools */
+    .draw-tools {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+    }
+    
+    .draw-btn {
+        background: #f3f4f6;
+        border: none;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .draw-btn.active {
+        background: #16a34a;
+        color: white;
+    }
+    
+    .draw-btn:hover:not(.active) {
+        background: #e5e7eb;
+    }
+    
+    /* Loading Overlay */
+    .map-loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 1rem 2rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .map-loading.show {
+        display: flex;
+    }
+    
+    /* Custom Marker Popup */
+    .custom-popup h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    .custom-popup p {
+        margin: 0.25rem 0;
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+    
+    .custom-popup a {
+        color: #16a34a;
+        text-decoration: none;
+        font-size: 0.75rem;
+    }
+    
+    .custom-popup a:hover {
+        text-decoration: underline;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(1.1); }
+    }
+    
+    .pulse-marker {
+        animation: pulse 2s infinite;
+    }
+    
+    /* Scrollbar */
+    .info-panel-content::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .info-panel-content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .info-panel-content::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <h1>Farm Map & Geofencing</h1>
-            <p class="text-muted">Track livestock location and set up boundary alerts</p>
-        </div>
-        <div class="col-md-4 text-end">
-            <a href="{% url 'geofence_create' %}" class="btn btn-primary">Create Geofence</a>
-            <a href="{% url 'livestock_tracking' %}" class="btn btn-outline-primary">Track Livestock</a>
-        </div>
+<div class="relative">
+    <!-- Loading Spinner -->
+    <div id="mapLoading" class="map-loading">
+        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
+        <span>Loading map data...</span>
     </div>
 
-    <div class="row">
-        <div class="col-md-8">
-            <div id="map"></div>
+    <!-- Info Panel (Left Side) -->
+    <div id="infoPanel" class="info-panel">
+        <div class="info-panel-header" onclick="togglePanel()">
+            <span><i class="ri-information-line mr-2"></i>Farm Assets</span>
+            <i id="panelIcon" class="ri-arrow-down-s-line"></i>
         </div>
-
-        <div class="col-md-4">
-            <div class="card sidebar">
-                <div class="card-header">
-                    <h5 class="mb-0">Geofences</h5>
+        <div class="info-panel-content">
+            <!-- Search -->
+            <div class="mb-4">
+                <div class="relative">
+                    <i class="ri-search-line absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="assetSearch" placeholder="Search farms, fields, livestock..." 
+                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 </div>
-                <ul class="list-group list-group-flush">
-                    {% for geofence in geofences %}
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">{{ geofence.name }}</h6>
-                                {% if geofence.field %}
-                                <small class="text-muted">Field: {{ geofence.field.name }}</small><br>
-                                {% endif %}
-                                <small class="text-muted">
-                                    <i class="fas fa-{% if geofence.is_active %}check-circle text-success{% else %}times-circle text-danger{% endif %}"></i>
-                                    {% if geofence.is_active %}Active{% else %}Inactive{% endif %}
-                                </small>
-                            </div>
-                            <div class="btn-group-vertical btn-group-sm">
-                                <a href="{% url 'geofence_edit' geofence.id %}" class="btn btn-outline-primary">Edit</a>
-                                <a href="{% url 'geofence_alerts' geofence.id %}" class="btn btn-outline-warning">Alerts</a>
-                            </div>
-                        </div>
-                    </li>
-                    {% empty %}
-                    <li class="list-group-item text-muted text-center py-3">
-                        <p>No geofences created yet</p>
-                        <a href="{% url 'geofence_create' %}" class="btn btn-sm btn-primary">Create One</a>
-                    </li>
-                    {% endfor %}
-                </ul>
             </div>
-
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Active Livestock</h5>
+            
+            <!-- Farms List -->
+            <div class="mb-4">
+                <div class="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <i class="ri-farm-line text-green-600"></i> My Farms
                 </div>
-                <ul class="list-group list-group-flush">
-                    {% for livestock in active_livestock %}
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-0">{{ livestock.name }}</h6>
-                                <small class="text-muted">{{ livestock.get_type_display }}</small>
-                            </div>
-                            <a href="{% url 'livestock_location' livestock.id %}" class="btn btn-sm btn-outline-info">
-                                Track
-                            </a>
-                        </div>
-                    </li>
-                    {% empty %}
-                    <li class="list-group-item text-muted text-center py-3">
-                        No livestock with GPS tracking
-                    </li>
-                    {% endfor %}
-                </ul>
+                <div id="farmsList"></div>
+            </div>
+            
+            <!-- Fields List -->
+            <div class="mb-4">
+                <div class="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <i class="ri-shape-line text-green-600"></i> Fields
+                </div>
+                <div id="fieldsList"></div>
+            </div>
+            
+            <!-- Livestock List -->
+            <div class="mb-4">
+                <div class="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <i class="ri-cow-line text-green-600"></i> Livestock
+                </div>
+                <div id="livestockList"></div>
+            </div>
+            
+            <!-- Geofences List -->
+            <div class="mb-4">
+                <div class="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <i class="ri-fence-line text-green-600"></i> Geofences
+                </div>
+                <div id="geofencesList"></div>
             </div>
         </div>
     </div>
+
+    <!-- Map Controls (Right Side) -->
+    <div class="map-controls-panel">
+        <div class="text-sm font-semibold text-gray-700 mb-2">Map Controls</div>
+        
+        <!-- Layer Toggle -->
+        <div class="mb-3">
+            <button onclick="setLayer('street')" id="streetBtn" class="draw-btn w-full justify-center mb-1 active">
+                <i class="ri-map-line"></i> Street View
+            </button>
+            <button onclick="setLayer('satellite')" id="satelliteBtn" class="draw-btn w-full justify-center">
+                <i class="ri-satellite-line"></i> Satellite
+            </button>
+        </div>
+        
+        <!-- Draw Tools -->
+        <div class="border-t pt-2 mt-2">
+            <div class="text-xs text-gray-500 mb-1">Draw Geofence</div>
+            <div class="draw-tools">
+                <button onclick="enableDraw('polygon')" id="polygonBtn" class="draw-btn" title="Draw Polygon">
+                    <i class="ri-shape-line"></i>
+                </button>
+                <button onclick="enableDraw('rectangle')" id="rectangleBtn" class="draw-btn" title="Draw Rectangle">
+                    <i class="ri-checkbox-blank-line"></i>
+                </button>
+                <button onclick="enableDraw('circle')" id="circleBtn" class="draw-btn" title="Draw Circle">
+                    <i class="ri-circle-line"></i>
+                </button>
+                <button onclick="clearDrawing()" class="draw-btn" title="Clear">
+                    <i class="ri-eraser-line"></i>
+                </button>
+                <button onclick="saveGeofence()" class="draw-btn bg-green-100" title="Save Geofence">
+                    <i class="ri-save-line"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- View Controls -->
+        <div class="border-t pt-2 mt-2">
+            <button onclick="zoomToFarms()" class="draw-btn w-full justify-center">
+                <i class="ri-zoom-in-line"></i> Zoom to All Farms
+            </button>
+            <button onclick="getUserLocation()" class="draw-btn w-full justify-center mt-1">
+                <i class="ri-crosshair-line"></i> My Location
+            </button>
+            <button onclick="resetMap()" class="draw-btn w-full justify-center mt-1">
+                <i class="ri-refresh-line"></i> Reset View
+            </button>
+        </div>
+    </div>
+
+    <!-- Map Legend -->
+    <div class="map-legend">
+        <div class="text-xs font-semibold mb-1">Legend</div>
+        <div class="flex items-center gap-2 mb-1">
+            <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+            <span class="text-xs">Farm Location</span>
+        </div>
+        <div class="flex items-center gap-2 mb-1">
+            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+            <span class="text-xs">Field Boundary</span>
+        </div>
+        <div class="flex items-center gap-2 mb-1">
+            <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+            <span class="text-xs">Livestock</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-purple-500"></div>
+            <span class="text-xs">Geofence</span>
+        </div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="farm-map"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.js"></script>
+
 <script>
-    const map = L.map('map').setView([{{ farm_lat }}, {{ farm_lon }}], 13);
+    // ============================================================
+    // INITIALIZATION
+    // ============================================================
     
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19
-    }).addTo(map);
-
-    // Add farm boundary
-    {% if farm_boundary %}
-    const boundary = L.geoJSON({{ farm_boundary|safe }}, {
-        style: { color: 'blue', weight: 2, opacity: 0.8, fillOpacity: 0.1 },
-        popup: 'Farm Boundary'
-    }).addTo(map);
-    {% endif %}
-
-    // Add geofences
-    {% for geofence in geofences %}
-    const geofence_{{ geofence.id }} = L.geoJSON({{ geofence.geojson_boundary|safe }}, {
-        style: { color: '{{ geofence.color|default:"red" }}', weight: 2, opacity: 0.7, fillOpacity: 0.2 },
-        popup: '{{ geofence.name }}'
-    }).addTo(map);
-    {% endfor %}
-
-    // Add livestock locations
-    {% for location in livestock_locations %}
-    L.circleMarker([{{ location.latitude }}, {{ location.longitude }}], {
-        radius: 8,
-        color: 'green',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.8,
-        popup: '{{ location.livestock.name }}<br>Accuracy: {{ location.accuracy_meters }}m'
-    }).addTo(map);
-    {% endfor %}
+    let map;
+    let drawnItems;
+    let currentDrawControl = null;
+    let currentLayer = 'street';
+    let markers = {};
+    let polygons = {};
+    let geofenceLayers = {};
+    
+    // Farm data from Django
+    const farmsData = {{ farms_data|safe|default:'[]' }};
+    const fieldsData = {{ fields_data|safe|default:'[]' }};
+    const livestockData = {{ livestock_data|safe|default:'[]' }};
+    const geofencesData = {{ geofences_data|safe|default:'[]' }};
+    
+    // Default center (if no farms)
+    let defaultCenter = [-1.286389, 36.817223];  // Nairobi
+    let defaultZoom = 13;
+    
+    // Get bounds for all farms
+    function getFarmBounds() {
+        const bounds = [];
+        farmsData.forEach(farm => {
+            if (farm.lat && farm.lon) {
+                bounds.push([farm.lat, farm.lon]);
+            }
+        });
+        return bounds;
+    }
+    
+    // Initialize Map
+    function initMap() {
+        // Find center based on farms
+        let center = defaultCenter;
+        let zoom = defaultZoom;
+        
+        const farmBounds = getFarmBounds();
+        if (farmBounds.length > 0) {
+            // Center on first farm
+            center = farmBounds[0];
+            zoom = 14;
+            
+            // If multiple farms, fit bounds
+            if (farmBounds.length > 1) {
+                const bounds = L.latLngBounds(farmBounds);
+                center = bounds.getCenter();
+                zoom = map?.getBoundsZoom(bounds) || 12;
+            }
+        }
+        
+        // Create map
+        map = L.map('farm-map').setView(center, zoom);
+        
+        // Add base layer
+        updateMapLayer();
+        
+        // Add scale control
+        L.control.scale({ metric: true, imperial: false }).addTo(map);
+        
+        // Add geocoder search
+        const geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: 'Search location...',
+            errorMessage: 'Location not found'
+        }).addTo(map);
+        
+        geocoder.on('markgeocode', function(e) {
+            const bbox = e.geocode.bbox;
+            const center = e.geocode.center;
+            map.fitBounds(bbox);
+            L.marker(center, {
+                icon: L.divIcon({
+                    html: '<i class="ri-map-pin-line text-red-500 text-2xl"></i>',
+                    className: 'custom-icon',
+                    iconSize: [30, 30]
+                })
+            }).addTo(map).bindPopup(`<b>${e.geocode.name}</b>`).openPopup();
+        });
+        
+        // Initialize drawn items layer
+        drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        
+        // Load all map features
+        loadFarms();
+        loadFields();
+        loadLivestock();
+        loadGeofences();
+        
+        // Map click handler
+        map.on('click', function(e) {
+            showLocationInfo(e.latlng);
+        });
+    }
+    
+    // Update Map Layer (Street/Satellite)
+    function updateMapLayer() {
+        // Remove existing tile layers
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.TileLayer) {
+                map.removeLayer(layer);
+            }
+        });
+        
+        if (currentLayer === 'street') {
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                maxZoom: 20
+            }).addTo(map);
+        } else {
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 19
+            }).addTo(map);
+        }
+    }
+    
+    function setLayer(type) {
+        currentLayer = type;
+        updateMapLayer();
+        
+        // Update button styles
+        document.getElementById('streetBtn').classList.remove('active');
+        document.getElementById('satelliteBtn').classList.remove('active');
+        document.getElementById(`${type}Btn`).classList.add('active');
+    }
+    
+    // ============================================================
+    // LOAD FARMS
+    // ============================================================
+    
+    function loadFarms() {
+        const farmsContainer = document.getElementById('farmsList');
+        farmsContainer.innerHTML = '';
+        
+        farmsData.forEach(farm => {
+            if (farm.lat && farm.lon) {
+                // Create custom marker
+                const marker = L.marker([farm.lat, farm.lon], {
+                    icon: L.divIcon({
+                        html: '<i class="ri-home-5-line text-blue-600 text-2xl"></i>',
+                        className: 'custom-icon',
+                        iconSize: [30, 30],
+                        popupAnchor: [0, -15]
+                    })
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div class="custom-popup">
+                        <h4><i class="ri-farm-line mr-1"></i> ${farm.name}</h4>
+                        <p>📍 ${farm.address || 'No address'}</p>
+                        <p>📏 ${farm.total_area_hectares || 'N/A'} hectares</p>
+                        <a href="/farms/${farm.id}/">View Details →</a>
+                    </div>
+                `);
+                
+                markers[`farm_${farm.id}`] = marker;
+                
+                // Add to sidebar
+                const card = document.createElement('div');
+                card.className = 'asset-card';
+                card.onclick = () => {
+                    map.setView([farm.lat, farm.lon], 16);
+                    marker.openPopup();
+                };
+                card.innerHTML = `
+                    <div class="asset-icon farm"><i class="ri-farm-line"></i></div>
+                    <div class="flex-1">
+                        <div class="font-medium text-sm">${farm.name}</div>
+                        <div class="text-xs text-gray-500">${farm.total_area_hectares || '0'} ha</div>
+                    </div>
+                    <i class="ri-map-pin-line text-gray-400"></i>
+                `;
+                farmsContainer.appendChild(card);
+            }
+        });
+        
+        if (farmsContainer.children.length === 0) {
+            farmsContainer.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">No farms added yet</div>';
+        }
+    }
+    
+    // ============================================================
+    // LOAD FIELDS
+    // ============================================================
+    
+    function loadFields() {
+        const fieldsContainer = document.getElementById('fieldsList');
+        fieldsContainer.innerHTML = '';
+        
+        fieldsData.forEach(field => {
+            if (field.boundary) {
+                try {
+                    const boundary = JSON.parse(field.boundary);
+                    const polygon = L.polygon(boundary, {
+                        color: '#22c55e',
+                        weight: 2,
+                        fillColor: '#22c55e',
+                        fillOpacity: 0.15
+                    }).addTo(map);
+                    
+                    polygon.bindPopup(`
+                        <div class="custom-popup">
+                            <h4>🌾 ${field.name}</h4>
+                            <p>📏 Area: ${field.area_hectares} hectares</p>
+                            <p>🌱 Soil: ${field.soil_type || 'Unknown'}</p>
+                            <a href="/fields/${field.id}/">View Details →</a>
+                        </div>
+                    `);
+                    
+                    polygons[`field_${field.id}`] = polygon;
+                    
+                    // Add to sidebar
+                    const card = document.createElement('div');
+                    card.className = 'asset-card';
+                    card.onclick = () => {
+                        map.fitBounds(polygon.getBounds());
+                        polygon.openPopup();
+                    };
+                    card.innerHTML = `
+                        <div class="asset-icon field"><i class="ri-shape-line"></i></div>
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">${field.name}</div>
+                            <div class="text-xs text-gray-500">${field.farm_name}</div>
+                        </div>
+                        <i class="ri-map-pin-line text-gray-400"></i>
+                    `;
+                    fieldsContainer.appendChild(card);
+                } catch(e) {
+                    console.error('Invalid field boundary:', field.name);
+                }
+            }
+        });
+        
+        if (fieldsContainer.children.length === 0) {
+            fieldsContainer.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">No fields mapped yet</div>';
+        }
+    }
+    
+    // ============================================================
+    // LOAD LIVESTOCK
+    // ============================================================
+    
+    function loadLivestock() {
+        const livestockContainer = document.getElementById('livestockList');
+        livestockContainer.innerHTML = '';
+        
+        livestockData.forEach(animal => {
+            if (animal.lat && animal.lon) {
+                // Create pulsing marker for livestock
+                const marker = L.circleMarker([animal.lat, animal.lon], {
+                    radius: 10,
+                    color: '#f59e0b',
+                    weight: 2,
+                    opacity: 1,
+                    fillColor: '#f59e0b',
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div class="custom-popup">
+                        <h4>🐄 ${animal.name || animal.tag_number}</h4>
+                        <p>🐮 ${animal.breed || 'Unknown breed'}</p>
+                        <p>📍 Last updated: ${animal.last_updated || 'Today'}</p>
+                        <a href="/livestock/${animal.id}/">View Details →</a>
+                    </div>
+                `);
+                
+                markers[`livestock_${animal.id}`] = marker;
+                
+                // Add to sidebar
+                const card = document.createElement('div');
+                card.className = 'asset-card';
+                card.onclick = () => {
+                    map.setView([animal.lat, animal.lon], 17);
+                    marker.openPopup();
+                };
+                card.innerHTML = `
+                    <div class="asset-icon livestock"><i class="ri-cow-line"></i></div>
+                    <div class="flex-1">
+                        <div class="font-medium text-sm">${animal.name || animal.tag_number}</div>
+                        <div class="text-xs text-gray-500">${animal.breed || 'Livestock'}</div>
+                    </div>
+                    <i class="ri-map-pin-line text-gray-400"></i>
+                `;
+                livestockContainer.appendChild(card);
+            }
+        });
+        
+        if (livestockContainer.children.length === 0) {
+            livestockContainer.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">No livestock with GPS tracking</div>';
+        }
+    }
+    
+    // ============================================================
+    // LOAD GEOFENCES
+    // ============================================================
+    
+    function loadGeofences() {
+        const geofencesContainer = document.getElementById('geofencesList');
+        geofencesContainer.innerHTML = '';
+        
+        geofencesData.forEach(geofence => {
+            if (geofence.boundary) {
+                try {
+                    const boundary = JSON.parse(geofence.boundary);
+                    const geofenceLayer = L.polygon(boundary, {
+                        color: geofence.color || '#9333ea',
+                        weight: 2,
+                        dashArray: '5, 5',
+                        fillColor: geofence.color || '#9333ea',
+                        fillOpacity: 0.1
+                    }).addTo(map);
+                    
+                    geofenceLayer.bindPopup(`
+                        <div class="custom-popup">
+                            <h4>🛡️ ${geofence.name}</h4>
+                            <p>${geofence.description || 'No description'}</p>
+                            <p>Status: ${geofence.is_active ? '✅ Active' : '⏸️ Inactive'}</p>
+                            <button onclick="setGeofenceAlert(${geofence.id})" class="mt-2 bg-green-600 text-white px-2 py-1 rounded text-xs">Set Alert</button>
+                        </div>
+                    `);
+                    
+                    geofenceLayers[`geofence_${geofence.id}`] = geofenceLayer;
+                    
+                    // Add to sidebar
+                    const card = document.createElement('div');
+                    card.className = 'asset-card';
+                    card.onclick = () => {
+                        map.fitBounds(geofenceLayer.getBounds());
+                        geofenceLayer.openPopup();
+                    };
+                    card.innerHTML = `
+                        <div class="asset-icon geofence"><i class="ri-fence-line"></i></div>
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">${geofence.name}</div>
+                            <div class="text-xs text-gray-500">${geofence.is_active ? 'Active' : 'Inactive'}</div>
+                        </div>
+                        <i class="ri-map-pin-line text-gray-400"></i>
+                    `;
+                    geofencesContainer.appendChild(card);
+                } catch(e) {
+                    console.error('Invalid geofence boundary:', geofence.name);
+                }
+            }
+        });
+        
+        if (geofencesContainer.children.length === 0) {
+            geofencesContainer.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">No geofences created</div>';
+        }
+    }
+    
+    // ============================================================
+    // DRAWING TOOLS
+    // ============================================================
+    
+    function enableDraw(type) {
+        // Remove existing draw control
+        if (currentDrawControl) {
+            map.removeControl(currentDrawControl);
+        }
+        
+        // Clear active button styles
+        document.querySelectorAll('.draw-btn').forEach(btn => btn.classList.remove('active'));
+        
+        let drawControl;
+        
+        switch(type) {
+            case 'polygon':
+                document.getElementById('polygonBtn').classList.add('active');
+                drawControl = new L.Draw.Polygon(map, {
+                    shapeOptions: { color: '#9333ea', weight: 3 }
+                });
+                break;
+            case 'rectangle':
+                document.getElementById('rectangleBtn').classList.add('active');
+                drawControl = new L.Draw.Rectangle(map, {
+                    shapeOptions: { color: '#9333ea', weight: 3 }
+                });
+                break;
+            case 'circle':
+                document.getElementById('circleBtn').classList.add('active');
+                drawControl = new L.Draw.Circle(map, {
+                    shapeOptions: { color: '#9333ea', weight: 3 }
+                });
+                break;
+            default:
+                return;
+        }
+        
+        currentDrawControl = drawControl;
+        drawControl.enable();
+        
+        map.once('draw:created', function(e) {
+            const layer = e.layer;
+            drawnItems.addLayer(layer);
+            drawControl.disable();
+            currentDrawControl = null;
+            document.querySelectorAll('.draw-btn').forEach(btn => btn.classList.remove('active'));
+        });
+    }
+    
+    function clearDrawing() {
+        drawnItems.clearLayers();
+        if (currentDrawControl) {
+            currentDrawControl.disable();
+            currentDrawControl = null;
+        }
+        document.querySelectorAll('.draw-btn').forEach(btn => btn.classList.remove('active'));
+    }
+    
+    function saveGeofence() {
+        const layers = drawnItems.getLayers();
+        if (layers.length === 0) {
+            alert('Please draw a geofence first using the drawing tools.');
+            return;
+        }
+        
+        const geometry = layers.map(layer => layer.toGeoJSON());
+        
+        fetch('/api/geofences/save/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ geometry: geometry })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Geofence saved successfully!');
+                location.reload();
+            } else {
+                alert('Error saving geofence: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error saving geofence. Please try again.');
+        });
+    }
+    
+    // ============================================================
+    // UTILITY FUNCTIONS
+    // ============================================================
+    
+    function togglePanel() {
+        const panel = document.getElementById('infoPanel');
+        const icon = document.getElementById('panelIcon');
+        panel.classList.toggle('expanded');
+        
+        if (panel.classList.contains('expanded')) {
+            icon.classList.remove('ri-arrow-down-s-line');
+            icon.classList.add('ri-arrow-up-s-line');
+        } else {
+            icon.classList.remove('ri-arrow-up-s-line');
+            icon.classList.add('ri-arrow-down-s-line');
+        }
+    }
+    
+    function zoomToFarms() {
+        const farmBounds = getFarmBounds();
+        if (farmBounds.length > 0) {
+            const bounds = L.latLngBounds(farmBounds);
+            map.fitBounds(bounds);
+        } else {
+            map.setView(defaultCenter, defaultZoom);
+        }
+    }
+    
+    function getUserLocation() {
+        if (navigator.geolocation) {
+            document.getElementById('mapLoading').classList.add('show');
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                map.setView([lat, lng], 15);
+                
+                L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        html: '<i class="ri-user-location-line text-red-500 text-2xl pulse-marker"></i>',
+                        className: 'custom-icon',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map).bindPopup('You are here').openPopup();
+                
+                document.getElementById('mapLoading').classList.remove('show');
+            }, function(error) {
+                document.getElementById('mapLoading').classList.remove('show');
+                alert('Unable to get your location. Please check location permissions.');
+            });
+        } else {
+            alert('Geolocation is not supported by your browser.');
+        }
+    }
+    
+    function resetMap() {
+        zoomToFarms();
+    }
+    
+    function showLocationInfo(latlng) {
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
+            .then(response => response.json())
+            .then(data => {
+                const popup = L.popup()
+                    .setLatLng(latlng)
+                    .setContent(`
+                        <div class="custom-popup">
+                            <h4>📍 Location Info</h4>
+                            <p>Lat: ${latlng.lat.toFixed(6)}</p>
+                            <p>Lng: ${latlng.lng.toFixed(6)}</p>
+                            <p>${data.display_name || 'Address not found'}</p>
+                            <button onclick="createGeofenceHere(${latlng.lat}, ${latlng.lng})" 
+                                    class="mt-2 bg-green-600 text-white px-2 py-1 rounded text-xs">
+                                Create Geofence Here
+                            </button>
+                        </div>
+                    `)
+                    .openOn(map);
+            });
+    }
+    
+    function createGeofenceHere(lat, lng) {
+        // Redirect to geofence create with coordinates
+        window.location.href = `/geofences/create/?lat=${lat}&lng=${lng}`;
+    }
+    
+    function setGeofenceAlert(geofenceId) {
+        fetch(`/api/geofences/${geofenceId}/alert/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Alert set for this geofence. You will be notified when livestock leave this area.');
+            } else {
+                alert('Error setting alert.');
+            }
+        });
+    }
+    
+    function getCsrfToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Search functionality
+    document.getElementById('assetSearch')?.addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll('.asset-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+        });
+    });
+    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+    });
 </script>
 {% endblock %}
