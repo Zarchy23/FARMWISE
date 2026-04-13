@@ -591,12 +591,14 @@ class PestDetectionService:
     def detect_from_image(self, image_file) -> Dict:
         """Detect pest from image using best available method"""
         logger.info(f"=== PEST DETECTION START (4-Tier Fallback) ===")
-        logger.info(f"Priority: Gemini (FREE) → Groq (FREE) → OpenAI (PAID) → Rule-Based (FREE offline)")
+        logger.info(f"Priority: Gemini (FREE) → Groq (FREE) → Rule-Based (FREE offline)")
         logger.info(f"Production safety check: IS_PRODUCTION={IS_PRODUCTION}, DISABLE_GEMINI={DISABLE_GEMINI_ON_PRODUCTION}")
         
-        # CRITICAL: If Gemini is disabled on production, skip to paid APIs
-        if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
-            logger.warning("🚫 PRODUCTION MODE - GEMINI DISABLED - Trying alternatives...")
+        # CRITICAL: In production with Gemini disabled, skip paid APIs
+        skip_paid_apis = IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION
+        
+        if skip_paid_apis:
+            logger.warning("🚫 PRODUCTION MODE - GEMINI DISABLED - Using only FREE/OFFLINE detection (skipping paid APIs)")
         
         # ========== TIER 1: Try Gemini (FREE) ==========
         if not (IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION) and self.gemini_detector and self.gemini_detector.available:
@@ -634,27 +636,59 @@ class PestDetectionService:
         else:
             logger.info(f"⚪ TIER 2 SKIPPED: Groq unavailable")
         
-        # ========== TIER 3: Try OpenAI (PAID - used as last resort) ==========
-        if self.openai_detector and self.openai_detector.available:
-            logger.info("🟡 TIER 3: Attempting OpenAI Vision detection (PAID but powerful)...")
-            logger.info("💰 Note: This will incur costs. Using only because free APIs failed.")
+        # ========== TIER 3: Try OpenAI (PAID - ONLY in development) ==========
+        # Skip OpenAI in production to avoid unnecessary costs and hanging requests
+        if not skip_paid_apis and self.openai_detector and self.openai_detector.available:
+            logger.info("🟡 TIER 3: Attempting OpenAI Vision detection (PAID - development only)...")
+            logger.info("💰 Note: This will incur costs. Using only in development when free APIs unavailable.")
             try:
                 if hasattr(image_file, 'seek'):
                     image_file.seek(0)
             except:
                 pass
-            result = self.openai_detector.detect_pest(image_file)
-            logger.info(f"→ OpenAI response: error_fallback={result.get('error_fallback') if result else 'None'}")
-            if result and not result.get('error_fallback'):
-                logger.info("✅ OPENAI DETECTION SUCCESSFUL")
-                logger.info(f"=== PEST DETECTION COMPLETE (Tier 3: OpenAI) ===")
-                return result
-            logger.info("✗ OpenAI detection failed, using offline fallback...")
+            
+            try:
+                # Add timeout to prevent hanging
+                import signal
+                
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("OpenAI API call timed out after 15 seconds")
+                
+                # Set 15-second timeout (Unix/Linux only)
+                try:
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(15)
+                except (AttributeError, ValueError):
+                    # Windows doesn't support signal.alarm, skip timeout
+                    pass
+                
+                try:
+                    result = self.openai_detector.detect_pest(image_file)
+                    signal.alarm(0)  # Cancel alarm
+                except TimeoutError:
+                    logger.warning("🔴 OpenAI API timed out after 15 seconds")
+                    result = {"error_fallback": True}
+                finally:
+                    try:
+                        signal.alarm(0)  # Ensure alarm is cancelled
+                    except (AttributeError, ValueError):
+                        pass
+                
+                logger.info(f"→ OpenAI response: error_fallback={result.get('error_fallback') if result else 'None'}")
+                if result and not result.get('error_fallback'):
+                    logger.info("✅ OPENAI DETECTION SUCCESSFUL")
+                    logger.info(f"=== PEST DETECTION COMPLETE (Tier 3: OpenAI) ===")
+                    return result
+                logger.info("✗ OpenAI detection failed or timed out...")
+            except Exception as e:
+                logger.warning(f"⚠ OpenAI API error: {str(e)[:100]}")
+        elif skip_paid_apis:
+            logger.info(f"⚪ TIER 3 SKIPPED: Production mode (never use paid APIs in production)")
         else:
             logger.info(f"⚪ TIER 3 SKIPPED: OpenAI unavailable")
         
         # ========== TIER 4: Use Rule-Based Detection (100% FREE, OFFLINE) ==========
-        logger.info("🔵 TIER 4: Using offline rule-based detection (100% FREE)")
+        logger.info("🔵 TIER 4: Using offline rule-based detection (100% FREE, no API calls)")
         logger.info("=== PEST DETECTION COMPLETE (Tier 4: Rule-Based) ===")
         return RuleBasedPestDetector.get_fallback_response(
             "All AI services currently unavailable. Using offline analysis. Please provide clear photos showing: affected leaves, whole plant, and any visible insects"
