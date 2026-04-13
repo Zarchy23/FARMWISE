@@ -2019,10 +2019,13 @@ def weather_forecast(request):
                 'last_updated': weather_data.last_updated,
             }
             
+            logger.debug(f"[WEATHER] Weather context: {weather}")
+            
             # Get forecast data
             if weather_data.forecast_data.get('forecast'):
                 from datetime import datetime
                 forecast_raw = weather_data.forecast_data.get('forecast', [])
+                logger.debug(f"[WEATHER] Raw forecast items: {len(forecast_raw)}")
                 
                 for item in forecast_raw:
                     try:
@@ -2050,6 +2053,8 @@ def weather_forecast(request):
                     except (ValueError, TypeError) as e:
                         logger.warning(f"Error parsing forecast item {item}: {e}")
                         continue
+            
+            logger.debug(f"[WEATHER] Forecast items parsed: {len(forecast)}")
         else:
             message = "Weather forecast data not available. The system will fetch data automatically every 30 minutes."
         
@@ -2058,6 +2063,8 @@ def weather_forecast(request):
             farm__in=farms,
             is_read=False
         ).order_by('-severity', '-created_at')[:5]  # Top 5 unread alerts
+    
+    logger.info(f"[WEATHER] Rendering forecast - weather: {weather}, forecast items: {len(forecast)}, message: {message}")
     
     return render(request, 'weather/forecast.html', {
         'weather': weather or {},
