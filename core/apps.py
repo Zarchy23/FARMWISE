@@ -22,6 +22,11 @@ class CoreConfig(AppConfig):
         Ensures Render deployments have weather available immediately.
         """
         try:
+            # Only run if not using Django test runner
+            import sys
+            if 'test' in sys.argv or 'pytest' in sys.argv[0]:
+                return
+            
             from django.db import connection
             from core.models import Farm, WeatherData
             
