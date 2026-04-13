@@ -196,7 +196,15 @@ def fetch_weather_data():
     logger = logging.getLogger(__name__)
     logger.info("[WEATHER] Starting weather data fetch for all farms...")
     
-    farms_with_location = Farm.objects.exclude(location_lat__isnull=True).exclude(location_lng__isnull=True)
+    # Get farms that have location data (using latitude/longitude properties)
+    all_farms = Farm.objects.filter(status='active')
+    farms_with_location = []
+    for farm in all_farms:
+        if farm.latitude and farm.longitude:
+            farms_with_location.append(farm)
+    
+    logger.info(f"[WEATHER] Found {len(farms_with_location)} farms with location data")
+    
     updated_count = 0
     error_count = 0
     
@@ -204,8 +212,8 @@ def fetch_weather_data():
         try:
             # Fetch weather data using free Open-Meteo API
             forecast = weather_service.get_forecast(
-                float(farm.location_lat),
-                float(farm.location_lng),
+                float(farm.latitude),
+                float(farm.longitude),
                 days=5
             )
             
@@ -279,7 +287,7 @@ def fetch_weather_data():
                         'description': description,
                         'icon': 'cloud',
                         'forecast_data': {'forecast': forecast_data_list},
-                        'location': f"{farm.location_lat},{farm.location_lng}"
+                        'location': f"{farm.latitude},{farm.longitude}"
                     }
                 )
                 
