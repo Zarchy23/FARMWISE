@@ -1988,6 +1988,9 @@ def pest_detail(request, pk):
 @login_required
 def weather_forecast(request):
     """Weather forecast page with real data and alerts"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     farms = Farm.objects.filter(owner=request.user)
     
     weather = None
@@ -2022,16 +2025,31 @@ def weather_forecast(request):
                 forecast_raw = weather_data.forecast_data.get('forecast', [])
                 
                 for item in forecast_raw:
-                    forecast.append({
-                        'day': datetime.fromtimestamp(item['date']).date(),
-                        'temp_high': item.get('temp_high', 'N/A'),
-                        'temp_low': item.get('temp_low', 'N/A'),
-                        'condition': item.get('condition', 'Unknown'),
-                        'description': item.get('description', ''),
-                        'icon': item.get('icon', ''),
-                        'humidity': item.get('humidity', 'N/A'),
-                        'wind_speed': item.get('wind_speed', 'N/A'),
-                    })
+                    try:
+                        # Parse date - it's stored as a string like "2026-04-13"
+                        date_str = item.get('date', '')
+                        if date_str:
+                            # Handle both string format (YYYY-MM-DD) and timestamp
+                            if isinstance(date_str, str):
+                                day = datetime.strptime(date_str, '%Y-%m-%d').date()
+                            else:
+                                day = datetime.fromtimestamp(date_str).date()
+                        else:
+                            continue
+                        
+                        forecast.append({
+                            'day': day,
+                            'temp_high': item.get('temp_high', 'N/A'),
+                            'temp_low': item.get('temp_low', 'N/A'),
+                            'condition': item.get('condition', 'Unknown'),
+                            'description': item.get('description', ''),
+                            'icon': item.get('icon', ''),
+                            'humidity': item.get('humidity', 'N/A'),
+                            'wind_speed': item.get('wind_speed', 'N/A'),
+                        })
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Error parsing forecast item {item}: {e}")
+                        continue
         else:
             message = "Weather forecast data not available. The system will fetch data automatically every 30 minutes."
         
