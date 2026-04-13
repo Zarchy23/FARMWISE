@@ -539,7 +539,7 @@ class RuleBasedPestDetector:
             
             # Load image
             from PIL import Image
-            import numpy as np
+            import statistics
             
             image = Image.open(image_file)
             logger.info(f"[RULE-BASED] Image loaded: {image.size}")
@@ -548,55 +548,63 @@ class RuleBasedPestDetector:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # Convert image to numpy array for analysis
-            img_array = np.array(image)
+            # Resize for faster analysis (no need for full resolution)
+            image.thumbnail((200, 200))
             
-            # Extract RGB channels
-            r = img_array[:,:,0].mean()
-            g = img_array[:,:,1].mean()
-            b = img_array[:,:,2].mean()
+            # Get pixel data
+            pixels = list(image.getdata())
             
-            logger.info(f"[RULE-BASED] Image color profile - R:{r:.0f} G:{g:.0f} B:{b:.0f}")
+            # Extract RGB values
+            r_values = [p[0] for p in pixels]
+            g_values = [p[1] for p in pixels]
+            b_values = [p[2] for p in pixels]
+            
+            # Calculate average colors
+            r_avg = statistics.mean(r_values) if r_values else 0
+            g_avg = statistics.mean(g_values) if g_values else 0
+            b_avg = statistics.mean(b_values) if b_values else 0
+            
+            logger.info(f"[RULE-BASED] Image color profile - R:{r_avg:.0f} G:{g_avg:.0f} B:{b_avg:.0f}")
+            
+            # Calculate color variance (texture indicator)
+            r_var = statistics.variance(r_values) if len(r_values) > 1 else 0
+            g_var = statistics.variance(g_values) if len(g_values) > 1 else 0
+            b_var = statistics.variance(b_values) if len(b_values) > 1 else 0
+            total_var = r_var + g_var + b_var
+            
+            logger.info(f"[RULE-BASED] Image variance (texture): {total_var:.0f}")
             
             # Analyze color patterns to detect issues
             detected_symptoms = []
             confidence_score = 0
             
             # Brown/tan coloration (rust, leaf spot, brown patch)
-            if r > 150 and g < 120 and b < 100:
+            if r_avg > 150 and g_avg < 120 and b_avg < 100:
                 detected_symptoms.append("brown spots")
                 detected_symptoms.append("rust-colored powder")
                 confidence_score += 20
                 logger.info("[RULE-BASED] Detected: Brown/rust coloration (rust/leaf spot)")
             
             # Yellow/pale coloration (nutrient deficiency, infection)
-            elif g > 180 and r > 160 and b < 100:
+            elif g_avg > 180 and r_avg > 160 and b_avg < 100:
                 detected_symptoms.append("yellowing leaves")
                 detected_symptoms.append("stunted growth")
                 confidence_score += 15
                 logger.info("[RULE-BASED] Detected: Yellow/pale coloration (nutrient deficiency)")
             
             # White powder coating (powdery mildew)
-            elif r > 200 and g > 200 and b > 200:
+            elif r_avg > 200 and g_avg > 200 and b_avg > 200:
                 detected_symptoms.append("white powder")
                 detected_symptoms.append("leaf curling")
                 confidence_score += 20
                 logger.info("[RULE-BASED] Detected: White coloration (powdery mildew)")
             
             # Red/orange coloration (early stress)
-            elif r > 180 and g < 100 and b < 80:
+            elif r_avg > 180 and g_avg < 100 and b_avg < 80:
                 detected_symptoms.append("reddish leaves")
                 detected_symptoms.append("stress indicators")
                 confidence_score += 10
                 logger.info("[RULE-BASED] Detected: Red/orange coloration (stress)")
-            
-            # Analyze image variance (indicates damage/holes/lesions)
-            r_var = img_array[:,:,0].var()
-            g_var = img_array[:,:,1].var()
-            b_var = img_array[:,:,2].var()
-            total_var = r_var + g_var + b_var
-            
-            logger.info(f"[RULE-BASED] Image variance (texture): {total_var:.0f}")
             
             # High variance = damaged, patchy surface (holes, lesions, damage)
             if total_var > 3000:
@@ -607,7 +615,7 @@ class RuleBasedPestDetector:
                 logger.info("[RULE-BASED] Detected: High texture variance (damage/lesions)")
             
             # Check for overall darkness (signs of disease or poor health)
-            brightness = (r + g + b) / 3
+            brightness = (r_avg + g_avg + b_avg) / 3
             if brightness < 80:
                 detected_symptoms.append("dark discoloration")
                 detected_symptoms.append("necrotic tissue")
