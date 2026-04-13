@@ -187,31 +187,116 @@ def cleanup_abandoned_carts():
 
 @shared_task
 def fetch_weather_data():
-    """Fetch weather data from external API for all farms"""
-    import requests
+    """Fetch weather data from Open-Meteo API for all farms (FREE, no API key needed)"""
+    from core.services.weather import weather_service
+    from core.models import Farm, WeatherData
+    from datetime import datetime
+    import logging
     
-    farms = Farm.objects.filter(is_active=True)
-    count = 0
+    logger = logging.getLogger(__name__)
+    logger.info("[WEATHER] Starting weather data fetch for all farms...")
     
-    for farm in farms:
+    farms_with_location = Farm.objects.exclude(location_lat__isnull=True).exclude(location_lng__isnull=True)
+    updated_count = 0
+    error_count = 0
+    
+    for farm in farms_with_location:
         try:
-            lat = farm.location.y if farm.location else None
-            lng = farm.location.x if farm.location else None
+            # Fetch weather data using free Open-Meteo API
+            forecast = weather_service.get_forecast(
+                float(farm.location_lat),
+                float(farm.location_lng),
+                days=5
+            )
             
-            if lat and lng:
-                # OpenWeatherMap API
-                url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lng}&appid={settings.OPENWEATHER_API_KEY}&units=metric"
-                response = requests.get(url, timeout=10)
+            if 'error' in forecast:
+                logger.warning(f"[WEATHER] Error fetching weather for farm {farm.id} ({farm.name}): {forecast.get('error')}")
+                error_count += 1
+                continue
+            
+            # Extract current weather from hourly data
+            try:
+                # Get latest hourly data
+                hourly_temp = forecast.get('hourly', {}).get('temperature_2m', [])
+                hourly_humidity = forecast.get('hourly', {}).get('relative_humidity_2m', [])
+                hourly_wind = forecast.get('hourly', {}).get('wind_speed_10m', [])
+                daily_data = forecast.get('daily', {})
                 
-                if response.status_code == 200:
-                    data = response.json()
-                    # Store weather data (implement WeatherHistory model if needed)
-                    pass
+                current_temp = hourly_temp[-1] if hourly_temp else None
+                current_humidity = hourly_humidity[-1] if hourly_humidity else None
+                current_wind = hourly_wind[-1] if hourly_wind else None
+                
+                # Determine weather condition from temperature/humidity
+                condition = "Clear"
+                description = "Fair weather"
+                
+                if current_humidity and current_humidity > 80:
+                    if current_temp and current_temp < 0:
+                        condition = "Snow"
+                        description = "Snowy conditions"
+                    else:
+                        condition = "Cloudy"
+                        description = "Overcast with high humidity"
+                elif current_humidity and current_humidity > 60:
+                    condition = "Partly Cloudy"
+                    description = "Partly cloudy conditions"
+                else:
+                    condition = "Clear"
+                    description = "Clear skies"
+                
+                # Prepare forecast data
+                forecast_data_list = []
+                if 'time' in daily_data and 'temperature_2m_max' in daily_data:
+                    temps_max = daily_data.get('temperature_2m_max', [])
+                    temps_min = daily_data.get('temperature_2m_min', [])
+                    times = daily_data.get('time', [])
+                    humidities = daily_data.get('relative_humidity_2m', []) or [None] * len(times)
+                    wind_speeds = daily_data.get('wind_speed_10m_max', []) or [None] * len(times)
+                    
+                    for i, time_str in enumerate(times):
+                        forecast_data_list.append({
+                            'date': time_str,
+                            'temp_high': temps_max[i] if i < len(temps_max) else None,
+                            'temp_low': temps_min[i] if i < len(temps_min) else None,
+                            'condition': condition,
+                            'description': description,
+                            'humidity': humidities[i] if i < len(humidities) else None,
+                            'wind_speed': wind_speeds[i] if i < len(wind_speeds) else None,
+                        })
+                
+                # Update or create WeatherData
+                weather_data, created = WeatherData.objects.update_or_create(
+                    farm=farm,
+                    defaults={
+                        'temperature': current_temp or 0,
+                        'feels_like': current_temp or 0,
+                        'humidity': int(current_humidity) if current_humidity else 0,
+                        'pressure': 1013,  # Standard pressure if not available
+                        'wind_speed': current_wind or 0,
+                        'wind_direction': None,
+                        'cloudiness': int(current_humidity) if current_humidity else 0,
+                        'condition': condition,
+                        'description': description,
+                        'icon': 'cloud',
+                        'forecast_data': {'forecast': forecast_data_list},
+                        'location': f"{farm.location_lat},{farm.location_lng}"
+                    }
+                )
+                
+                logger.info(f"[WEATHER] {'Created' if created else 'Updated'} weather data for farm {farm.id} ({farm.name})")
+                updated_count += 1
+                
+            except (IndexError, KeyError, TypeError) as e:
+                logger.error(f"[WEATHER] Error processing weather data for farm {farm.id}: {str(e)}")
+                error_count += 1
+                continue
+        
         except Exception as e:
-            logger.error(f"Weather fetch failed for farm {farm.id}: {e}")
-            count += 1
+            logger.error(f"[WEATHER] Exception fetching weather for farm {farm.id} ({farm.name}): {str(e)}", exc_info=True)
+            error_count += 1
     
-    return f"Processed weather for {farms.count() - count} farms"
+    logger.info(f"[WEATHER] Weather fetch complete: {updated_count} farms updated, {error_count} errors")
+    return f"Weather data updated for {updated_count} farms"
 
 
 @shared_task
