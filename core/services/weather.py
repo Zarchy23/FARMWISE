@@ -35,10 +35,15 @@ class OpenMeteoWeatherService:
         - Frost risk for crop protection
         """
         cache_key = f"weather_forecast_{lat}_{lng}_{days}"
-        cached = cache.get(cache_key)
-        if cached:
-            logger.info(f"Weather forecast loaded from cache for {lat},{lng}")
-            return cached
+        
+        # Try to get from cache, but don't fail if Redis is unavailable
+        try:
+            cached = cache.get(cache_key)
+            if cached:
+                logger.info(f"Weather forecast loaded from cache for {lat},{lng}")
+                return cached
+        except Exception as cache_error:
+            logger.warning(f"Cache unavailable: {cache_error}. Fetching fresh data.")
         
         try:
             params = {
@@ -71,9 +76,12 @@ class OpenMeteoWeatherService:
             # Add agricultural indicators
             data = self._add_agricultural_indicators(data, lat, lng)
             
-            # Cache for 1 hour
-            cache.set(cache_key, data, 3600)
-            logger.info(f"Weather forecast cached successfully")
+            # Try to cache for 1 hour, but don't fail if Redis is unavailable
+            try:
+                cache.set(cache_key, data, 3600)
+                logger.info(f"Weather forecast cached successfully")
+            except Exception as cache_error:
+                logger.warning(f"Cache set failed: {cache_error}. Data still returned.")
             
             return data
             
@@ -87,10 +95,15 @@ class OpenMeteoWeatherService:
         Includes crop stress indicators and pest risk
         """
         cache_key = f"ag_forecast_{lat}_{lng}"
-        cached = cache.get(cache_key)
-        if cached:
-            logger.info(f"Agricultural forecast loaded from cache")
-            return cached
+        
+        # Try to get from cache, but don't fail if Redis is unavailable
+        try:
+            cached = cache.get(cache_key)
+            if cached:
+                logger.info(f"Agricultural forecast loaded from cache")
+                return cached
+        except Exception as cache_error:
+            logger.warning(f"Cache unavailable: {cache_error}. Fetching fresh data.")
         
         try:
             # Get base weather
@@ -150,8 +163,12 @@ class OpenMeteoWeatherService:
                 "alerts": self._check_alerts(weather)
             }
             
-            cache.set(cache_key, result, 3600)
-            logger.info(f"Agricultural forecast generated successfully")
+            # Try to cache for 1 hour, but don't fail if Redis is unavailable
+            try:
+                cache.set(cache_key, result, 3600)
+                logger.info(f"Agricultural forecast generated successfully")
+            except Exception as cache_error:
+                logger.warning(f"Cache set failed: {cache_error}. Data still returned.")
             
             return result
             
