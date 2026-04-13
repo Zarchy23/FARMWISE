@@ -574,70 +574,91 @@ class RuleBasedPestDetector:
             
             logger.info(f"[RULE-BASED] Image variance (texture): {total_var:.0f}")
             
+            # Calculate brightness and ratio indicators
+            brightness = (r_avg + g_avg + b_avg) / 3
+            greenness = g_avg - ((r_avg + b_avg) / 2)  # How much greener than average
+            logger.info(f"[RULE-BASED] Brightness: {brightness:.0f}, Greenness: {greenness:.0f}")
+            
             # Analyze color patterns to detect issues
             detected_symptoms = []
             confidence_score = 0
             
-            # Brown/tan coloration (rust, leaf spot, brown patch)
-            if r_avg > 150 and g_avg < 120 and b_avg < 100:
+            # Healthy leaf baseline: greenness > 10, variance < 10000
+            is_healthy_green = greenness > 10 and total_var < 10000
+            
+            # Brown/rust coloration (rust, leaf spot, fungal disease)
+            # Must have brown tone: r and g close, both higher than b
+            if (r_avg > 140 and g_avg > 120 and g_avg < abs(r_avg) + 20 and b_avg < 100) and not is_healthy_green:
                 detected_symptoms.append("brown spots")
                 detected_symptoms.append("rust-colored powder")
-                confidence_score += 20
-                logger.info("[RULE-BASED] Detected: Brown/rust coloration (rust/leaf spot)")
+                confidence_score += 25
+                logger.info("[RULE-BASED] Detected: Brown/rust coloration (fungal disease/rust)")
             
-            # Yellow/pale coloration (nutrient deficiency, infection)
-            elif g_avg > 180 and r_avg > 160 and b_avg < 100:
+            # Yellow/pale coloration (nutrient deficiency starting with nitrogen)
+            # Yellow: high G, high R, low B, and not green
+            elif (g_avg > 160 and r_avg > 130 and b_avg < 100 and greenness < 20):
                 detected_symptoms.append("yellowing leaves")
                 detected_symptoms.append("stunted growth")
-                confidence_score += 15
+                confidence_score += 20
                 logger.info("[RULE-BASED] Detected: Yellow/pale coloration (nutrient deficiency)")
             
-            # White powder coating (powdery mildew)
-            elif r_avg > 200 and g_avg > 200 and b_avg > 200:
+            # White/gray powder (powdery mildew)
+            # White: all channels high and similar
+            elif (r_avg > 180 and g_avg > 180 and b_avg > 180 and 
+                  abs(r_avg - g_avg) < 20 and abs(g_avg - b_avg) < 20):
                 detected_symptoms.append("white powder")
                 detected_symptoms.append("leaf curling")
-                confidence_score += 20
+                confidence_score += 25
                 logger.info("[RULE-BASED] Detected: White coloration (powdery mildew)")
             
-            # Red/orange coloration (early stress)
-            elif r_avg > 180 and g_avg < 100 and b_avg < 80:
+            # Red/orange discoloration (stress, early disease, temperature stress)
+            elif (r_avg > 150 and g_avg < 110 and b_avg < 100 and 
+                  r_avg > g_avg + 30 and not is_healthy_green):
                 detected_symptoms.append("reddish leaves")
                 detected_symptoms.append("stress indicators")
-                confidence_score += 10
-                logger.info("[RULE-BASED] Detected: Red/orange coloration (stress)")
+                confidence_score += 15
+                logger.info("[RULE-BASED] Detected: Red/orange coloration (crop stress)")
             
-            # High variance = damaged, patchy surface (holes, lesions, damage)
-            if total_var > 3000:
+            # Purple/magenta discoloration (phosphorus deficiency, cold stress)
+            elif (r_avg > 120 and b_avg > 100 and r_avg > b_avg and 
+                  g_avg < 100 and not is_healthy_green):
+                detected_symptoms.append("purple discoloration")
+                detected_symptoms.append("phosphorus deficiency")
+                confidence_score += 15
+                logger.info("[RULE-BASED] Detected: Purple discoloration (phosphorus deficiency)")
+            
+            # Very dark discoloration (advanced disease, necrosis, rot)
+            elif brightness < 60:
+                detected_symptoms.append("dark discoloration")
+                detected_symptoms.append("necrotic tissue")
+                confidence_score += 20
+                logger.info("[RULE-BASED] Detected: Dark tissue (advanced disease/rot)")
+            
+            # High variance + brown/non-green = damage/lesions (increased threshold)
+            # Only flag damage if variance is VERY high (actual holes/lesions, not just texture)
+            if total_var > 15000 and not is_healthy_green:
                 detected_symptoms.append("lesions")
                 detected_symptoms.append("damage")
                 detected_symptoms.append("holes")
-                confidence_score += 25
-                logger.info("[RULE-BASED] Detected: High texture variance (damage/lesions)")
-            
-            # Check for overall darkness (signs of disease or poor health)
-            brightness = (r_avg + g_avg + b_avg) / 3
-            if brightness < 80:
-                detected_symptoms.append("dark discoloration")
-                detected_symptoms.append("necrotic tissue")
-                confidence_score += 10
-                logger.info("[RULE-BASED] Detected: Dark tissue (disease/rot)")
+                confidence_score += 20
+                logger.info("[RULE-BASED] Detected: Very high texture variance (significant damage/lesions)")
             
             logger.info(f"[RULE-BASED] Detected symptoms: {detected_symptoms}")
             logger.info(f"[RULE-BASED] Initial confidence: {confidence_score}%")
             
-            # If we detected symptoms, match against database
+            # If we have detected symptoms, match against database
             if detected_symptoms:
                 result = RuleBasedPestDetector.detect_by_symptoms(detected_symptoms)
                 
                 # Adjust confidence based on image analysis
                 if result.get('error_fallback'):
                     # If no match found, return what we detected
-                    logger.info("[RULE-BASED] No database match, returning detected indicators")
+                    logger.info("[RULE-BASED] No database match, indicating potential issue")
                     return {
                         "detected_issue": "Possible Crop Issue",
-                        "confidence": min(confidence_score, 60),
+                        "confidence": min(confidence_score, 55),
                         "severity": "medium",
-                        "description": f"Detected visual indicators: {', '.join(detected_symptoms[:3])}",
+                        "description": f"Visual analysis detected: {', '.join(detected_symptoms[:3])}. Recommend consulting with agronomist for confirmation.",
                         "treatment": "Please consult with a local agronomist for specific treatment",
                         "prevention": "Monitor crop regularly for changes",
                         "organic_options": "Practices depend on specific issue - consult extension officer",
@@ -649,11 +670,17 @@ class RuleBasedPestDetector:
                     logger.info(f"[RULE-BASED] Database match: {result.get('detected_issue')} (confidence: {result['confidence']}%)")
                     return result
             
-            # No clear symptoms detected from image
-            logger.info("[RULE-BASED] No clear symptoms detected in image")
-            return RuleBasedPestDetector.get_fallback_response(
-                "Image appears normal or has unclear indicators. Please provide: clear photos of affected leaves, whole plant view, and any visible insects"
-            )
+            # No issues detected - return healthy crop indication
+            logger.info("[RULE-BASED] No disease/pest indicators detected - crop appears healthy")
+            return {
+                "detected_issue": "Healthy Crop",
+                "confidence": 80,
+                "severity": "none",
+                "description": "Image analysis shows no obvious signs of pests or diseases. Continue regular monitoring.",
+                "treatment": "No treatment needed at this time",
+                "prevention": "Maintain regular crop monitoring and good agricultural practices",
+                "organic_options": "Continue current farming practices"
+            }
         
         except Exception as e:
             logger.error(f"[RULE-BASED] Image analysis error: {str(e)}", exc_info=False)
