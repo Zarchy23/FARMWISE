@@ -529,6 +529,129 @@ class RuleBasedPestDetector:
         return RuleBasedPestDetector.get_fallback_response("No definitive match found")
     
     @staticmethod
+    def detect_from_image(image_file) -> Dict:
+        """Analyze image for visual indicators of pests and diseases"""
+        try:
+            logger.info("[RULE-BASED] Starting offline image analysis...")
+            
+            if hasattr(image_file, 'seek'):
+                image_file.seek(0)
+            
+            # Load image
+            from PIL import Image
+            import numpy as np
+            
+            image = Image.open(image_file)
+            logger.info(f"[RULE-BASED] Image loaded: {image.size}")
+            
+            # Convert to RGB if needed
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            # Convert image to numpy array for analysis
+            img_array = np.array(image)
+            
+            # Extract RGB channels
+            r = img_array[:,:,0].mean()
+            g = img_array[:,:,1].mean()
+            b = img_array[:,:,2].mean()
+            
+            logger.info(f"[RULE-BASED] Image color profile - R:{r:.0f} G:{g:.0f} B:{b:.0f}")
+            
+            # Analyze color patterns to detect issues
+            detected_symptoms = []
+            confidence_score = 0
+            
+            # Brown/tan coloration (rust, leaf spot, brown patch)
+            if r > 150 and g < 120 and b < 100:
+                detected_symptoms.append("brown spots")
+                detected_symptoms.append("rust-colored powder")
+                confidence_score += 20
+                logger.info("[RULE-BASED] Detected: Brown/rust coloration (rust/leaf spot)")
+            
+            # Yellow/pale coloration (nutrient deficiency, infection)
+            elif g > 180 and r > 160 and b < 100:
+                detected_symptoms.append("yellowing leaves")
+                detected_symptoms.append("stunted growth")
+                confidence_score += 15
+                logger.info("[RULE-BASED] Detected: Yellow/pale coloration (nutrient deficiency)")
+            
+            # White powder coating (powdery mildew)
+            elif r > 200 and g > 200 and b > 200:
+                detected_symptoms.append("white powder")
+                detected_symptoms.append("leaf curling")
+                confidence_score += 20
+                logger.info("[RULE-BASED] Detected: White coloration (powdery mildew)")
+            
+            # Red/orange coloration (early stress)
+            elif r > 180 and g < 100 and b < 80:
+                detected_symptoms.append("reddish leaves")
+                detected_symptoms.append("stress indicators")
+                confidence_score += 10
+                logger.info("[RULE-BASED] Detected: Red/orange coloration (stress)")
+            
+            # Analyze image variance (indicates damage/holes/lesions)
+            r_var = img_array[:,:,0].var()
+            g_var = img_array[:,:,1].var()
+            b_var = img_array[:,:,2].var()
+            total_var = r_var + g_var + b_var
+            
+            logger.info(f"[RULE-BASED] Image variance (texture): {total_var:.0f}")
+            
+            # High variance = damaged, patchy surface (holes, lesions, damage)
+            if total_var > 3000:
+                detected_symptoms.append("lesions")
+                detected_symptoms.append("damage")
+                detected_symptoms.append("holes")
+                confidence_score += 25
+                logger.info("[RULE-BASED] Detected: High texture variance (damage/lesions)")
+            
+            # Check for overall darkness (signs of disease or poor health)
+            brightness = (r + g + b) / 3
+            if brightness < 80:
+                detected_symptoms.append("dark discoloration")
+                detected_symptoms.append("necrotic tissue")
+                confidence_score += 10
+                logger.info("[RULE-BASED] Detected: Dark tissue (disease/rot)")
+            
+            logger.info(f"[RULE-BASED] Detected symptoms: {detected_symptoms}")
+            logger.info(f"[RULE-BASED] Initial confidence: {confidence_score}%")
+            
+            # If we detected symptoms, match against database
+            if detected_symptoms:
+                result = RuleBasedPestDetector.detect_by_symptoms(detected_symptoms)
+                
+                # Adjust confidence based on image analysis
+                if result.get('error_fallback'):
+                    # If no match found, return what we detected
+                    logger.info("[RULE-BASED] No database match, returning detected indicators")
+                    return {
+                        "detected_issue": "Possible Crop Issue",
+                        "confidence": min(confidence_score, 60),
+                        "severity": "medium",
+                        "description": f"Detected visual indicators: {', '.join(detected_symptoms[:3])}",
+                        "treatment": "Please consult with a local agronomist for specific treatment",
+                        "prevention": "Monitor crop regularly for changes",
+                        "organic_options": "Practices depend on specific issue - consult extension officer",
+                        "detected_indicators": detected_symptoms
+                    }
+                else:
+                    # Update confidence based on image analysis
+                    result['confidence'] = min(confidence_score, result.get('confidence', 50))
+                    logger.info(f"[RULE-BASED] Database match: {result.get('detected_issue')} (confidence: {result['confidence']}%)")
+                    return result
+            
+            # No clear symptoms detected from image
+            logger.info("[RULE-BASED] No clear symptoms detected in image")
+            return RuleBasedPestDetector.get_fallback_response(
+                "Image appears normal or has unclear indicators. Please provide: clear photos of affected leaves, whole plant view, and any visible insects"
+            )
+        
+        except Exception as e:
+            logger.error(f"[RULE-BASED] Image analysis error: {str(e)}", exc_info=False)
+            return RuleBasedPestDetector.get_fallback_response(f"Image analysis unavailable: {str(e)[:50]}")
+    
+    @staticmethod
     def get_fallback_response(reason: str = "Unable to analyze") -> Dict:
         """Fallback response when detection not possible"""
         return {
@@ -689,10 +812,15 @@ class PestDetectionService:
         
         # ========== TIER 4: Use Rule-Based Detection (100% FREE, OFFLINE) ==========
         logger.info("🔵 TIER 4: Using offline rule-based detection (100% FREE, no API calls)")
-        logger.info("=== PEST DETECTION COMPLETE (Tier 4: Rule-Based) ===")
-        return RuleBasedPestDetector.get_fallback_response(
-            "All AI services currently unavailable. Using offline analysis. Please provide clear photos showing: affected leaves, whole plant, and any visible insects"
-        )
+        try:
+            if hasattr(image_file, 'seek'):
+                image_file.seek(0)
+        except:
+            pass
+        
+        result = RuleBasedPestDetector.detect_from_image(image_file)
+        logger.info("=== PEST DETECTION COMPLETE (Tier 4: Rule-Based Image Analysis) ===")
+        return result
     
     def detect_from_symptoms(self, symptoms: List[str]) -> Dict:
         """Detect pest from farmer-described symptoms"""
