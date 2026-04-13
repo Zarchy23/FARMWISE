@@ -2,7 +2,7 @@ services:
   - type: web
     name: farmwise
     runtime: python
-    buildCommand: "pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput --clear"
+    buildCommand: "pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py fetch_weather && python manage.py collectstatic --noinput --clear"
     startCommand: "bash start.sh"
     plans: free
     envVars:
