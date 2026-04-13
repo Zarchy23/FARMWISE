@@ -305,10 +305,9 @@ class OpenAIPestDetector:
         logger.info(f"[OPENAI INIT] Starting initialization...")
         logger.info(f"[OPENAI INIT] API Key provided: {bool(api_key) and len(str(api_key)) > 0}")
         try:
-            import openai
+            from openai import OpenAI
             logger.info(f"[OPENAI INIT] openai module imported successfully")
-            openai.api_key = api_key
-            self.client = openai
+            self.client = OpenAI(api_key=api_key)
             self.available = True
             logger.info("[OPENAI INIT] ✓ OpenAI pest detector initialized")
         except ImportError as ie:
@@ -369,7 +368,7 @@ Be accurate - farmers depend on this information."""
                 wait=wait_exponential(multiplier=1, min=2, max=10)
             )
             def call_openai_api():
-                response = self.client.ChatCompletion.create(
+                response = self.client.chat.completions.create(
                     model="gpt-4-vision-preview",
                     messages=[
                         {
