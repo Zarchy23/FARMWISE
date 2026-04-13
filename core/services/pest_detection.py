@@ -439,18 +439,18 @@ class RuleBasedPestDetector:
     
     PEST_DATABASE = {
         "fall_armyworm": {
-            "indicators": ["ragged leaves", "fecal pellets", "larvae", "damage", "holes"],
+            "indicators": ["ragged leaves", "fecal pellets", "larvae", "damage", "holes", "chewed leaves"],
             "treatment": "Apply Emamectin benzoate 5% WDG or Spinosad 45% SC (local alternatives available)",
             "prevention": "Early planting, crop rotation, pheromone traps, conservation of natural enemies",
             "severity": "high",
             "affected_crops": ["maize", "sorghum", "millet"]
         },
-        "maize_leaf_spot": {
-            "indicators": ["brown spots", "yellow halos", "lesions", "striping"],
+        "leaf_spot": {
+            "indicators": ["brown spots", "yellow halos", "lesions", "striping", "spotting", "dark marks"],
             "treatment": "Apply Azoxystrobin-based fungicide or Mancozeb 80% WP",
             "prevention": "Use resistant varieties, crop rotation (3-4 years), remove infected leaves",
             "severity": "medium",
-            "affected_crops": ["maize"]
+            "affected_crops": ["maize", "wheat", "rice", "all"]
         },
         "aphids": {
             "indicators": ["curled leaves", "sticky residue", "small insects", "ants on plant"],
@@ -460,18 +460,18 @@ class RuleBasedPestDetector:
             "affected_crops": ["maize", "grains", "vegetables"]
         },
         "powdery_mildew": {
-            "indicators": ["white powder", "stunted growth", "leaf curling"],
+            "indicators": ["white powder", "stunted growth", "leaf curling", "white coating"],
             "treatment": "Apply sulfur dust or potassium bicarbonate",
             "prevention": "Improve air circulation, avoid overhead watering, remove infected parts",
             "severity": "medium",
             "affected_crops": ["grains", "vegetables"]
         },
-        "rust": {
-            "indicators": ["reddish/brown pustules", "rust-colored powder", "leaf yellowing"],
+        "crop_rust": {
+            "indicators": ["rust-colored powder", "brown spots", "rusty appearance", "reddish pustules", "rust pustules", "orange dust"],
             "treatment": "Apply Azoxystrobin or Triadimefon fungicide",
-            "prevention": "Use resistant varieties, improve drainage, remove infected leaves",
+            "prevention": "Use resistant varieties, improve drainage, remove infected leaves early",
             "severity": "high",
-            "affected_crops": ["maize", "wheat"]
+            "affected_crops": ["maize", "wheat", "all"]
         },
         "nitrogen_deficiency": {
             "indicators": ["yellowing leaves", "lower leaves affected first", "stunted growth"],
@@ -496,6 +496,7 @@ class RuleBasedPestDetector:
         
         best_match = None
         best_score = 0
+        top_3_matches = []
         
         for pest, data in RuleBasedPestDetector.PEST_DATABASE.items():
             score = 0
@@ -504,13 +505,20 @@ class RuleBasedPestDetector:
                        for indicator in data['indicators']):
                     score += 1
             
+            if score > 0:
+                top_3_matches.append((pest, data, score))
+            
             if score > best_score:
                 best_score = score
                 best_match = (pest, data, score)
         
-        if best_match and best_score >= 2:
+        # Sort to get top matches
+        top_3_matches.sort(key=lambda x: x[2], reverse=True)
+        
+        # Requirement: At least 1 symptom match (lowered from 2 for better detection)
+        if best_match and best_score >= 1:
             pest, data, score = best_match
-            confidence = min(90, score * 25)
+            confidence = min(90, score * 30)
             
             logger.info(f"Rule-based match found: {pest} with confidence {confidence}%")
             
@@ -518,14 +526,31 @@ class RuleBasedPestDetector:
                 "detected_issue": pest.replace("_", " ").title(),
                 "confidence": confidence,
                 "severity": data['severity'],
-                "description": f"Detected based on {score} symptom matches",
+                "description": f"Detected based on visual indicators: {', '.join(symptoms[:2])}. Detected {score} matching symptoms.",
                 "treatment": data['treatment'],
                 "prevention": data['prevention'],
                 "organic_options": "Yes - see prevention and treatment sections",
-                "affected_crops": ", ".join(data['affected_crops'])
+                "affected_crops": ", ".join(data['affected_crops']),
+                "top_suggestions": [m[0].replace("_", " ").title() for m in top_3_matches[:3]] if len(top_3_matches) > 1 else []
             }
         
         logger.info("No strong rule-based match found")
+        # Return info about top candidates even if no strong match
+        if top_3_matches:
+            top_candidates = [m[0].replace("_", " ").title() for m in top_3_matches[:3]]
+            logger.info(f"Top candidates: {top_candidates}")
+            return {
+                "detected_issue": "Possible Disease/Issue",
+                "confidence": 30,
+                "severity": "medium",
+                "description": f"Visual indicators suggest possible: {', '.join(top_candidates)}. Please confirm with agronomist.",
+                "treatment": "Consult agronomist for specific diagnosis and treatment",
+                "prevention": "Monitor crop regularly, remove affected parts",
+                "organic_options": "Options depend on specific disease - consult extension officer",
+                "affected_indicators": symptoms,
+                "top_suggestions": top_candidates,
+                "possible_diseases": top_candidates
+            }
         return RuleBasedPestDetector.get_fallback_response("No definitive match found")
     
     @staticmethod
@@ -651,21 +676,14 @@ class RuleBasedPestDetector:
                 result = RuleBasedPestDetector.detect_by_symptoms(detected_symptoms)
                 
                 # Adjust confidence based on image analysis
-                if result.get('error_fallback'):
-                    # If no match found, return what we detected
-                    logger.info("[RULE-BASED] No database match, indicating potential issue")
-                    return {
-                        "detected_issue": "Possible Crop Issue",
-                        "confidence": min(confidence_score, 55),
-                        "severity": "medium",
-                        "description": f"Visual analysis detected: {', '.join(detected_symptoms[:3])}. Recommend consulting with agronomist for confirmation.",
-                        "treatment": "Please consult with a local agronomist for specific treatment",
-                        "prevention": "Monitor crop regularly for changes",
-                        "organic_options": "Practices depend on specific issue - consult extension officer",
-                        "detected_indicators": detected_symptoms
-                    }
+                if "Possible" in result.get('detected_issue', ''):
+                    # If no strong match but we have suggestions
+                    logger.info(f"[RULE-BASED] Possible disease detected with suggestions")
+                    result['confidence'] = min(confidence_score, result.get('confidence', 40))
+                    result['detected_indicators'] = detected_symptoms
+                    return result
                 else:
-                    # Update confidence based on image analysis
+                    # Strong match found
                     result['confidence'] = min(confidence_score, result.get('confidence', 50))
                     logger.info(f"[RULE-BASED] Database match: {result.get('detected_issue')} (confidence: {result['confidence']}%)")
                     return result

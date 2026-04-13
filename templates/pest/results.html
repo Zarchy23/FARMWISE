@@ -69,6 +69,28 @@
             {% endif %}
         </div>
 
+        <!-- Possible Diseases for Agronomist Confirmation -->
+        {% if result.possible_diseases or result.top_suggestions %}
+        <div class="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500 rounded">
+            <h3 class="font-bold text-lg mb-3 text-purple-900">🔍 Possible Diagnoses (For Agronomist Confirmation)</h3>
+            <p class="text-gray-700 text-sm mb-3">Based on visual indicators, these are the most likely issues detected:</p>
+            <div class="space-y-2">
+                {% for disease in result.possible_diseases %}
+                <div class="bg-white p-3 rounded border-l-4 border-purple-500">
+                    <p class="font-medium text-gray-800">{{ disease }}</p>
+                </div>
+                {% empty %}
+                {% for disease in result.top_suggestions %}
+                <div class="bg-white p-3 rounded border-l-4 border-purple-500">
+                    <p class="font-medium text-gray-800">{{ disease }}</p>
+                </div>
+                {% endfor %}
+                {% endfor %}
+            </div>
+            <p class="text-xs text-purple-700 mt-3 italic">Please consult with a certified agronomist to confirm the exact diagnosis based on field observations.</p>
+        </div>
+        {% endif %}
+
         <!-- Affected Area -->
         {% if result.affected_area %}
         <div class="mb-6">

@@ -1316,7 +1316,10 @@ def analyze_pest_with_ai(image_file, image_name):
             'organic_treatment': result.get('organic_options', 'Contact extension office'),
             'prevention': result.get('prevention', 'Regular field scouting'),
             'disease_cycle': '',
-            'environmental_factors': ''
+            'environmental_factors': '',
+            'top_suggestions': result.get('top_suggestions', []),
+            'possible_diseases': result.get('possible_diseases', []),
+            'detected_indicators': result.get('detected_indicators', [])
         }
         
         logger.info(f'[VIEWS] Normalized: pest_detected={normalized["pest_detected"]}, pest_name={normalized["pest_name"]}, confidence={normalized["confidence"]}')
