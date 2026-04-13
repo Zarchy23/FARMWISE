@@ -518,9 +518,12 @@ class RuleBasedPestDetector:
         # Requirement: At least 1 symptom match (lowered from 2 for better detection)
         if best_match and best_score >= 1:
             pest, data, score = best_match
-            confidence = min(90, score * 30)
+            # Confidence scales with number of matching symptoms
+            # 1 match = 35%, 2 matches = 60%, 3+ matches = 85%
+            base_confidence = [0, 35, 60, 85][min(score, 3)]
+            confidence = base_confidence if score < 3 else 85
             
-            logger.info(f"Rule-based match found: {pest} with confidence {confidence}%")
+            logger.info(f"Rule-based match found: {pest} with {score} symptoms, confidence {confidence}%")
             
             return {
                 "detected_issue": pest.replace("_", " ").title(),
@@ -539,9 +542,14 @@ class RuleBasedPestDetector:
         if top_3_matches:
             top_candidates = [m[0].replace("_", " ").title() for m in top_3_matches[:3]]
             logger.info(f"Top candidates: {top_candidates}")
+            # Confidence based on best partial match score
+            best_partial_score = top_3_matches[0][2]
+            # 1 partial match = 25%, 2 = 40%
+            partial_confidence = [0, 25, 40][min(best_partial_score, 2)]
+            
             return {
                 "detected_issue": "Possible Disease/Issue",
-                "confidence": 30,
+                "confidence": partial_confidence,
                 "severity": "medium",
                 "description": f"Visual indicators suggest possible: {', '.join(top_candidates)}. Please confirm with agronomist.",
                 "treatment": "Consult agronomist for specific diagnosis and treatment",
@@ -677,22 +685,39 @@ class RuleBasedPestDetector:
                 
                 # Adjust confidence based on image analysis
                 if "Possible" in result.get('detected_issue', ''):
-                    # If no strong match but we have suggestions
+                    # If no strong match but we have suggestions - boost with image confidence if strong
                     logger.info(f"[RULE-BASED] Possible disease detected with suggestions")
-                    result['confidence'] = min(confidence_score, result.get('confidence', 40))
+                    if confidence_score > 50:
+                        result['confidence'] = min(70, confidence_score)  # Cap at 70% for uncertain matches
                     result['detected_indicators'] = detected_symptoms
                     return result
                 else:
-                    # Strong match found
-                    result['confidence'] = min(confidence_score, result.get('confidence', 50))
+                    # Strong disease match - keep or improve confidence based on image analysis
+                    db_confidence = result.get('confidence', 50)
+                    # If image analysis strongly suggests disease (high color/texture indicators), boost confidence up to 90%
+                    if confidence_score >= 50:
+                        result['confidence'] = min(90, db_confidence + 10)
+                    else:
+                        # If weak image signals but good symptom match, keep database confidence
+                        result['confidence'] = db_confidence
                     logger.info(f"[RULE-BASED] Database match: {result.get('detected_issue')} (confidence: {result['confidence']}%)")
                     return result
             
             # No issues detected - return healthy crop indication
-            logger.info("[RULE-BASED] No disease/pest indicators detected - crop appears healthy")
+            # Calculate confidence based on greenness level - higher greenness = more confident it's healthy
+            if greenness > 30:
+                health_confidence = 85  # Very healthy, strong green color
+            elif greenness > 15:
+                health_confidence = 75  # Healthy, good green color
+            elif greenness > 5:
+                health_confidence = 65  # Acceptable, some greenness
+            else:
+                health_confidence = 50  # Low greenness but no disease detected - recommend monitoring
+            
+            logger.info(f"[RULE-BASED] Healthy crop confidence: {health_confidence}% (greenness: {greenness:.1f})")
             return {
                 "detected_issue": "Healthy Crop",
-                "confidence": 80,
+                "confidence": health_confidence,
                 "severity": "none",
                 "description": "Image analysis shows no obvious signs of pests or diseases. Continue regular monitoring.",
                 "treatment": "No treatment needed at this time",
