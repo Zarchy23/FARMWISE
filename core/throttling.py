@@ -9,6 +9,7 @@ import logging
 from threading import Lock
 from collections import deque
 from functools import wraps
+from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +59,8 @@ class RateLimiter:
             return 0
 
 
-# Global rate limiter for pest detection (4 requests per 60 seconds = stays under 5/min)
-pest_detection_limiter = RateLimiter(max_requests=4, time_window=60)
+# Global rate limiter for pest detection (30 requests per 60 seconds = reasonable for production)
+pest_detection_limiter = RateLimiter(max_requests=30, time_window=60)
 
 
 def throttle_pest_detection(func):
@@ -71,9 +72,15 @@ def throttle_pest_detection(func):
     def wrapper(*args, **kwargs):
         if not pest_detection_limiter.is_allowed():
             logger.warning("[THROTTLE] Pest detection rate limited, using fallback")
-            # Return fallback response without calling API
+            # Return JSON response with fallback data (NOT a dict!)
             from core.services.pest_detection import RuleBasedPestDetector
-            return RuleBasedPestDetector.get_fallback_response("Rate limit - trying again soon")
+            fallback_data = RuleBasedPestDetector.get_fallback_response("Rate limit - trying again soon")
+            response = JsonResponse(
+                fallback_data,
+                status=429  # HTTP 429 Too Many Requests
+            )
+            response['Retry-After'] = '60'  # Suggest retry after 60 seconds
+            return response
         
         return func(*args, **kwargs)
     
