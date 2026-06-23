@@ -1,5 +1,4 @@
 Django
-djangorestframework
 django-cors-headers
 django-filter
 django-leaflet
@@ -30,7 +29,6 @@ django-allauth
 django-phonenumber-field
 phonenumbers
 daphne
-drf-yasg
 django-storages
 boto3
 certifi
@@ -38,8 +36,6 @@ dj-database-url
 django-redis
 hiredis
 argon2-cffi
-djangorestframework-simplejwt
-django-sendgrid-v5
 coreapi
 google-generativeai
 groq
@@ -47,3 +43,7 @@ openpyxl
 reportlab
 tenacity
 apscheduler
+# Fix Twisted/OpenSSL compatibility for Python 3.14
+Twisted
+pyOpenSSL
+
