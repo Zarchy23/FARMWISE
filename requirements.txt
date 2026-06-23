@@ -38,6 +38,7 @@ hiredis
 argon2-cffi
 coreapi
 djangorestframework
+drf-yasg
 google-generativeai
 groq
 openpyxl
