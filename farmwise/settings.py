@@ -2,6 +2,7 @@
 # FARMWISE - Production Ready Configuration
 
 import os
+import logging
 from pathlib import Path
 from decouple import config, Csv
 from datetime import timedelta
@@ -13,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ============================================================
 # SECURITY WARNING: keep the secret key used in production secret!
 # ============================================================
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here-change-in-production')
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
@@ -31,7 +32,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
     SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=True, cast=bool)
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Strict'
+    SESSION_COOKIE_SAMESITE = 'Lax'  # Lax so OAuth (Google/Facebook) redirects keep the session
     CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=True, cast=bool)
     CSRF_COOKIE_HTTPONLY = True
     SECURE_BROWSER_XSS_FILTER = True
@@ -61,7 +62,7 @@ if not DEBUG:
 
 INSTALLED_APPS = [
     # Django core apps
-    'daphne',  # Must be first for WebSockets
+    # 'daphne',  # Must be first for WebSockets - disabled for Celery compatibility
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -69,13 +70,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-    # 'django.contrib.gis',  # PostGIS for geospatial data - Enable after PostGIS installation
+    # 'django.contrib.gis',  # PostGIS for geospatial data - DISABLED for development (requires GDAL)
     
     # Third party apps
-    'rest_framework',
-    'rest_framework.authtoken',
     'corsheaders',
-    # 'leaflet',  # Requires GeoDjango/PostGIS - Enable after PostGIS installation
+    # 'leaflet',  # Leaflet maps for farm visualization - DISABLED for development
     'crispy_forms',
     'crispy_tailwind',
     'import_export',
@@ -90,11 +89,14 @@ INSTALLED_APPS = [
     'phonenumber_field',
     'storages',  # For S3 storage
     'django_filters',
-    'drf_yasg',  # API documentation
     # 'debug_toolbar',  # Django debug toolbar (dev only) - Disabled for cleaner UI
+    'rest_framework',
+    'rest_framework.authtoken',
     
-    # Local app
+    # Local apps
     'core',
+    'core.analytics',
+    'core.iot',
 ]
 
 MIDDLEWARE = [
@@ -134,8 +136,7 @@ WSGI_APPLICATION = 'farmwise.wsgi.application'
 ASGI_APPLICATION = 'farmwise.asgi.application'
 
 # ============================================================
-# Database - PostgreSQL 
-# Note: Using postgresql backend. Change to postgis after PostGIS installation.
+# Database - PostgreSQL with PostGIS for geospatial features
 # ============================================================
 
 DATABASE_URL = config('DATABASE_URL', default='')
@@ -150,7 +151,7 @@ else:
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': config('DB_NAME', default='farmwise_db'),
             'USER': config('DB_USER', default='postgres'),
-            'PASSWORD': config('DB_PASSWORD', default='farmwise_secure_password_2024'),
+            'PASSWORD': config('DB_PASSWORD'),
             'HOST': config('DB_HOST', default='localhost'),
             'PORT': config('DB_PORT', default='5432'),
             'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
@@ -204,8 +205,9 @@ else:
 # Celery Configuration (Async Tasks)
 # ============================================================
 
+# Use Redis when available (production), fall back to in-memory for local dev.
 CELERY_BROKER_URL = REDIS_URL if REDIS_URL else 'memory://'
-CELERY_RESULT_BACKEND = 'django-db'
+CELERY_RESULT_BACKEND = 'django-db' if REDIS_URL else 'cache+memory://'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -215,7 +217,7 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 20 * 60  # 20 minutes
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
-CELERY_WORKER_CONCURRENCY = 4
+CELERY_WORKER_CONCURRENCY = 1  # Windows compatibility - single process
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # Celery Beat Schedule
@@ -238,7 +240,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     'fetch-weather-data': {
         'task': 'core.tasks.fetch_weather_data',
-        'schedule': timedelta(minutes=30),  # Every 30 minutes
+        'schedule': timedelta(minutes=5),  # Every 5 minutes
     },
     'generate-daily-reports': {
         'task': 'core.tasks.generate_daily_reports',
@@ -421,35 +423,7 @@ CRISPY_TEMPLATE_PACK = "tailwind"
 # REST Framework
 # ============================================================
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-    'DEFAULT_FILTER_BACKENDS': [
-        'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
-    ],
-    # Disable throttling in development (requires Redis in production)
-    'DEFAULT_THROTTLE_CLASSES': [] if DEBUG else [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',
-        'user': '1000/day',
-        'burst': '60/minute',
-    },
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.openapi.AutoSchema',
-    'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
-}
+# REST_FRAMEWORK removed - using traditional Django views instead
 
 # JWT Settings
 SIMPLE_JWT = {
@@ -491,7 +465,7 @@ CORS_ALLOW_HEADERS = [
 # Email Configuration (SendGrid / Gmail SMTP)
 # ============================================================
 
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='tungwararamunashe@gmail.com')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 # Email SMTP Settings (for development/testing)
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
@@ -554,8 +528,9 @@ WEATHER_API_KEY = config('WEATHER_API_KEY', default='')
 IS_PRODUCTION = config('IS_PRODUCTION', default=str(not DEBUG), cast=bool)
 
 # Disable Gemini API on production to prevent rate limiting (429 errors)
-# Set DISABLE_GEMINI_ON_PRODUCTION=True in Render environment variables
-DISABLE_GEMINI_ON_PRODUCTION = config('DISABLE_GEMINI_ON_PRODUCTION', default='True' if IS_PRODUCTION else 'False', cast=bool)
+# Set DISABLE_GEMINI_ON_PRODUCTION=False in production environment variables to enable AI detection
+# Set to True to use rule-based fallback only (recommended for high-traffic production)
+DISABLE_GEMINI_ON_PRODUCTION = config('DISABLE_GEMINI_ON_PRODUCTION', default='False', cast=bool)
 
 if IS_PRODUCTION and DISABLE_GEMINI_ON_PRODUCTION:
     import logging
@@ -617,6 +592,14 @@ CSRF_USE_SESSIONS = False
 # Logging Configuration
 # ============================================================
 
+# Filter to suppress 404 warnings for removed API endpoints
+class IgnoreRemovedAPIEndpointsFilter(logging.Filter):
+    """Suppress 404 logs for permanently removed API endpoints"""
+    def filter(self, record):
+        # Suppress 404s for removed DRF API endpoints
+        removed_paths = ['/api/analytics/', '/api/iot/', '/api/payments/']
+        return not any(path in record.getMessage() for path in removed_paths)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -630,15 +613,22 @@ LOGGING = {
             'style': '{',
         },
     },
+    'filters': {
+        'ignore_removed_api': {
+            '()': IgnoreRemovedAPIEndpointsFilter,
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'filters': ['ignore_removed_api'],
         },
         'mail_admins': {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',
             'formatter': 'verbose',
+            'filters': ['ignore_removed_api'],
         },
     },
     'loggers': {
@@ -648,7 +638,7 @@ LOGGING = {
         },
         'django.request': {
             'handlers': ['console', 'mail_admins'],
-            'level': 'ERROR',
+            'level': 'WARNING',
             'propagate': False,
         },
         'core': {

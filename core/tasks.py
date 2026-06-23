@@ -536,7 +536,7 @@ def analyze_pest_image(image_path, report_id):
         }
         
         payload = {
-            'model': 'gpt-4-vision-preview',
+            'model': 'gpt-4o',
             'messages': [
                 {
                     'role': 'user',
@@ -715,100 +715,9 @@ def vacuum_analyze():
 # WEATHER DATA TASKS
 # ============================================================
 
-@shared_task(bind=True, max_retries=3)
-def fetch_weather_data(self):
-    """Fetch real-time weather data from OpenWeatherMap API every 30 minutes"""
-    import requests
-    from django.conf import settings
-    
-    api_key = settings.OPENWEATHER_API_KEY
-    if not api_key:
-        logger.error("OpenWeatherMap API key not configured")
-        return "Weather API key missing"
-    
-    farms = Farm.objects.all()
-    updated_count = 0
-    errors = []
-    
-    for farm in farms:
-        try:
-            # Use farm latitude/longitude if available, otherwise skip
-            if not (farm.latitude and farm.longitude):
-                logger.warning(f"Farm {farm.name} missing coordinates")
-                continue
-            
-            # Call OpenWeatherMap API
-            url = f"https://api.openweathermap.org/data/2.5/forecast?lat={farm.latitude}&lon={farm.longitude}&appid={api_key}&units=metric"
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            
-            data = response.json()
-            
-            # Parse current weather (first forecast entry is closest to current)
-            if data.get('list') and len(data['list']) > 0:
-                current = data['list'][0]
-                main = current['main']
-                weather = current['weather'][0]
-                wind = current.get('wind', {})
-                clouds = current.get('clouds', {})
-                
-                # Prepare forecast data (next 5 days)
-                forecast_list = []
-                for i in range(0, min(40, len(data['list'])), 8):  # Every 24 hours
-                    forecast_entry = data['list'][i]
-                    forecast_list.append({
-                        'date': forecast_entry['dt'],
-                        'temp_high': forecast_entry['main']['temp_max'],
-                        'temp_low': forecast_entry['main']['temp_min'],
-                        'condition': forecast_entry['weather'][0]['main'],
-                        'description': forecast_entry['weather'][0]['description'],
-                        'icon': forecast_entry['weather'][0]['icon'],
-                        'humidity': forecast_entry['main']['humidity'],
-                        'wind_speed': forecast_entry['wind'].get('speed', 0),
-                    })
-                
-                # Update or create WeatherData
-                weather_obj, created = WeatherData.objects.update_or_create(
-                    farm=farm,
-                    defaults={
-                        'temperature': main['temp'],
-                        'feels_like': main.get('feels_like'),
-                        'humidity': main['humidity'],
-                        'pressure': main.get('pressure'),
-                        'wind_speed': wind.get('speed', 0),
-                        'wind_direction': wind.get('deg'),
-                        'cloudiness': clouds.get('all'),
-                        'condition': weather['main'],
-                        'description': weather['description'],
-                        'icon': weather['icon'],
-                        'forecast_data': {'forecast': forecast_list},
-                        'location': f"{data['city']['name']}, {data['city']['country']}",
-                    }
-                )
-                updated_count += 1
-                
-                # Generate alerts based on weather data
-                generate_weather_alerts.delay(farm.id)
-                
-                logger.info(f"Updated weather for {farm.name}: {weather['main']}")
-        
-        except requests.exceptions.RequestException as e:
-            error_msg = f"Failed to fetch weather for {farm.name}: {str(e)}"
-            logger.error(error_msg)
-            errors.append(error_msg)
-            # Retry with exponential backoff
-            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
-        except Exception as e:
-            error_msg = f"Error processing weather data for {farm.name}: {str(e)}"
-            logger.error(error_msg)
-            errors.append(error_msg)
-    
-    result = f"Updated weather for {updated_count} farms"
-    if errors:
-        result += f" (with {len(errors)} errors)"
-    
-    logger.info(result)
-    return result
+# NOTE: fetch_weather_data is defined earlier in this module using the free
+# Open-Meteo service (no API key required). The previous OpenWeatherMap-based
+# duplicate was removed to avoid silently shadowing that task.
 
 
 @shared_task
