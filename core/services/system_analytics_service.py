@@ -345,14 +345,14 @@ class SystemAnalyticsService:
             return {}
     
     @staticmethod
-    def get_complete_dashboard(user, farm_id=None):
+    def get_complete_dashboard(user, farm_id=None, days=30):
         """Get complete dashboard with all analytics"""
         return {
             'overview': SystemAnalyticsService.get_farm_overview(user, farm_id),
-            'crops': SystemAnalyticsService.get_crop_analytics(user, farm_id),
-            'livestock': SystemAnalyticsService.get_livestock_analytics(user, farm_id),
-            'financial': SystemAnalyticsService.get_financial_analytics(user, farm_id),
-            'equipment': SystemAnalyticsService.get_equipment_analytics(user, farm_id),
-            'pest_detection': SystemAnalyticsService.get_pest_detection_analytics(user, farm_id),
+            'crops': SystemAnalyticsService.get_crop_analytics(user, farm_id, days),
+            'livestock': SystemAnalyticsService.get_livestock_analytics(user, farm_id, days),
+            'financial': SystemAnalyticsService.get_financial_analytics(user, farm_id, days),
+            'equipment': SystemAnalyticsService.get_equipment_analytics(user, farm_id, days),
+            'pest_detection': SystemAnalyticsService.get_pest_detection_analytics(user, farm_id, days),
             'generated_at': timezone.now().isoformat()
         }

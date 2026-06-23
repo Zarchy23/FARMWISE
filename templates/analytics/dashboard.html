@@ -95,6 +95,46 @@
     </div>
     {% endif %}
 
+    <!-- Visual Analytics (Charts) -->
+    {{ chart_data|json_script:"chartData" }}
+    <div class="mb-8">
+        <h2 class="text-xl font-bold mb-4">📈 Visual Analytics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Revenue vs Expenses</h3>
+                <canvas id="financeChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Revenue Sources</h3>
+                <canvas id="revenueChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Expense Breakdown</h3>
+                <canvas id="expenseChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Crop Status</h3>
+                <canvas id="cropChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Livestock by Type</h3>
+                <canvas id="livestockTypeChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Livestock Health</h3>
+                <canvas id="livestockHealthChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Equipment Status</h3>
+                <canvas id="equipmentChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Pest Reports by Severity</h3>
+                <canvas id="pestChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+
     <!-- Detailed Analytics Sections -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <!-- Crop Analytics -->
@@ -288,5 +328,112 @@ function filterByDays() {
     const days = document.getElementById('daysFilter').value;
     window.location.href = `?farm_id=${farmId}&days=${days}`;
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof Chart === 'undefined') return;
+
+    const data = JSON.parse(document.getElementById('chartData').textContent);
+
+    const palette = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7', '#ef4444', '#14b8a6', '#ec4899', '#64748b'];
+
+    // Helper to render a chart only when there is data
+    function render(canvasId, config) {
+        const el = document.getElementById(canvasId);
+        if (!el) return;
+        const values = (config.data.datasets || []).flatMap(d => d.data || []);
+        const hasData = values.some(v => Number(v) > 0);
+        if (!hasData) {
+            el.parentElement.insertAdjacentHTML('beforeend',
+                '<p class="text-gray-400 text-sm text-center py-8">No data for this period</p>');
+            el.remove();
+            return;
+        }
+        new Chart(el, config);
+    }
+
+    // Revenue vs Expenses vs Profit (bar)
+    render('financeChart', {
+        type: 'bar',
+        data: {
+            labels: ['Revenue', 'Expenses', 'Net Profit'],
+            datasets: [{
+                data: [data.financial.revenue, data.financial.expenses, data.financial.net_profit],
+                backgroundColor: ['#22c55e', '#ef4444', '#3b82f6'],
+                borderRadius: 6,
+            }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Revenue sources (doughnut)
+    render('revenueChart', {
+        type: 'doughnut',
+        data: {
+            labels: data.revenue_breakdown.labels,
+            datasets: [{ data: data.revenue_breakdown.values, backgroundColor: palette }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Expense breakdown (doughnut)
+    render('expenseChart', {
+        type: 'doughnut',
+        data: {
+            labels: data.expense_breakdown.labels,
+            datasets: [{ data: data.expense_breakdown.values, backgroundColor: ['#ef4444', '#f59e0b'] }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Crop status (doughnut)
+    render('cropChart', {
+        type: 'doughnut',
+        data: {
+            labels: data.crop_status.labels,
+            datasets: [{ data: data.crop_status.values, backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b'] }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Livestock by type (bar)
+    render('livestockTypeChart', {
+        type: 'bar',
+        data: {
+            labels: data.livestock_by_type.labels,
+            datasets: [{ data: data.livestock_by_type.values, backgroundColor: '#a855f7', borderRadius: 6 }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Livestock health (doughnut)
+    render('livestockHealthChart', {
+        type: 'doughnut',
+        data: {
+            labels: data.livestock_health.labels,
+            datasets: [{ data: data.livestock_health.values, backgroundColor: palette }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Equipment status (doughnut)
+    render('equipmentChart', {
+        type: 'doughnut',
+        data: {
+            labels: data.equipment_status.labels,
+            datasets: [{ data: data.equipment_status.values, backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b'] }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Pest reports by severity (bar)
+    render('pestChart', {
+        type: 'bar',
+        data: {
+            labels: data.pest_severity.labels,
+            datasets: [{ data: data.pest_severity.values, backgroundColor: '#ef4444', borderRadius: 6 }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+});
 </script>
 {% endblock %}

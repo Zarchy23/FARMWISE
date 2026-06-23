@@ -4473,17 +4473,70 @@ def analytics_dashboard(request):
     days = int(request.GET.get('days', 30))
     
     # Get complete dashboard data
-    dashboard_data = SystemAnalyticsService.get_complete_dashboard(request.user, farm_id)
+    dashboard_data = SystemAnalyticsService.get_complete_dashboard(request.user, farm_id, days)
     
     # Get user's farms for filter dropdown
     from core.models import Farm
     farms = Farm.objects.filter(owner=request.user)
     
+    # Build chart-ready data (JSON-serializable) for Chart.js visualizations
+    financial = dashboard_data.get('financial', {}) or {}
+    crops = dashboard_data.get('crops', {}) or {}
+    livestock = dashboard_data.get('livestock', {}) or {}
+    equipment = dashboard_data.get('equipment', {}) or {}
+    pests = dashboard_data.get('pest_detection', {}) or {}
+    breakdown = financial.get('breakdown', {}) or {}
+
+    chart_data = {
+        'financial': {
+            'revenue': financial.get('total_revenue', 0),
+            'expenses': financial.get('total_expenses', 0),
+            'net_profit': financial.get('net_profit', 0),
+        },
+        'expense_breakdown': {
+            'labels': ['Crop Inputs', 'Payroll'],
+            'values': [breakdown.get('crop_inputs', 0), breakdown.get('payroll', 0)],
+        },
+        'revenue_breakdown': {
+            'labels': ['Marketplace Sales', 'Equipment Rentals'],
+            'values': [breakdown.get('marketplace_sales', 0), breakdown.get('equipment_rentals', 0)],
+        },
+        'crop_status': {
+            'labels': ['Active', 'Harvested', 'Planned'],
+            'values': [
+                crops.get('active_crops', 0),
+                crops.get('harvested_crops', 0),
+                crops.get('planned_crops', 0),
+            ],
+        },
+        'livestock_by_type': {
+            'labels': list((livestock.get('by_type', {}) or {}).keys()),
+            'values': list((livestock.get('by_type', {}) or {}).values()),
+        },
+        'livestock_health': {
+            'labels': list((livestock.get('health_status', {}) or {}).keys()),
+            'values': list((livestock.get('health_status', {}) or {}).values()),
+        },
+        'equipment_status': {
+            'labels': ['Available', 'Rented Out', 'Maintenance Due'],
+            'values': [
+                equipment.get('available', 0),
+                equipment.get('rented_out', 0),
+                equipment.get('maintenance_due', 0),
+            ],
+        },
+        'pest_severity': {
+            'labels': list((pests.get('by_severity', {}) or {}).keys()),
+            'values': list((pests.get('by_severity', {}) or {}).values()),
+        },
+    }
+
     context = {
         'dashboard': dashboard_data,
         'farms': farms,
         'selected_farm': farm_id,
         'days': days,
+        'chart_data': chart_data,
     }
     return render(request, 'analytics/dashboard.html', context)
 
