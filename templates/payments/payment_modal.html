@@ -1,0 +1,432 @@
+<!-- templates/payments/payment_modal.html -->
+<!-- Global Payment Modal Component -->
+<div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-2xl font-bold text-gray-900">Complete Payment</h3>
+            <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        
+        <!-- Amount Display -->
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 mb-6 border border-green-200">
+            <div class="text-sm text-gray-600">Amount to Pay</div>
+            <div id="paymentAmount" class="text-4xl font-bold text-green-600"></div>
+        </div>
+        
+        <!-- Tabs for Payment Methods -->
+        <div class="mb-6">
+            <div class="flex border-b border-gray-200 gap-4 overflow-x-auto">
+                <button onclick="switchPaymentTab('international')" id="tab-international" class="payment-tab active px-4 py-3 text-sm font-medium border-b-2 border-green-600 text-green-600">
+                    <i class="ri-global-line"></i> Global
+                </button>
+                <button onclick="switchPaymentTab('africa')" id="tab-africa" class="payment-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900">
+                    <i class="ri-map-2-line"></i> Africa
+                </button>
+                <button onclick="switchPaymentTab('zimbabwe')" id="tab-zimbabwe" class="payment-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900">
+                    <i class="ri-flag-line"></i> Zimbabwe
+                </button>
+                <button onclick="switchPaymentTab('wallet')" id="tab-wallet" class="payment-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900">
+                    <i class="ri-wallet-3-line"></i> Wallet
+                </button>
+            </div>
+        </div>
+        
+        <!-- TAB: INTERNATIONAL PAYMENTS -->
+        <div id="international-tab" class="payment-tab-content">
+            <div class="space-y-3">
+                <!-- Credit/Debit Card -->
+                <button onclick="selectPaymentMethod('card')" class="payment-method-btn w-full p-4 border rounded-lg hover:border-green-500 hover:bg-green-50 transition flex items-center gap-3">
+                    <i class="ri-bank-card-line text-2xl text-blue-600"></i>
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold">Credit/Debit Card</div>
+                        <div class="text-xs text-gray-500">Visa, Mastercard, Amex</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                </button>
+                
+                <!-- PayPal (future) -->
+                <div class="w-full p-4 border rounded-lg bg-gray-50 opacity-50 flex items-center gap-3">
+                    <i class="ri-paypal-fill text-2xl text-blue-400"></i>
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold text-gray-600">PayPal</div>
+                        <div class="text-xs text-gray-500">Coming soon</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TAB: AFRICAN PAYMENTS -->
+        <div id="africa-tab" class="payment-tab-content hidden">
+            <div class="space-y-3">
+                <!-- M-Pesa -->
+                <button onclick="selectPaymentMethod('mpesa')" class="payment-method-btn w-full p-4 border rounded-lg hover:border-green-500 hover:bg-green-50 transition flex items-center gap-3">
+                    <img src="https://via.placeholder.com/40?text=Mpesa" class="w-10 h-10 rounded" alt="M-Pesa">
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold">M-Pesa (Kenya)</div>
+                        <div class="text-xs text-gray-500">Pay via phone number</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                </button>
+                
+                <!-- Airtel Money -->
+                <button onclick="selectPaymentMethod('airtel')" class="payment-method-btn w-full p-4 border rounded-lg hover:border-green-500 hover:bg-green-50 transition flex items-center gap-3">
+                    <i class="ri-smartphone-line text-2xl text-red-600"></i>
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold">Airtel Money (East Africa)</div>
+                        <div class="text-xs text-gray-500">Mobile money transfer</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- TAB: ZIMBABWE PAYMENTS -->
+        <div id="zimbabwe-tab" class="payment-tab-content hidden">
+            <div class="space-y-3">
+                <!-- EcoCash -->
+                <button onclick="selectPaymentMethod('ecocash')" class="payment-method-btn w-full p-4 border rounded-lg hover:border-green-500 hover:bg-green-50 transition flex items-center gap-3">
+                    <i class="ri-smartphone-line text-2xl text-green-600"></i>
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold">EcoCash 🇿🇼</div>
+                        <div class="text-xs text-gray-500">Zimbabwe's #1 mobile money</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                </button>
+                
+                <!-- OneMoney -->
+                <button onclick="selectPaymentMethod('onemoney')" class="payment-method-btn w-full p-4 border rounded-lg hover:border-green-500 hover:bg-green-50 transition flex items-center gap-3">
+                    <i class="ri-smartphone-line text-2xl text-blue-600"></i>
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold">OneMoney (NetOne)</div>
+                        <div class="text-xs text-gray-500">Zimbabwe mobile money</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                </button>
+                
+                <!-- Telecash -->
+                <button onclick="selectPaymentMethod('telecash')" class="payment-method-btn w-full p-4 border rounded-lg hover:border-green-500 hover:bg-green-50 transition flex items-center gap-3">
+                    <i class="ri-smartphone-line text-2xl text-red-600"></i>
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold">Telecash (Telecel)</div>
+                        <div class="text-xs text-gray-500">Zimbabwe mobile money</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                </button>
+                
+                <!-- Zipit -->
+                <button onclick="selectPaymentMethod('zipit')" class="payment-method-btn w-full p-4 border rounded-lg hover:border-green-500 hover:bg-green-50 transition flex items-center gap-3">
+                    <i class="ri-bank-line text-2xl text-indigo-600"></i>
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold">Zipit (Instant Bank)</div>
+                        <div class="text-xs text-gray-500">All Zimbabwe banks</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                </button>
+                
+                <!-- RTGS Transfer -->
+                <button onclick="selectPaymentMethod('rtgs')" class="payment-method-btn w-full p-4 border rounded-lg hover:border-green-500 hover:bg-green-50 transition flex items-center gap-3">
+                    <i class="ri-bank-card-line text-2xl text-purple-600"></i>
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold">RTGS Bank Transfer</div>
+                        <div class="text-xs text-gray-500">Direct bank transfer</div>
+                    </div>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- TAB: WALLET -->
+        <div id="wallet-tab" class="payment-tab-content hidden">
+            <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 border border-blue-200 text-center">
+                <i class="ri-wallet-3-line text-4xl text-blue-600 mb-3"></i>
+                <div class="text-sm text-gray-600">Available Balance</div>
+                <div id="walletBalance" class="text-3xl font-bold text-blue-600 mb-4">$0.00</div>
+                <button onclick="redirectToTopUp()" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition font-medium">
+                    Top Up Wallet
+                </button>
+                <p class="text-xs text-gray-500 mt-3">Or use existing balance</p>
+            </div>
+        </div>
+        
+        <!-- Payment Form Container -->
+        <div id="paymentFormContainer" class="mt-6 mb-6 hidden">
+            <!-- Dynamic form loaded based on selected method -->
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex gap-3 mt-6">
+            <button onclick="closePaymentModal()" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
+                Cancel
+            </button>
+            <button id="payButton" onclick="processPayment()" class="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hidden hover:shadow-lg transition">
+                <i class="ri-check-line"></i> Pay Now
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.payment-method-btn {
+    border-color: #e5e7eb;
+}
+
+.payment-method-btn.selected {
+    border-color: #16a34a;
+    background-color: #f0fdf4;
+}
+</style>
+
+<script>
+let selectedPaymentMethod = null;
+let currentPaymentAmount = 0;
+let currentOrderId = null;
+
+// Payment form templates
+const paymentForms = {
+    card: `
+        <div class="space-y-4">
+            <div id="card-element" class="p-3 border bordered rounded-lg">
+                <!-- Stripe card element will be mounted here -->
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cardholder Name</label>
+                    <input type="text" id="cardholderName" placeholder="John Doe" class="w-full border rounded-lg px-3 py-2">
+                </div>
+            </div>
+        </div>
+    `,
+    mpesa: `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">M-Pesa Number</label>
+                <div class="flex gap-2">
+                    <span class="inline-flex items-center px-3 bg-gray-100 border border-r-0 rounded-l-lg">+254</span>
+                    <input type="tel" id="mpesaNumber" placeholder="712345678" class="flex-1 border rounded-r-lg px-3 py-2" maxlength="9">
+                </div>
+                <p class="text-xs text-gray-500 mt-1">You'll receive a prompt on your phone</p>
+            </div>
+        </div>
+    `,
+    ecocash: `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">EcoCash Number</label>
+                <div class="flex gap-2">
+                    <span class="inline-flex items-center px-3 bg-gray-100 border border-r-0 rounded-l-lg">+263</span>
+                    <input type="tel" id="ecocashNumber" placeholder="77XXXXXXX" class="flex-1 border rounded-r-lg px-3 py-2" maxlength="9">
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Enter your registered EcoCash number. You'll get a payment prompt.</p>
+            </div>
+        </div>
+    `,
+    zipit: `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Select Your Bank</label>
+                <select id="zipitBank" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">-- Select Bank --</option>
+                    <option value="CBZ">CBZ Bank</option>
+                    <option value="NMB">NMB Bank</option>
+                    <option value="Stanbic">Stanbic Bank</option>
+                    <option value="StanChart">Standard Chartered</option>
+                    <option value="FBC">FBC Bank</option>
+                    <option value="Nedbank">Nedbank</option>
+                    <option value="ZB">ZB Bank</option>
+                    <option value="Metbank">Metbank</option>
+                    <option value="POSB">POSB</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+                <input type="text" id="zipitAccount" placeholder="3-digit code + account" class="w-full border rounded-lg px-3 py-2">
+            </div>
+            <div class="bg-blue-50 rounded-lg p-3 text-sm text-blue-800 border border-blue-200">
+                <i class="ri-information-line"></i> You'll be redirected to your bank's secure page
+            </div>
+        </div>
+    `,
+    rtgs: `
+        <div class="space-y-4">
+            <div class="bg-gray-50 rounded-lg p-4">
+                <p class="text-sm font-medium mb-3">Bank Transfer Details:</p>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between"><span>Bank:</span><strong>FarmWise Trust Bank</strong></div>
+                    <div class="flex justify-between"><span>Account:</span><strong>1001234567890</strong></div>
+                    <div class="flex justify-between"><span>Reference:</span><strong id="rtgsRef"></strong></div>
+                    <div class="flex justify-between"><span>Amount (USD):</span><strong id="rtgsAmount"></strong></div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Upload Payment Receipt</label>
+                <input type="file" id="rtgsReceipt" accept="image/*,.pdf" class="w-full border rounded-lg px-3 py-2">
+                <p class="text-xs text-gray-500 mt-1">Screenshot or PDF of transfer confirmation</p>
+            </div>
+        </div>
+    `,
+    onemoney: `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">OneMoney Number</label>
+                <div class="flex gap-2">
+                    <span class="inline-flex items-center px-3 bg-gray-100 border border-r-0 rounded-l-lg">+263</span>
+                    <input type="tel" id="onemoneyNumber" placeholder="78XXXXXXX" class="flex-1 border rounded-r-lg px-3 py-2" maxlength="9">
+                </div>
+            </div>
+        </div>
+    `,
+    telecash: `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Telecash Number</label>
+                <div class="flex gap-2">
+                    <span class="inline-flex items-center px-3 bg-gray-100 border border-r-0 rounded-l-lg">+263</span>
+                    <input type="tel" id="telecashNumber" placeholder="71XXXXXXX" class="flex-1 border rounded-r-lg px-3 py-2" maxlength="9">
+                </div>
+            </div>
+        </div>
+    `,
+    airtel: `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Airtel Money Number</label>
+                <input type="tel" id="airtelNumber" placeholder="Your Airtel Money number" class="w-full border rounded-lg px-3 py-2">
+            </div>
+        </div>
+    `,
+    wallet: `
+        <div class="bg-green-50 rounded-lg p-4 border border-green-200 text-center">
+            <p class="text-sm text-gray-600">Pay from your FarmWise wallet</p>
+            <p class="text-lg font-bold text-green-600 mt-2">Confirmed</p>
+        </div>
+    `
+};
+
+function openPaymentModal(amount, orderId) {
+    currentPaymentAmount = amount;
+    currentOrderId = orderId;
+    
+    document.getElementById('paymentAmount').innerHTML = `USD ${parseFloat(amount).toFixed(2)}`;
+    document.getElementById('rtgsRef').innerHTML = `FW-${orderId}`;
+    document.getElementById('rtgsAmount').innerHTML = `USD ${parseFloat(amount).toFixed(2)}`;
+    
+    // Fetch wallet balance
+    fetch('/api/wallet/balance/', {
+        headers: {'X-CSRFToken': getCsrfToken()}
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById('walletBalance').innerHTML = `$${parseFloat(data.balance).toFixed(2)}`;
+    })
+    .catch(err => console.error('Error fetching wallet:', err));
+    
+    document.getElementById('paymentModal').classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+    document.getElementById('paymentFormContainer').classList.add('hidden');
+    document.getElementById('payButton').classList.add('hidden');
+    selectedPaymentMethod = null;
+}
+
+function switchPaymentTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('[id$="-tab"]').forEach(tab => {
+        tab.classList.add('hidden');
+    });
+    
+    // Deselect all tabs
+    document.querySelectorAll('.payment-tab').forEach(tab => {
+        tab.classList.remove('border-b-2', 'border-green-600', 'text-green-600');
+        tab.classList.add('border-transparent', 'text-gray-600');
+    });
+    
+    // Show selected tab
+    document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+    document.getElementById(`tab-${tabName}`).classList.remove('border-transparent', 'text-gray-600');
+    document.getElementById(`tab-${tabName}`).classList.add('border-b-2', 'border-green-600', 'text-green-600');
+}
+
+function selectPaymentMethod(method) {
+    selectedPaymentMethod = method;
+    
+    // Update button styles
+    document.querySelectorAll('.payment-method-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+    
+    // Show form and pay button
+    const formContainer = document.getElementById('paymentFormContainer');
+    formContainer.innerHTML = paymentForms[method] || '';
+    formContainer.classList.remove('hidden');
+    document.getElementById('payButton').classList.remove('hidden');
+}
+
+function processPayment() {
+    if (!selectedPaymentMethod) return;
+    
+    const paymentData = {
+        amount: currentPaymentAmount,
+        order_id: currentOrderId,
+        method: selectedPaymentMethod,
+        currency: 'USD'
+    };
+    
+    // Collect method-specific data
+    if (selectedPaymentMethod === 'mpesa') {
+        paymentData.phone = document.getElementById('mpesaNumber').value;
+    } else if (selectedPaymentMethod === 'ecocash') {
+        paymentData.phone = document.getElementById('ecocashNumber').value;
+    } else if (selectedPaymentMethod === 'zipit') {
+        paymentData.bank = document.getElementById('zipitBank').value;
+        paymentData.account = document.getElementById('zipitAccount').value;
+    } else if (selectedPaymentMethod === 'rtgs') {
+        const receipt = document.getElementById('rtgsReceipt').files[0];
+        // Handle file upload
+    }
+    
+    const payBtn = document.getElementById('payButton');
+    payBtn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Processing...';
+    payBtn.disabled = true;
+    
+    fetch('/api/process-payment/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(paymentData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Payment initiated successfully!');
+            closePaymentModal();
+            location.reload();
+        } else {
+            alert('Payment failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('Payment error: ' + error.message);
+    })
+    .finally(() => {
+        payBtn.innerHTML = '<i class="ri-check-line"></i> Pay Now';
+        payBtn.disabled = false;
+    });
+}
+
+function redirectToTopUp() {
+    window.location.href = '/wallet/top-up/';
+}
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+</script>
