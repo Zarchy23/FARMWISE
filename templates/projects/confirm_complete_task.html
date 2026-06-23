@@ -1,36 +1,123 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load permissions %}
 
 {% block title %}Complete Task - FarmWise{% endblock %}
 
+{% block page_title %}Complete Task{% endblock %}
+
 {% block content %}
-<div class="container mx-auto px-4 py-6 max-w-md">
+<div class="container mx-auto px-4 py-6 max-w-2xl">
+    <!-- Breadcrumb -->
+    <div class="mb-6 flex items-center space-x-2 text-sm text-gray-600">
+        <a href="{% url 'core:project_list' %}" class="hover:text-green-600"><i class="ri-home-line"></i> Projects</a>
+        <i class="ri-arrow-right-s-line"></i>
+        <a href="{% url 'core:project_detail' project.id %}" class="hover:text-green-600">{{ project.name }}</a>
+        <i class="ri-arrow-right-s-line"></i>
+        <span>Complete Task</span>
+    </div>
+
     <div class="bg-white rounded-lg shadow-md p-8">
-        <!-- Success Icon -->
-        <div class="text-center mb-6">
-            <div class="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
-                <i class="ri-check-line text-green-600 text-3xl"></i>
+        <!-- Title Card -->
+        <div class="text-center mb-8">
+            <div class="bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                <i class="ri-check-line text-green-600 text-4xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Mark Task as Complete</h1>
+            <p class="text-gray-600">
+                You are about to mark "<strong>{{ task.name }}</strong>" as complete in project "<strong>{{ project.name }}</strong>"
+            </p>
+        </div>
+
+        <!-- Task Details -->
+        <div class="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
+            <h3 class="font-semibold text-gray-800 mb-4">Task Details</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-gray-600">Task Name</p>
+                    <p class="font-medium text-gray-800">{{ task.name }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Status</p>
+                    <span class="inline-block px-3 py-1 rounded-full text-sm font-semibold {% if task.completed %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                        {% if task.completed %}Completed{% else %}Pending{% endif %}
+                    </span>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Due Date</p>
+                    <p class="font-medium text-gray-800">{{ task.due_date|date:"M d, Y"|default:"Not set" }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Priority</p>
+                    <span class="inline-block px-3 py-1 rounded-full text-sm font-semibold 
+                        {% if task.priority == 'high' %}bg-red-100 text-red-800
+                        {% elif task.priority == 'medium' %}bg-orange-100 text-orange-800
+                        {% else %}bg-blue-100 text-blue-800{% endif %}">
+                        {{ task.get_priority_display|default:"Not set" }}
+                    </span>
+                </div>
+            </div>
+            {% if task.description %}
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <p class="text-sm text-gray-600">Description</p>
+                <p class="text-gray-800">{{ task.description }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Warning Message -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+            <div class="flex items-start">
+                <i class="ri-information-line text-blue-600 text-lg mr-3 mt-0.5"></i>
+                <div>
+                    <h4 class="font-semibold text-blue-900">Action Confirmation</h4>
+                    <p class="text-sm text-blue-800">This action will mark the task as complete and update the project timeline. You can still edit or reopen the task later if needed.</p>
+                </div>
             </div>
         </div>
 
-        <!-- Message -->
-        <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Mark Task Complete?</h1>
-        <p class="text-gray-600 text-center mb-6">
-            Are you sure you want to mark <strong>"{{ task.name }}"</strong> as complete?
-        </p>
+        <!-- Permission Check -->
+        {% if not user|can_edit:project %}
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+            <div class="flex items-center">
+                <i class="ri-shield-alert-line text-red-600 text-lg mr-3"></i>
+                <div>
+                    <h4 class="font-semibold text-red-900">Permission Denied</h4>
+                    <p class="text-sm text-red-800">Only the project owner can mark tasks as complete.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
-        <!-- Buttons -->
+        <!-- Action Buttons -->
         <div class="flex gap-4">
             <form method="post" class="flex-1">
                 {% csrf_token %}
-                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg transition">
-                    <i class="ri-check-line"></i> Yes, Complete
+                <button type="submit" 
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition flex items-center justify-center gap-2" 
+                        {% if not user|can_edit:project %}disabled{% endif %}>
+                    <i class="ri-check-line text-lg"></i> 
+                    Yes, Mark Complete
                 </button>
             </form>
-            <a href="{% url 'core:project_detail' project.id %}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-medium px-6 py-2 rounded-lg text-center transition">
-                <i class="ri-close-line"></i> Cancel
+            <a href="{% url 'core:project_detail' project.id %}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-semibold px-6 py-3 rounded-lg text-center transition flex items-center justify-center gap-2">
+                <i class="ri-close-line text-lg"></i> 
+                Cancel
+            </a>
+        </div>
+
+        <!-- Back Navigation -->
+        <div class="mt-6 pt-6 border-t border-gray-200">
+            <a href="{% url 'core:project_detail' project.id %}" class="text-green-600 hover:text-green-700 font-medium flex items-center gap-2">
+                <i class="ri-arrow-left-line"></i> Back to Project
             </a>
         </div>
     </div>
 </div>
+
+<style>
+    button:disabled {
+        @apply opacity-50 cursor-not-allowed !important;
+    }
+</style>
 {% endblock %}

@@ -1,5 +1,5 @@
 # core/services/pest_detection.py
-# FREE pest detection using Google Gemini (free tier) or rule-based approach
+# FREE pest detection using multiple AI providers with automatic fallback
 
 import logging
 import os
@@ -10,6 +10,15 @@ from io import BytesIO
 from decouple import config
 
 logger = logging.getLogger(__name__)
+
+# Import multi-AI service
+try:
+    from core.services.multi_ai_service import multi_ai_service
+    MULTI_AI_AVAILABLE = True
+    logger.info("[PEST_DETECTION] Multi-AI service available")
+except ImportError:
+    MULTI_AI_AVAILABLE = False
+    logger.warning("[PEST_DETECTION] Multi-AI service not available, using Gemini only")
 
 # Production settings - Read from Django settings if available, fallback to environment
 try:
@@ -99,6 +108,27 @@ class GeminiPestDetector:
             logger.warning("[DETECT_PEST] 🚫 PRODUCTION MODE - GEMINI DISABLED - Returning fallback immediately")
             return RuleBasedPestDetector.get_fallback_response("Production environment: Using offline detection")
         
+        # Try multi-AI service first if available
+        if MULTI_AI_AVAILABLE:
+            logger.info("[DETECT_PEST] Using multi-AI service with automatic fallback")
+            try:
+                result = multi_ai_service.detect_pest(image_file)
+                if result.get('success'):
+                    logger.info(f"[DETECT_PEST] ✓ Multi-AI success with provider: {result.get('provider')}")
+                    return {
+                        'detected_issue': result.get('pest_name', 'Unknown'),
+                        'confidence': result.get('confidence', 0),
+                        'severity': 'medium',
+                        'description': f'Detected by {result.get("provider")} AI',
+                        'treatment': result.get('treatment', 'Consult agricultural extension'),
+                        'prevention': 'Regular monitoring and proper crop management',
+                        'organic_options': 'Use organic alternatives when available',
+                        'provider': result.get('provider'),
+                    }
+            except Exception as e:
+                logger.warning(f"[DETECT_PEST] Multi-AI service failed: {str(e)}, falling back to Gemini")
+        
+        # Fallback to Gemini
         logger.info(f"[GEMINI] Gemini check: available={self.available}, model={self.model}")
         
         if not self.available or not self.model:
@@ -369,7 +399,7 @@ Be accurate - farmers depend on this information."""
             )
             def call_openai_api():
                 response = self.client.chat.completions.create(
-                    model="gpt-4-vision-preview",
+                    model="gpt-4o",
                     messages=[
                         {
                             "role": "user",

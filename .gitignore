@@ -49,6 +49,7 @@ db.sqlite3-journal
 .env
 .env.local
 .env.*.local
+.env.payments
 
 # OS
 .DS_Store

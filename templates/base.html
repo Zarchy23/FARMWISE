@@ -52,6 +52,7 @@
     <!-- Mobile Sidebar Overlay -->
     <div x-show="sidebarOpen" x-cloak class="fixed inset-0 bg-black bg-opacity-50 z-20" @click="sidebarOpen = false"></div>
 
+    {% block sidebar %}
     <!-- Sidebar -->
     <aside class="fixed left-0 top-0 z-30 h-screen w-64 bg-green-800 text-white transform transition-transform duration-300 ease-in-out overflow-y-auto" 
            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
@@ -330,6 +331,32 @@
                 </div>
             </div>
 
+            <!-- PHASE 5 Analytics (Feature) - Real-time metrics -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'analytics' ? null : 'analytics'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-chart-line-fill"></i><span>Analytics</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'analytics' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'analytics'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:analytics_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                </div>
+            </div>
+
+            <!-- PHASE 5 IoT Devices (Feature) - Device management -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'iot' ? null : 'iot'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-wifi-line"></i><span>IoT Devices</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'iot' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'iot'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:iot_devices' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Devices</a>
+                    <a href="{% url 'core:iot_provisioning' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Setup</a>
+                    <a href="{% url 'core:iot_real_time_monitoring' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Monitoring</a>
+                </div>
+            </div>
+            
             <!-- Carbon Footprint (Feature 11) - Environmental Tracking -->
             <div>
                 <button @click="expandedMenu = expandedMenu === 'carbon' ? null : 'carbon'" 
@@ -378,9 +405,10 @@
             </div>
         </nav>
     </aside>
+    {% endblock %}
 
     <!-- Main Content -->
-    <div class="md:ml-64 min-h-screen">
+    <div class="{% block main_content_class %}md:ml-64{% endblock %} min-h-screen">
         <!-- Top Navigation -->
         <nav class="bg-white shadow-sm sticky top-0 z-10">
             <div class="px-4 py-3 flex justify-between items-center">

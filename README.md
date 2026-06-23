@@ -428,5 +428,5 @@ Built with Django, Tailwind CSS, and open-source contributions.
 
 **Status**: ✅ **COMPLETE** - All major features implemented and templates created with real data display.
 
-Last Updated: April 3, 2026
-Version: 1.0.0
+Last Updated: June 13, 2026
+Version: 2.0.0

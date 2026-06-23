@@ -917,6 +917,15 @@ class WorkerForm(forms.ModelForm):
         })
     )
     
+    new_worker_phone = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+            'placeholder': 'Phone number (e.g., +254712345678)'
+        })
+    )
+    
     worker = forms.ModelChoiceField(
         queryset=User.objects.all(),
         required=False,

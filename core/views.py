@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.db.models import Sum, Count, Q, Avg, F
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.core.paginator import Paginator
 from datetime import timedelta
@@ -2411,6 +2411,13 @@ def add_worker(request):
             
             # If new worker name provided, create new user
             if new_worker_name and not worker_user:
+                # Get phone number from form
+                new_worker_phone = form.cleaned_data.get('new_worker_phone')
+                
+                if not new_worker_phone:
+                    form.add_error('new_worker_phone', 'Phone number is required when creating a new worker')
+                    return render(request, 'labor/add_worker.html', {'form': form})
+                
                 # Generate username from the name
                 username = new_worker_name.lower().replace(' ', '_')
                 # Ensure unique username
@@ -2420,21 +2427,18 @@ def add_worker(request):
                     username = f"{base_username}{counter}"
                     counter += 1
                 
-                # Generate unique placeholder phone number
-                phone_number = f"+255{username[:10]}"
-                counter = 1
-                while User.objects.filter(phone_number=phone_number).exists():
-                    phone_number = f"+255{username[:8]}{counter}"
-                    counter += 1
+                # Ensure unique phone number
+                if User.objects.filter(phone_number=new_worker_phone).exists():
+                    form.add_error('new_worker_phone', 'This phone number is already registered')
+                    return render(request, 'labor/add_worker.html', {'form': form})
                 
-                # Create the user with a placeholder phone number
-                # Phone number will need to be updated later by the user
+                # Create the user with the provided phone number
                 worker_user = User.objects.create_user(
                     username=username,
                     first_name=new_worker_name.split()[0],
                     last_name=' '.join(new_worker_name.split()[1:]) if len(new_worker_name.split()) > 1 else '',
                     user_type='labor',
-                    phone_number=phone_number
+                    phone_number=new_worker_phone
                 )
                 form.instance.worker = worker_user
             
@@ -4454,3 +4458,112 @@ def export_marketplace_products(request):
     except Exception as e:
         messages.error(request, f'Error exporting marketplace products: {str(e)}')
         return redirect('core:marketplace')
+
+
+# ============================================================
+# ANALYTICS DASHBOARD (Real-time metrics)
+# ============================================================
+
+@login_required
+def analytics_dashboard(request):
+    """Comprehensive system-wide analytics dashboard"""
+    from core.services.system_analytics_service import SystemAnalyticsService
+    
+    farm_id = request.GET.get('farm_id')
+    days = int(request.GET.get('days', 30))
+    
+    # Get complete dashboard data
+    dashboard_data = SystemAnalyticsService.get_complete_dashboard(request.user, farm_id)
+    
+    # Get user's farms for filter dropdown
+    from core.models import Farm
+    farms = Farm.objects.filter(owner=request.user)
+    
+    context = {
+        'dashboard': dashboard_data,
+        'farms': farms,
+        'selected_farm': farm_id,
+        'days': days,
+    }
+    return render(request, 'analytics/dashboard.html', context)
+
+
+@login_required
+def generate_analytics_report(request):
+    """Generate and export analytics report"""
+    from core.services.system_analytics_service import SystemAnalyticsService
+    from core.export_service import ExportService
+    import json
+    
+    farm_id = request.GET.get('farm_id')
+    days = int(request.GET.get('days', 30))
+    report_type = request.GET.get('type', 'json')
+    
+    # Get complete dashboard data
+    dashboard_data = SystemAnalyticsService.get_complete_dashboard(request.user, farm_id)
+    
+    if report_type == 'json':
+        # Return JSON response
+        response = JsonResponse(dashboard_data)
+        response['Content-Disposition'] = f'attachment; filename="farmwise_analytics_{timezone.now().strftime("%Y%m%d_%H%M%S")}.json"'
+        return response
+    
+    elif report_type == 'pdf':
+        # Generate PDF report using export service
+        try:
+            export_service = ExportService()
+            pdf_file = export_service.generate_analytics_pdf(dashboard_data, request.user)
+            
+            with open(pdf_file, 'rb') as f:
+                response = HttpResponse(f.read(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="farmwise_analytics_{timezone.now().strftime("%Y%m%d_%H%M%S")}.pdf"'
+                return response
+        except Exception as e:
+            messages.error(request, f'Error generating PDF report: {str(e)}')
+            return redirect('core:analytics_dashboard')
+    
+    else:
+        messages.error(request, 'Invalid report type')
+        return redirect('core:analytics_dashboard')
+
+
+# ============================================================
+# IoT DEVICE MANAGEMENT
+# ============================================================
+
+@login_required
+def iot_devices(request):
+    """List IoT devices connected to farms"""
+    farms = Farm.objects.filter(owner=request.user)
+    
+    # In a real implementation, this would connect to actual IoT devices
+    # For now, show a placeholder dashboard
+    context = {
+        'farms': farms,
+        'device_count': 0,
+        'active_devices': 0,
+        'last_update': timezone.now(),
+    }
+    return render(request, 'iot/devices.html', context)
+
+
+@login_required
+def iot_provisioning(request):
+    """IoT device provisioning and setup"""
+    farms = Farm.objects.filter(owner=request.user)
+    
+    context = {
+        'farms': farms,
+    }
+    return render(request, 'iot/provisioning.html', context)
+
+
+@login_required
+def iot_real_time_monitoring(request):
+    """Real-time monitoring of IoT devices"""
+    farms = Farm.objects.filter(owner=request.user)
+    
+    context = {
+        'farms': farms,
+    }
+    return render(request, 'iot/real_time_monitoring.html', context)

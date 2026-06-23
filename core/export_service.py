@@ -38,8 +38,189 @@ class ExportService:
         ('labor', 'Labor Records'),
         ('pest_reports', 'Pest Reports'),
         ('insurance', 'Insurance Policies'),
+        ('analytics', 'System Analytics'),
         ('all', 'All Data'),
     ]
+    
+    @staticmethod
+    def generate_analytics_pdf(dashboard_data, user):
+        """Generate PDF report for analytics dashboard"""
+        from django.conf import settings
+        import os
+        from reportlab.lib.units import inch
+        
+        # Create temporary file
+        filename = f"analytics_report_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = os.path.join(settings.MEDIA_ROOT, 'reports', filename)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        doc = SimpleDocTemplate(filepath, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#2E7D32'),
+            spaceAfter=30,
+        )
+        story.append(Paragraph("FarmWise Analytics Report", title_style))
+        story.append(Paragraph(f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Overview Section
+        if dashboard_data.get('overview'):
+            story.append(Paragraph("Farm Overview", styles['Heading2']))
+            overview = dashboard_data['overview']
+            overview_data = [
+                ['Metric', 'Value'],
+                ['Total Farms', str(overview.get('total_farms', 0))],
+                ['Total Fields', str(overview.get('total_fields', 0))],
+                ['Active Crops', str(overview.get('active_crops', 0))],
+                ['Total Livestock', str(overview.get('total_livestock', 0))],
+            ]
+            overview_table = Table(overview_data, colWidths=[3*inch, 2*inch])
+            overview_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#4CAF50')),
+                ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            story.append(overview_table)
+            story.append(Spacer(1, 0.3*inch))
+        
+        # Financial Section
+        if dashboard_data.get('financial'):
+            story.append(Paragraph("Financial Summary", styles['Heading2']))
+            financial = dashboard_data['financial']
+            financial_data = [
+                ['Metric', 'Value'],
+                ['Total Revenue', f"${financial.get('total_revenue', 0):.2f}"],
+                ['Total Expenses', f"${financial.get('total_expenses', 0):.2f}"],
+                ['Net Profit', f"${financial.get('net_profit', 0):.2f}"],
+                ['Sales Count', str(financial.get('sales_count', 0))],
+            ]
+            financial_table = Table(financial_data, colWidths=[3*inch, 2*inch])
+            financial_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#1976D2')),
+                ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            story.append(financial_table)
+            story.append(Spacer(1, 0.3*inch))
+        
+        # Crop Analytics
+        if dashboard_data.get('crops'):
+            story.append(Paragraph("Crop Analytics", styles['Heading2']))
+            crops = dashboard_data['crops']
+            crop_data = [['Metric', 'Value']]
+            crop_data.extend([
+                ['Total Crops', str(crops.get('total_crops', 0))],
+                ['Active', str(crops.get('active_crops', 0))],
+                ['Harvested', str(crops.get('harvested_crops', 0))],
+                ['Planned', str(crops.get('planned_crops', 0))],
+            ])
+            crop_table = Table(crop_data, colWidths=[3*inch, 2*inch])
+            crop_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#FF9800')),
+                ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            story.append(crop_table)
+            story.append(Spacer(1, 0.3*inch))
+        
+        # Livestock Analytics
+        if dashboard_data.get('livestock'):
+            story.append(Paragraph("Livestock Analytics", styles['Heading2']))
+            livestock = dashboard_data['livestock']
+            livestock_data = [['Metric', 'Value']]
+            livestock_data.extend([
+                ['Total Animals', str(livestock.get('total_animals', 0))],
+                ['Health Records', str(livestock.get('recent_health_records', 0))],
+                ['Upcoming Breedings', str(livestock.get('upcoming_breedings', 0))],
+            ])
+            livestock_table = Table(livestock_data, colWidths=[3*inch, 2*inch])
+            livestock_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#9C27B0')),
+                ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            story.append(livestock_table)
+            story.append(Spacer(1, 0.3*inch))
+        
+        # Equipment Analytics
+        if dashboard_data.get('equipment'):
+            story.append(Paragraph("Equipment Analytics", styles['Heading2']))
+            equipment = dashboard_data['equipment']
+            equipment_data = [['Metric', 'Value']]
+            equipment_data.extend([
+                ['Total Equipment', str(equipment.get('total_equipment', 0))],
+                ['Available', str(equipment.get('available', 0))],
+                ['Rented Out', str(equipment.get('rented_out', 0))],
+                ['Maintenance Due', str(equipment.get('maintenance_due', 0))],
+            ])
+            equipment_table = Table(equipment_data, colWidths=[3*inch, 2*inch])
+            equipment_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#607D8B')),
+                ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            story.append(equipment_table)
+            story.append(Spacer(1, 0.3*inch))
+        
+        # Pest Detection Analytics
+        if dashboard_data.get('pest_detection'):
+            story.append(Paragraph("Pest Detection Analytics", styles['Heading2']))
+            pest = dashboard_data['pest_detection']
+            pest_data = [['Metric', 'Value']]
+            pest_data.extend([
+                ['Total Reports', str(pest.get('total_reports', 0))],
+                ['AI Detected', str(pest.get('ai_detected', 0))],
+                ['Manual Detected', str(pest.get('manual_detected', 0))],
+                ['Verified', str(pest.get('verified', 0))],
+            ])
+            pest_table = Table(pest_data, colWidths=[3*inch, 2*inch])
+            pest_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#F44336')),
+                ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            story.append(pest_table)
+        
+        # Build PDF
+        doc.build(story)
+        return filepath
     
     @staticmethod
     def export_crops(

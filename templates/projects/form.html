@@ -1,82 +1,347 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ title }} - FarmWise{% endblock %}
+{% block title %}{% if form.instance.id %}Edit Project{% else %}Create Project{% endif %} - FarmWise{% endblock %}
+
+{% block page_title %}{% if form.instance.id %}Edit Project{% else %}Create New Project{% endif %}{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6 max-w-2xl">
-    <div class="bg-white rounded-lg shadow-md p-8">
-        <!-- Header -->
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ title }}</h1>
-        <p class="text-gray-600 mb-6">Fill in the details below</p>
+<div class="container mx-auto px-4 py-6">
+    <!-- Breadcrumbs -->
+    <nav class="flex items-center gap-2 text-sm mb-6">
+        <a href="{% url 'core:project_list' %}" class="text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            <i class="ri-home-line"></i> Home
+        </a>
+        <i class="ri-arrow-right-s-line text-gray-400"></i>
+        <a href="{% url 'core:project_list' %}" class="text-blue-600 hover:text-blue-700">Projects</a>
+        <i class="ri-arrow-right-s-line text-gray-400"></i>
+        <span class="text-gray-600">{% if form.instance.id %}Edit{% else %}Create{% endif %}</span>
+    </nav>
 
-        <!-- Form -->
-        <form method="post" class="space-y-6">
-            {% csrf_token %}
-
-            <!-- Form Errors -->
-            {% if form.non_field_errors %}
-                <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-                    {% for error in form.non_field_errors %}
-                        <p>{{ error }}</p>
-                    {% endfor %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Form -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <!-- Form Header -->
+                <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 text-white">
+                    <h2 class="text-2xl font-bold flex items-center gap-2">
+                        <i class="ri-edit-line"></i>
+                        {% if form.instance.id %}
+                            Edit Project: {{ form.instance.name }}
+                        {% else %}
+                            Create New Project
+                        {% endif %}
+                    </h2>
                 </div>
-            {% endif %}
 
-            <!-- Form Fields -->
-            {% for field in form %}
-                <div>
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
-                        {{ field.label }}
-                        {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
-                    </label>
-                    
-                    {{ field }}
-                    
-                    {% if field.errors %}
-                        <div class="text-red-600 text-sm mt-1">
-                            {% for error in field.errors %}
-                                <p>{{ error }}</p>
-                            {% endfor %}
+                <!-- Form Content -->
+                <form method="post" class="p-6 space-y-6">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Basic Information Section -->
+                    <fieldset class="border-b pb-6">
+                        <legend class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="ri-information-line text-green-600"></i> Basic Information
+                        </legend>
+
+                        <!-- Project Name -->
+                        <div class="mb-6">
+                            <label for="{{ form.name.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                Project Name <span class="text-red-600">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <p class="text-red-600 text-sm mt-2 flex items-start gap-1">
+                                    <i class="ri-error-warning-line flex-shrink-0"></i>
+                                    {{ form.name.errors.0 }}
+                                </p>
+                            {% else %}
+                                <p class="text-gray-600 text-sm mt-1">Give your project a clear, descriptive name</p>
+                            {% endif %}
                         </div>
-                    {% endif %}
-                    
-                    {% if field.help_text %}
-                        <p class="text-gray-600 text-xs mt-1">{{ field.help_text|safe }}</p>
-                    {% endif %}
-                </div>
-            {% endfor %}
 
-            <!-- Buttons -->
-            <div class="flex gap-4 pt-6">
-                <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg transition">
-                    <i class="ri-save-line"></i> Save
-                </button>
-                <a href="{% if project %}{% url 'core:project_detail' project.id %}{% else %}{% url 'core:project_list' %}{% endif %}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-medium px-6 py-2 rounded-lg text-center transition">
-                    <i class="ri-close-line"></i> Cancel
-                </a>
+                        <!-- Farm Selection -->
+                        <div class="mb-6">
+                            <label for="{{ form.farm.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                Farm <span class="text-red-600">*</span>
+                            </label>
+                            {{ form.farm }}
+                            {% if form.farm.errors %}
+                                <p class="text-red-600 text-sm mt-2 flex items-start gap-1">
+                                    <i class="ri-error-warning-line flex-shrink-0"></i>
+                                    {{ form.farm.errors.0 }}
+                                </p>
+                            {% else %}
+                                <p class="text-gray-600 text-sm mt-1">Select the farm where this project will be executed</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-6">
+                            <label for="{{ form.description.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                Description
+                            </label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <p class="text-red-600 text-sm mt-2 flex items-start gap-1">
+                                    <i class="ri-error-warning-line flex-shrink-0"></i>
+                                    {{ form.description.errors.0 }}
+                                </p>
+                            {% else %}
+                                <p class="text-gray-600 text-sm mt-1">Provide detailed information about the project goals and scope</p>
+                            {% endif %}
+                        </div>
+                    </fieldset>
+
+                    <!-- Project Details Section -->
+                    <fieldset class="border-b pb-6">
+                        <legend class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="ri-settings-line text-green-600"></i> Project Details
+                        </legend>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Category -->
+                            <div>
+                                <label for="{{ form.category.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Category <span class="text-red-600">*</span>
+                                </label>
+                                {{ form.category }}
+                                {% if form.category.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.category.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Priority -->
+                            <div>
+                                <label for="{{ form.priority.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Priority <span class="text-red-600">*</span>
+                                </label>
+                                {{ form.priority }}
+                                {% if form.priority.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.priority.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Status -->
+                            <div>
+                                <label for="{{ form.status.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Status <span class="text-red-600">*</span>
+                                </label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.status.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Progress -->
+                            <div>
+                                <label for="{{ form.progress.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Progress (%)
+                                </label>
+                                <div class="flex items-center gap-4">
+                                    {{ form.progress }}
+                                    <span id="progress-display" class="text-lg font-bold text-gray-800 min-w-12">{{ form.progress.value|default:"0" }}%</span>
+                                </div>
+                                {% if form.progress.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.progress.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Timeline Section -->
+                    <fieldset class="border-b pb-6">
+                        <legend class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="ri-calendar-line text-green-600"></i> Timeline
+                        </legend>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Start Date -->
+                            <div>
+                                <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Start Date
+                                </label>
+                                {{ form.start_date }}
+                                {% if form.start_date.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.start_date.errors.0 }}</p>
+                                {% else %}
+                                    <p class="text-gray-600 text-sm mt-1">When the project work begins</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Target Completion Date -->
+                            <div>
+                                <label for="{{ form.target_completion_date.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Target Completion Date
+                                </label>
+                                {{ form.target_completion_date }}
+                                {% if form.target_completion_date.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.target_completion_date.errors.0 }}</p>
+                                {% else %}
+                                    <p class="text-gray-600 text-sm mt-1">Expected completion date</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Budget Section -->
+                    <fieldset class="pb-6">
+                        <legend class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="ri-money-dollar-circle-line text-green-600"></i> Budget
+                        </legend>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Budget -->
+                            <div>
+                                <label for="{{ form.budget.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Estimated Budget (KES)
+                                </label>
+                                {{ form.budget }}
+                                {% if form.budget.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.budget.errors.0 }}</p>
+                                {% else %}
+                                    <p class="text-gray-600 text-sm mt-1">Total budget allocation for this project</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Actual Cost -->
+                            <div>
+                                <label for="{{ form.actual_cost.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    Actual Cost (KES)
+                                </label>
+                                {{ form.actual_cost }}
+                                {% if form.actual_cost.errors %}
+                                    <p class="text-red-600 text-sm mt-2">{{ form.actual_cost.errors.0 }}</p>
+                                {% else %}
+                                    <p class="text-gray-600 text-sm mt-1">Update as expenses are incurred</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Form Actions -->
+                    <div class="flex gap-3 pt-6 border-t">
+                        {% if form.instance.id %}
+                            <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
+                                <i class="ri-save-line"></i> Update Project
+                            </button>
+                            <a href="{% url 'core:project_detail' form.instance.id %}" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
+                                <i class="ri-close-line"></i> Cancel
+                            </a>
+                        {% else %}
+                            <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
+                                <i class="ri-add-line"></i> Create Project
+                            </button>
+                            <a href="{% url 'core:project_list' %}" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
+                                <i class="ri-close-line"></i> Cancel
+                            </a>
+                        {% endif %}
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
+
+        <!-- Sidebar Help & Info -->
+        <div class="lg:col-span-1 space-y-6">
+            <!-- Help Card -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h3 class="text-lg font-bold text-blue-900 mb-3 flex items-center gap-2">
+                    <i class="ri-information-line"></i> Project Creation Tips
+                </h3>
+                <ul class="space-y-3 text-sm text-blue-900">
+                    <li class="flex gap-2">
+                        <i class="ri-check-line text-green-600 font-bold flex-shrink-0 mt-0.5"></i>
+                        <span>Use clear, concise project names for easy identification</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <i class="ri-check-line text-green-600 font-bold flex-shrink-0 mt-0.5"></i>
+                        <span>Set realistic timelines with buffer for unexpected delays</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <i class="ri-check-line text-green-600 font-bold flex-shrink-0 mt-0.5"></i>
+                        <span>Allocate sufficient budget based on project scope</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <i class="ri-check-line text-green-600 font-bold flex-shrink-0 mt-0.5"></i>
+                        <span>Update progress regularly to track completion</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Project Categories Info -->
+            <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                <h3 class="text-lg font-bold text-green-900 mb-3 flex items-center gap-2">
+                    <i class="ri-layout-line"></i> Project Categories
+                </h3>
+                <ul class="space-y-2 text-sm text-green-900">
+                    <li><strong>Infrastructure:</strong> Farm buildings, irrigation, roads</li>
+                    <li><strong>Crop Development:</strong> New crop varieties, farm expansion</li>
+                    <li><strong>Equipment:</strong> Machinery acquisition, maintenance</li>
+                    <li><strong>Capacity Building:</strong> Training, skills development</li>
+                    <li><strong>Environmental:</strong> Sustainability, conservation</li>
+                    <li><strong>Other:</strong> Miscellaneous projects</li>
+                </ul>
+            </div>
+
+            <!-- Status Reference -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h3 class="text-lg font-bold text-yellow-900 mb-3 flex items-center gap-2">
+                    <i class="ri-list-check"></i> Status Guide
+                </h3>
+                <ul class="space-y-2 text-sm text-yellow-900">
+                    <li><strong>Planning:</strong> Initial design phase</li>
+                    <li><strong>Active:</strong> Currently in progress</li>
+                    <li><strong>Paused:</strong> On hold temporarily</li>
+                    <li><strong>Completed:</strong> Finished and closed</li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
-    input:not([type="hidden"]),
-    select,
-    textarea {
-        width: 100%;
-        border: 1px solid #d1d5db;
-        border-radius: 0.5rem;
-        padding: 0.75rem;
-        font-size: 1rem;
+    /* Custom form styling */
+    input[type="text"],
+    input[type="date"],
+    input[type="number"],
+    textarea,
+    select {
+        @apply w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent transition;
     }
-    
-    input:focus,
-    select:focus,
-    textarea:focus {
-        outline: none;
-        border-color: #16a34a;
-        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+
+    textarea {
+        @apply resize-vertical min-h-24;
+    }
+
+    input[type="number"] {
+        @apply max-w-32;
+    }
+
+    input[type="range"] {
+        @apply w-full cursor-pointer;
+    }
+
+    fieldset {
+        @apply border-gray-200;
+    }
+
+    legend {
+        @apply px-4;
     }
 </style>
+
+<script>
+// Update progress display
+document.getElementById('{{ form.progress.id_for_label }}').addEventListener('change', function() {
+    document.getElementById('progress-display').textContent = this.value + '%';
+});
+</script>
 {% endblock %}

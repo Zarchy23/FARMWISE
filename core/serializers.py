@@ -1,14 +1,16 @@
 # core/serializers.py
 # FARMWISE - REST API Serializers for Mobile App Integration
+# NOTE: DRF framework has been removed - this file is no longer used
 
-from rest_framework import serializers
+# from rest_framework import serializers  # DISABLED: DRF removed
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from .models import *
 
 User = get_user_model()
 
-
+# All serializer classes below are disabled due to DRF removal
+# Left in place for reference only - not imported or used
 # ============================================================
 # SECTION 1: USER SERIALIZERS
 # ============================================================

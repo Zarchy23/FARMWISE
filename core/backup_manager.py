@@ -273,8 +273,24 @@ class BackupManager:
     
     def _send_alert(self, message):
         """Send email alert"""
-        # TODO: Implement email alert via Celery task
-        logger.warning(f"ALERT: {message}")
+        try:
+            from django.core.mail import send_mail
+            from django.conf import settings
+            
+            recipient = config('ALERT_EMAIL', default='admin@farmwise.com')
+            subject = f"FarmWise Backup Alert - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [recipient],
+                fail_silently=False,
+            )
+            logger.info(f"✓ Alert email sent to {recipient}")
+        except Exception as e:
+            logger.error(f"✗ Failed to send alert email: {e}")
+            logger.warning(f"ALERT: {message}")
     
     def get_backup_status(self):
         """Get current backup status"""

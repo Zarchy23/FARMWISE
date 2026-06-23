@@ -251,9 +251,24 @@ FarmWise Team
             else:  # harvest
                 sms_message = f"🌾 Reminder: Your {crop.crop_type.name} is ready to harvest on {crop.expected_harvest_date}. - FarmWise"
             
-            # Send SMS via Twilio or other provider
-            # This is a placeholder - implement based on your SMS provider
-            logger.info(f"SMS reminder would be sent to {user.profile.phone_number}: {sms_message}")
+            # Send SMS via Twilio
+            try:
+                from django.conf import settings
+                from twilio.rest import Client
+                
+                if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_PHONE_NUMBER:
+                    client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+                    client.messages.create(
+                        body=sms_message,
+                        from_=settings.TWILIO_PHONE_NUMBER,
+                        to=user.profile.phone_number
+                    )
+                    logger.info(f"✓ SMS sent to {user.profile.phone_number}")
+                else:
+                    logger.warning("Twilio credentials not configured, SMS not sent")
+            except Exception as sms_error:
+                logger.error(f"Failed to send SMS via Twilio: {str(sms_error)}")
+                logger.info(f"SMS reminder would be sent to {user.profile.phone_number}: {sms_message}")
             
         except Exception as e:
             logger.error(f"Error sending SMS reminder: {str(e)}")

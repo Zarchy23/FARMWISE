@@ -1,6 +1,7 @@
 # core/services/weather.py
 # FREE weather service using Open-Meteo - NO API KEY NEEDED!
 # Works perfectly on Render free tier!
+# Now with AI-powered analysis integration
 
 import httpx
 from datetime import datetime, timedelta
@@ -9,6 +10,15 @@ import logging
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
+
+# Import AI service for weather analysis
+try:
+    from core.services.weather_ai_service import weather_ai_service
+    WEATHER_AI_AVAILABLE = True
+    logger.info("[WEATHER] AI analysis service available")
+except ImportError:
+    WEATHER_AI_AVAILABLE = False
+    logger.warning("[WEATHER] AI analysis service not available")
 
 
 class OpenMeteoWeatherService:
@@ -24,6 +34,7 @@ class OpenMeteoWeatherService:
     
     def __init__(self):
         self.client = httpx.Client(timeout=30.0)
+        logger.info("[WEATHER SERVICE] Open-Meteo service initialized (no API key required)")
     
     def get_forecast(self, lat: float, lng: float, days: int = 7) -> Dict:
         """
@@ -208,6 +219,57 @@ class OpenMeteoWeatherService:
         except Exception as e:
             logger.error(f"Historical weather fetch error: {str(e)}")
             return self._get_error_response(str(e))
+    
+    def get_ai_analysis(self, weather_data: Dict, crop_type: str = None) -> Dict:
+        """
+        Get AI-powered weather analysis and recommendations
+        Uses multiple AI providers with automatic fallback
+        """
+        if not WEATHER_AI_AVAILABLE:
+            logger.warning("[WEATHER] AI service not available, skipping AI analysis")
+            return {
+                'success': False,
+                'error': 'AI service not available',
+                'provider': 'none'
+            }
+        
+        try:
+            logger.info("[WEATHER] Requesting AI analysis for weather data")
+            analysis = weather_ai_service.analyze_weather_impact(weather_data, crop_type)
+            logger.info(f"[WEATHER] AI analysis complete: {analysis.get('provider', 'unknown')}")
+            return analysis
+        except Exception as e:
+            logger.error(f"[WEATHER] AI analysis failed: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'provider': 'error'
+            }
+    
+    def get_ai_alert(self, weather_data: Dict, alert_type: str) -> Dict:
+        """
+        Get AI-generated weather alert
+        """
+        if not WEATHER_AI_AVAILABLE:
+            logger.warning("[WEATHER] AI service not available, using basic alert")
+            return {
+                'success': False,
+                'error': 'AI service not available',
+                'provider': 'none'
+            }
+        
+        try:
+            logger.info(f"[WEATHER] Requesting AI alert for {alert_type}")
+            alert = weather_ai_service.generate_weather_alert(weather_data, alert_type)
+            logger.info(f"[WEATHER] AI alert complete: {alert.get('provider', 'unknown')}")
+            return alert
+        except Exception as e:
+            logger.error(f"[WEATHER] AI alert generation failed: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'provider': 'error'
+            }
     
     def _add_agricultural_indicators(self, data: Dict, lat: float, lng: float) -> Dict:
         """Add THI, GDD, and other agricultural metrics"""

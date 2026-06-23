@@ -2,84 +2,14 @@
 # All FarmWise application URLs
 
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
 from . import views
-from . import views_api
 from . import views_pest_verification
 
 app_name = 'core'
 
-# Setup DRF router for API viewsets
-router = DefaultRouter()
-
-# Phase 1: Validation & Activity
-router.register(r'validation-rules', views_api.ValidationRuleViewSet, basename='validation-rule')
-router.register(r'validation-logs', views_api.ValidationLogViewSet, basename='validation-log')
-router.register(r'activities', views_api.ActivityTimelineViewSet, basename='activity')
-router.register(r'user-history', views_api.UserHistoryViewSet, basename='user-history')
-router.register(r'farm-history', views_api.FarmHistoryViewSet, basename='farm-history')
-
-# Phase 2: Help System
-router.register(r'help-content', views_api.HelpContentViewSet, basename='help-content')
-
-# Phase 3: Templates, Recurring Actions, Batch Ops
-router.register(r'templates', views_api.TemplateViewSet, basename='template')
-router.register(r'template-ratings', views_api.TemplateRatingViewSet, basename='template-rating')
-router.register(r'recurring-actions', views_api.RecurringActionViewSet, basename='recurring-action')
-router.register(r'recurring-action-logs', views_api.RecurringActionLogViewSet, basename='recurring-action-log')
-router.register(r'batch-operations', views_api.BatchOperationViewSet, basename='batch-operation')
-
-# Phase 4: Predictions
-router.register(r'predictions', views_api.PredictionViewSet, basename='prediction')
-
-# Phase 5: Scheduled Exports
-router.register(r'scheduled-exports', views_api.ScheduledExportViewSet, basename='scheduled-export')
-
-# Phase 6: Workspace Preferences
-router.register(r'workspace-preferences', views_api.WorkspacePreferenceViewSet, basename='workspace-preference')
-
-# Feature 10: Farmer Network & Knowledge Sharing
-router.register(r'forums', views_api.DiscussionForumViewSet, basename='forum-api')
-router.register(r'forum-threads', views_api.ForumThreadViewSet, basename='forum-thread-api')
-router.register(r'forum-replies', views_api.ForumReplyViewSet, basename='forum-reply-api')
-router.register(r'group-buying-initiatives', views_api.GroupBuyingInitiativeViewSet, basename='group-buying-api')
-router.register(r'group-buying-participants', views_api.GroupBuyingParticipantViewSet, basename='participant-api')
-
-# Feature 11: Carbon Footprint Tracker
-router.register(r'emission-sources', views_api.EmissionSourceViewSet, basename='emission-source-api')
-router.register(r'emission-records', views_api.EmissionRecordViewSet, basename='emission-record-api')
-router.register(r'carbon-sequestration', views_api.CarbonSequestrationViewSet, basename='sequestration-api')
-router.register(r'carbon-reports', views_api.CarbonFootprintReportViewSet, basename='carbon-report-api')
-
-# Feature 12: Farm Mapping & Geofencing
-router.register(r'farm-boundaries', views_api.FarmBoundaryViewSet, basename='boundary-api')
-router.register(r'geofences', views_api.GeofenceViewSet, basename='geofence-api')
-router.register(r'livestock-locations', views_api.LivestockLocationViewSet, basename='location-api')
-router.register(r'geofence-alerts', views_api.GeofenceAlertViewSet, basename='geofence-alert-api')
-
-# Feature 13: Offline Sync & Data Management
-router.register(r'sync-queue', views_api.OfflineSyncQueueViewSet, basename='sync-queue-api')
-router.register(r'sync-conflicts', views_api.SyncConflictViewSet, basename='sync-conflict-api')
-
-# Feature 14: Weather Enhancement
-router.register(r'weather-forecasts', views_api.WeatherForecastViewSet, basename='forecast-api')
-router.register(r'weather-alerts', views_api.WeatherAlertViewSet, basename='weather-alert-api')
-
-# Validation API (custom methods)
-validation_api = views_api.ValidateDataAPIView.as_view({
-    'post': 'crop'
-})
+# DRF routers have been removed - using traditional Django views
 
 urlpatterns = [
-    # ============================================================
-    # API ROUTES (DRF)
-    # ============================================================
-    path('api/', include(router.urls)),
-    path('api/validate/crop/', views_api.ValidateDataAPIView.as_view({'post': 'crop'}), name='api_validate_crop'),
-    path('api/validate/livestock/', views_api.ValidateDataAPIView.as_view({'post': 'livestock'}), name='api_validate_livestock'),
-    path('api/validate/marketplace/', views_api.ValidateDataAPIView.as_view({'post': 'marketplace'}), name='api_validate_marketplace'),
-    path('api/farms/<int:farm_id>/emission-sources/', views_api.get_farm_emission_sources, name='api_farm_emission_sources'),
-    
     # ============================================================
     # HOME & DASHBOARD
     # ============================================================
@@ -312,9 +242,27 @@ urlpatterns = [
     path('projects/<int:pk>/milestone/<int:milestone_id>/achieve/', views.project_achieve_milestone, name='project_achieve_milestone'),
     
     # ============================================================
+    # ANALYTICS - Real-time metrics and KPIs
+    # ============================================================
+    path('analytics/', views.analytics_dashboard, name='analytics_dashboard'),
+    path('analytics/report/', views.generate_analytics_report, name='generate_analytics_report'),
+    
+    # ============================================================
+    # IoT DEVICE MANAGEMENT - Phase 5
+    # ============================================================
+    path('iot/devices/', views.iot_devices, name='iot_devices'),
+    path('iot/provisioning/', views.iot_provisioning, name='iot_provisioning'),
+    path('iot/monitoring/', views.iot_real_time_monitoring, name='iot_real_time_monitoring'),
+    
+    # ============================================================
     # SUPERMARKET MANAGEMENT
     # ============================================================
     path('supermarket/', include('core.urls_supermarket')),
+    
+    # ============================================================
+    # PAYMENT SYSTEM (Phase 3.2)
+    # ============================================================
+    path('webhooks/', include('core.payments.webhooks_urls')),  # Webhook endpoints
     
     # ============================================================
     # LEGACY API ENDPOINTS (for AJAX/JavaScript)
