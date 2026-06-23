@@ -37,6 +37,7 @@ django-redis
 hiredis
 argon2-cffi
 coreapi
+djangorestframework
 google-generativeai
 groq
 openpyxl
