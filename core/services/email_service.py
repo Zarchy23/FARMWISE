@@ -290,6 +290,27 @@ class EmailService:
         )
     
     @staticmethod
+    def send_weekly_summary_email(user, summary_data):
+        """Send weekly farm summary report"""
+        subject = f'📊 FarmWise Weekly Report - {summary_data["start_date"]} to {summary_data["end_date"]}'
+        
+        html_content = render_to_string('emails/weekly_summary.html', {
+            'user': user,
+            'summary': summary_data,
+            'action_link': f'{settings.APP_URL}/analytics/dashboard/',
+            'support_email': settings.DEFAULT_FROM_EMAIL,
+        })
+        
+        text_content = strip_tags(html_content)
+        
+        return EmailService._send_email(
+            subject=subject,
+            message=text_content,
+            html_message=html_content,
+            recipient_list=[user.email]
+        )
+    
+    @staticmethod
     def send_order_confirmation_email(user, order):
         """Send order confirmation for marketplace purchase"""
         subject = f'✅ Order Confirmation #{order.id} - FarmWise Marketplace'

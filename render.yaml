@@ -16,6 +16,20 @@ services:
         fromDatabase:
           name: farmwise_db
           property: connectionString
+      - key: DEFAULT_FROM_EMAIL
+        value: "noreply@farmwise.com"
+      - key: EMAIL_HOST
+        value: "smtp.gmail.com"
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USE_TLS
+        value: "True"
+      - key: SENDGRID_API_KEY
+        generateValue: true
+      - key: REDIS_URL
+        value: "redis://localhost:6379/0"
+      - key: APP_URL
+        value: "https://farmwise.onrender.com"
 
 databases:
   - name: farmwise_db

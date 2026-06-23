@@ -258,6 +258,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'core.tasks.send_overdue_health_emails',
         'schedule': timedelta(hours=12),  # Twice daily - send urgent emails for overdue records
     },
+    'generate-weekly-reports': {
+        'task': 'core.tasks.generate_weekly_reports',
+        'schedule': timedelta(days=7),  # Weekly - send comprehensive weekly summary emails
+    },
 }
 
 # ============================================================
@@ -465,7 +469,7 @@ CORS_ALLOW_HEADERS = [
 # Email Configuration (SendGrid / Gmail SMTP)
 # ============================================================
 
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@farmwise.com')
 
 # Email SMTP Settings (for development/testing)
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')

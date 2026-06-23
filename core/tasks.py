@@ -478,40 +478,84 @@ def generate_daily_reports():
 
 @shared_task
 def generate_weekly_reports():
-    """Generate weekly summary reports"""
+    """Generate weekly summary reports and email them to farm owners"""
     from datetime import timedelta, date
+    from core.services.email_service import EmailService
+    from core.services.system_analytics_service import SystemAnalyticsService
     
     end_date = timezone.now().date()
     start_date = end_date - timedelta(days=7)
     
-    farms = Farm.objects.filter(is_active=True)
+    farms = Farm.objects.filter(status='active')
     report_count = 0
+    email_count = 0
     
     for farm in farms:
-        weekly_income = Transaction.objects.filter(
-            farm=farm,
-            transaction_type='income',
-            date__gte=start_date,
-            date__lte=end_date
-        ).aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
+        # Get comprehensive analytics data for the week
+        analytics_data = SystemAnalyticsService.get_complete_dashboard(farm.owner, farm.id, days=7)
         
-        weekly_expenses = Transaction.objects.filter(
-            farm=farm,
-            transaction_type='expense',
-            date__gte=start_date,
-            date__lte=end_date
-        ).aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
+        # Calculate financial summary
+        financial = analytics_data.get('financial', {})
+        weekly_revenue = financial.get('total_revenue', Decimal('0'))
+        weekly_expenses = financial.get('total_expenses', Decimal('0'))
+        net_profit = weekly_revenue - weekly_expenses
         
+        # Get top performing crops
+        crops_data = analytics_data.get('crops', {})
+        top_crops = []
+        if crops_data.get('crops_by_yield'):
+            top_crops = crops_data['crops_by_yield'][:3]
+        
+        # Get upcoming tasks (from notifications)
+        upcoming_tasks = []
+        pending_notifications = Notification.objects.filter(
+            user=farm.owner,
+            created_at__gte=timezone.now() - timedelta(days=7)
+        ).order_by('-created_at')[:5]
+        for notif in pending_notifications:
+            upcoming_tasks.append(f"{notif.title}: {notif.message[:50]}...")
+        
+        # Get active alerts count
+        alerts_count = Notification.objects.filter(
+            user=farm.owner,
+            notification_type__in=['alert', 'warning'],
+            is_read=False
+        ).count()
+        
+        # Prepare summary data for email
+        summary_data = {
+            'start_date': start_date.strftime('%B %d, %Y'),
+            'end_date': end_date.strftime('%B %d, %Y'),
+            'weekly_revenue': weekly_revenue,
+            'weekly_expenses': weekly_expenses,
+            'net_profit': net_profit,
+            'total_farms': Farm.objects.filter(owner=farm.owner, status='active').count(),
+            'top_performing_crops': top_crops,
+            'upcoming_tasks': upcoming_tasks,
+            'alerts_count': alerts_count,
+        }
+        
+        # Send email if user has email notifications enabled
+        if farm.owner.email:
+            try:
+                EmailService.send_weekly_summary_email(farm.owner, summary_data)
+                email_count += 1
+                logger.info(f"Sent weekly report email to {farm.owner.email}")
+            except Exception as e:
+                logger.error(f"Failed to send weekly report email to {farm.owner.email}: {e}")
+        
+        # Also create notification for in-app reference
         Notification.objects.create(
             user=farm.owner,
             notification_type='info',
             title=f'Weekly Report - {start_date} to {end_date}',
-            message=f'Weekly Summary: Income: ${weekly_income}, Expenses: ${weekly_expenses}, Net: ${weekly_income - weekly_expenses}',
-            link='/reports/financial/'
+            message=f'Weekly Summary: Revenue: ${weekly_revenue}, Expenses: ${weekly_expenses}, Net: ${net_profit}',
+            link='/analytics/dashboard/'
         )
         report_count += 1
     
-    return f"Generated weekly reports for {report_count} farms"
+    logger.info(f"Generated weekly reports for {report_count} farms, sent {email_count} emails")
+    return f"Generated weekly reports for {report_count} farms, sent {email_count} emails"
 
 
 # ============================================================

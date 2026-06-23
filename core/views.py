@@ -4485,6 +4485,8 @@ def analytics_dashboard(request):
     livestock = dashboard_data.get('livestock', {}) or {}
     equipment = dashboard_data.get('equipment', {}) or {}
     pests = dashboard_data.get('pest_detection', {}) or {}
+    iot = dashboard_data.get('iot', {}) or {}
+    trends = dashboard_data.get('trends', {}) or {}
     breakdown = financial.get('breakdown', {}) or {}
 
     chart_data = {
@@ -4492,6 +4494,11 @@ def analytics_dashboard(request):
             'revenue': financial.get('total_revenue', 0),
             'expenses': financial.get('total_expenses', 0),
             'net_profit': financial.get('net_profit', 0),
+        },
+        'trends': {
+            'labels': trends.get('labels', []),
+            'revenue': trends.get('revenue', []),
+            'expenses': trends.get('expenses', []),
         },
         'expense_breakdown': {
             'labels': ['Crop Inputs', 'Payroll'],
@@ -4529,6 +4536,29 @@ def analytics_dashboard(request):
             'labels': list((pests.get('by_severity', {}) or {}).keys()),
             'values': list((pests.get('by_severity', {}) or {}).values()),
         },
+        'iot_device_status': {
+            'labels': list((iot.get('by_status', {}) or {}).keys()),
+            'values': list((iot.get('by_status', {}) or {}).values()),
+        },
+        'iot_device_type': {
+            'labels': list((iot.get('by_type', {}) or {}).keys()),
+            'values': list((iot.get('by_type', {}) or {}).values()),
+        },
+        'iot_connectivity': {
+            'labels': ['Online', 'Offline', 'Low Battery'],
+            'values': [
+                iot.get('online_devices', 0),
+                iot.get('offline_devices', 0),
+                iot.get('low_battery_devices', 0),
+            ],
+        },
+        'iot_data_quality': {
+            'labels': ['Valid Readings', 'Invalid Readings'],
+            'values': [
+                iot.get('valid_readings', 0),
+                iot.get('invalid_readings', 0),
+            ],
+        },
     }
 
     context = {
@@ -4543,17 +4573,21 @@ def analytics_dashboard(request):
 
 @login_required
 def generate_analytics_report(request):
-    """Generate and export analytics report"""
+    """Generate and export analytics report in multiple formats"""
     from core.services.system_analytics_service import SystemAnalyticsService
     from core.export_service import ExportService
     import json
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from io import BytesIO
+    import csv
     
     farm_id = request.GET.get('farm_id')
     days = int(request.GET.get('days', 30))
     report_type = request.GET.get('type', 'json')
     
     # Get complete dashboard data
-    dashboard_data = SystemAnalyticsService.get_complete_dashboard(request.user, farm_id)
+    dashboard_data = SystemAnalyticsService.get_complete_dashboard(request.user, farm_id, days)
     
     if report_type == 'json':
         # Return JSON response
@@ -4573,6 +4607,102 @@ def generate_analytics_report(request):
                 return response
         except Exception as e:
             messages.error(request, f'Error generating PDF report: {str(e)}')
+            return redirect('core:analytics_dashboard')
+    
+    elif report_type == 'xlsx':
+        # Generate Excel report
+        try:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Analytics Report"
+            
+            # Title
+            ws['A1'] = "FarmWise Analytics Report"
+            ws['A1'].font = Font(size=16, bold=True, color="006600")
+            ws['A2'] = f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+            ws['A3'] = f"Period: Last {days} days"
+            
+            row = 5
+            
+            # Overview Section
+            ws[f'A{row}'] = "Farm Overview"
+            ws[f'A{row}'].font = Font(size=14, bold=True)
+            row += 1
+            
+            overview = dashboard_data.get('overview', {})
+            ws[f'A{row}'] = "Metric"
+            ws[f'B{row}'] = "Value"
+            ws[f'A{row}'].font = Font(bold=True)
+            ws[f'B{row}'].font = Font(bold=True)
+            row += 1
+            
+            for metric, value in overview.items():
+                ws[f'A{row}'] = metric.replace('_', ' ').title()
+                ws[f'B{row}'] = value
+                row += 1
+            
+            row += 2
+            
+            # Financial Section
+            ws[f'A{row}'] = "Financial Summary"
+            ws[f'A{row}'].font = Font(size=14, bold=True)
+            row += 1
+            
+            financial = dashboard_data.get('financial', {})
+            ws[f'A{row}'] = "Metric"
+            ws[f'B{row}'] = "Value"
+            ws[f'A{row}'].font = Font(bold=True)
+            ws[f'B{row}'].font = Font(bold=True)
+            row += 1
+            
+            for metric, value in financial.items():
+                if isinstance(value, (int, float)):
+                    ws[f'A{row}'] = metric.replace('_', ' ').title()
+                    ws[f'B{row}'] = value
+                    row += 1
+            
+            # Save to BytesIO
+            output = BytesIO()
+            wb.save(output)
+            output.seek(0)
+            
+            response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = f'attachment; filename="farmwise_analytics_{timezone.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+            return response
+            
+        except Exception as e:
+            messages.error(request, f'Error generating Excel report: {str(e)}')
+            return redirect('core:analytics_dashboard')
+    
+    elif report_type == 'csv':
+        # Generate CSV report
+        try:
+            output = BytesIO()
+            writer = csv.writer(output)
+            
+            # Write overview
+            writer.writerow(['Farm Overview'])
+            overview = dashboard_data.get('overview', {})
+            for metric, value in overview.items():
+                writer.writerow([metric, value])
+            
+            writer.writerow([])
+            
+            # Write financial
+            writer.writerow(['Financial Summary'])
+            financial = dashboard_data.get('financial', {})
+            for metric, value in financial.items():
+                if isinstance(value, (int, float)):
+                    writer.writerow([metric, value])
+            
+            output.seek(0)
+            
+            response = HttpResponse(output.read(), content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="farmwise_analytics_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+            return response
+            
+        except Exception as e:
+            messages.error(request, f'Error generating CSV report: {str(e)}')
             return redirect('core:analytics_dashboard')
     
     else:

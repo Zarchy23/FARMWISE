@@ -1,0 +1,68 @@
+{% extends 'emails/base_email.html' %}
+{% block title %}Weekly Summary{% endblock %}
+{% block header_subtitle %}Your weekly farm performance report{% endblock %}
+
+{% block content %}
+<h2 style="color: #1e293b; margin-bottom: 15px;">📊 Weekly Farm Summary</h2>
+
+<p style="color: #334155; margin-bottom: 20px;">Hello {{ user.get_full_name|default:user.username }},</p>
+
+<p style="color: #334155;">Here's your farm performance summary for the week of <strong>{{ summary.start_date }} to {{ summary.end_date }}</strong>:</p>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">${{ summary.weekly_revenue|floatformat:2 }}</div>
+        <div class="stat-label">Weekly Revenue</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">${{ summary.weekly_expenses|floatformat:2 }}</div>
+        <div class="stat-label">Weekly Expenses</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">${{ summary.net_profit|floatformat:2 }}</div>
+        <div class="stat-label">Net Profit</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ summary.total_farms }}</div>
+        <div class="stat-label">Active Farms</div>
+    </div>
+</div>
+
+{% if summary.top_performing_crops %}
+<div style="margin: 20px 0;">
+    <h3 style="color: #1e293b; font-size: 16px; margin-bottom: 10px;">🌾 Top Performing Crops</h3>
+    <ul class="feature-list">
+        {% for crop in summary.top_performing_crops %}
+        <li>{{ crop.name }} - {{ crop.yield|floatformat:2 }} units harvested</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if summary.upcoming_tasks %}
+<div style="margin: 20px 0;">
+    <h3 style="color: #1e293b; font-size: 16px; margin-bottom: 10px;">📋 Upcoming Tasks This Week</h3>
+    <ul class="feature-list">
+        {% for task in summary.upcoming_tasks %}
+        <li>{{ task }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if summary.alerts_count > 0 %}
+<div class="alert-medium">
+    <p style="margin: 0;"><strong>⚠️ You have {{ summary.alerts_count }} active alerts</strong> that require your attention.</p>
+</div>
+{% endif %}
+
+<div style="text-align: center;">
+    <a href="{{ action_link }}" class="btn">View Full Dashboard</a>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #64748b; font-size: 14px;">
+    💡 Visit your dashboard for detailed analytics, charts, and downloadable reports.
+</p>
+{% endblock %}

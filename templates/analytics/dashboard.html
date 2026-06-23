@@ -25,6 +25,12 @@
             <a href="{% url 'core:generate_analytics_report' %}?farm_id={{ selected_farm }}&days={{ days }}&type=pdf" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
                 Export PDF
             </a>
+            <a href="{% url 'core:generate_analytics_report' %}?farm_id={{ selected_farm }}&days={{ days }}&type=xlsx" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                Export Excel
+            </a>
+            <a href="{% url 'core:generate_analytics_report' %}?farm_id={{ selected_farm }}&days={{ days }}&type=csv" class="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">
+                Export CSV
+            </a>
         </div>
     </div>
     
@@ -99,6 +105,13 @@
     {{ chart_data|json_script:"chartData" }}
     <div class="mb-8">
         <h2 class="text-xl font-bold mb-4">📈 Visual Analytics</h2>
+
+        <!-- Revenue & Expenses Trend (time-series) -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h3 class="font-semibold text-gray-700 mb-3">Revenue & Expenses Trend (Last {{ days }} Days)</h3>
+            <canvas id="trendChart" height="90"></canvas>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h3 class="font-semibold text-gray-700 mb-3">Revenue vs Expenses</h3>
@@ -129,8 +142,24 @@
                 <canvas id="equipmentChart" height="220"></canvas>
             </div>
             <div class="bg-white rounded-lg shadow-lg p-6">
-                <h3 class="font-semibold text-gray-700 mb-3">Pest Reports by Severity</h3>
+                <h3 class="font-semibold text-gray-700 mb-3">Pest Severity</h3>
                 <canvas id="pestChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">IoT Device Status</h3>
+                <canvas id="iotStatusChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">IoT Device Types</h3>
+                <canvas id="iotTypeChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">IoT Connectivity</h3>
+                <canvas id="iotConnectivityChart" height="220"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="font-semibold text-gray-700 mb-3">IoT Data Quality</h3>
+                <canvas id="iotQualityChart" height="220"></canvas>
             </div>
         </div>
     </div>
@@ -292,6 +321,39 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- IoT Analytics -->
+        {% if dashboard.iot %}
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold mb-4">📡 IoT Device Analytics</h2>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="bg-gray-50 rounded p-3">
+                    <p class="text-sm text-gray-600">Total Devices</p>
+                    <p class="text-xl font-bold">{{ dashboard.iot.total_devices }}</p>
+                </div>
+                <div class="bg-gray-50 rounded p-3">
+                    <p class="text-sm text-gray-600">Online</p>
+                    <p class="text-xl font-bold text-green-600">{{ dashboard.iot.online_devices }}</p>
+                </div>
+                <div class="bg-gray-50 rounded p-3">
+                    <p class="text-sm text-gray-600">Offline</p>
+                    <p class="text-xl font-bold text-red-600">{{ dashboard.iot.offline_devices }}</p>
+                </div>
+                <div class="bg-gray-50 rounded p-3">
+                    <p class="text-sm text-gray-600">Low Battery</p>
+                    <p class="text-xl font-bold text-orange-600">{{ dashboard.iot.low_battery_devices }}</p>
+                </div>
+                <div class="bg-gray-50 rounded p-3">
+                    <p class="text-sm text-gray-600">Total Readings</p>
+                    <p class="text-xl font-bold">{{ dashboard.iot.total_readings }}</p>
+                </div>
+                <div class="bg-gray-50 rounded p-3">
+                    <p class="text-sm text-gray-600">Data Quality</p>
+                    <p class="text-xl font-bold text-blue-600">{{ dashboard.iot.data_quality_percentage }}%</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Farm Details -->
@@ -350,6 +412,49 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         new Chart(el, config);
     }
+
+    // Revenue & Expenses trend (line, time-series) - always rendered
+    (function () {
+        const el = document.getElementById('trendChart');
+        if (!el || !data.trends || !data.trends.labels.length) {
+            if (el) {
+                el.parentElement.insertAdjacentHTML('beforeend',
+                    '<p class="text-gray-400 text-sm text-center py-8">No trend data for this period</p>');
+                el.remove();
+            }
+            return;
+        }
+        new Chart(el, {
+            type: 'line',
+            data: {
+                labels: data.trends.labels,
+                datasets: [
+                    {
+                        label: 'Revenue',
+                        data: data.trends.revenue,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34,197,94,0.1)',
+                        fill: true,
+                        tension: 0.3,
+                    },
+                    {
+                        label: 'Expenses',
+                        data: data.trends.expenses,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239,68,68,0.1)',
+                        fill: true,
+                        tension: 0.3,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    })();
 
     // Revenue vs Expenses vs Profit (bar)
     render('financeChart', {
@@ -433,6 +538,46 @@ document.addEventListener('DOMContentLoaded', function () {
             datasets: [{ data: data.pest_severity.values, backgroundColor: '#ef4444', borderRadius: 6 }]
         },
         options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // IoT device status (doughnut)
+    render('iotStatusChart', {
+        type: 'doughnut',
+        data: {
+            labels: data.iot_device_status.labels,
+            datasets: [{ data: data.iot_device_status.values, backgroundColor: palette }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // IoT device types (bar)
+    render('iotTypeChart', {
+        type: 'bar',
+        data: {
+            labels: data.iot_device_type.labels,
+            datasets: [{ data: data.iot_device_type.values, backgroundColor: '#14b8a6', borderRadius: 6 }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // IoT connectivity (doughnut)
+    render('iotConnectivityChart', {
+        type: 'doughnut',
+        data: {
+            labels: data.iot_connectivity.labels,
+            datasets: [{ data: data.iot_connectivity.values, backgroundColor: ['#22c55e', '#ef4444', '#f59e0b'] }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // IoT data quality (doughnut)
+    render('iotQualityChart', {
+        type: 'doughnut',
+        data: {
+            labels: data.iot_data_quality.labels,
+            datasets: [{ data: data.iot_data_quality.values, backgroundColor: ['#22c55e', '#ef4444'] }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
     });
 });
 </script>
