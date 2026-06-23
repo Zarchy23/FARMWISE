@@ -39,6 +39,7 @@ argon2-cffi
 coreapi
 djangorestframework
 drf-yasg
+djangorestframework-simplejwt
 google-generativeai
 groq
 openpyxl
