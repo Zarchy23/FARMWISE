@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Admin Wallboard - FarmWise</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
     .wallboard-container {
         height: 100vh;
@@ -225,8 +226,11 @@
 <body class="overflow-hidden m-0 p-0">
 <div class="wallboard-container">
     <div class="slide-counter">
-        <span id="current-slide">1</span> / <span id="total-slides">7</span>
+        <span id="current-slide">1</span> / <span id="total-slides">10</span>
     </div>
+    
+    <!-- Chart data for visualizations -->
+    {{ chart_data|json_script:"chartData" }}
     
     <!-- SLIDE 1: System Overview -->
     <div class="slide active">
@@ -495,6 +499,101 @@
         </div>
     </div>
     
+    <!-- SLIDE 8: Financial Trends -->
+    <div class="slide">
+        <div class="slide-title">💰 Financial Trends (Last 30 Days)</div>
+        <div class="chart-container" style="height: 400px;">
+            <canvas id="trendChart"></canvas>
+        </div>
+        <div class="stat-grid" style="margin-top: 20px;">
+            <div class="stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-label">Total Revenue</div>
+                <div class="stat-value">${{ chart_data.financial.revenue|floatformat:2 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📉</div>
+                <div class="stat-label">Total Expenses</div>
+                <div class="stat-value">${{ chart_data.financial.expenses|floatformat:2 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💵</div>
+                <div class="stat-label">Net Profit</div>
+                <div class="stat-value">${{ chart_data.financial.net_profit|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SLIDE 9: IoT Device Analytics -->
+    <div class="slide">
+        <div class="slide-title">📡 IoT Device Analytics</div>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📡</div>
+                <div class="stat-label">Total Devices</div>
+                <div class="stat-value">{{ dashboard.iot.total_devices|default:0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🟢</div>
+                <div class="stat-label">Online</div>
+                <div class="stat-value">{{ dashboard.iot.online_devices|default:0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔴</div>
+                <div class="stat-label">Offline</div>
+                <div class="stat-value">{{ dashboard.iot.offline_devices|default:0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔋</div>
+                <div class="stat-label">Low Battery</div>
+                <div class="stat-value">{{ dashboard.iot.low_battery_devices|default:0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-label">Total Readings</div>
+                <div class="stat-value">{{ dashboard.iot.total_readings|default:0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-label">Data Quality</div>
+                <div class="stat-value">{{ dashboard.iot.data_quality_percentage|default:0 }}%</div>
+            </div>
+        </div>
+        <div class="chart-container" style="height: 300px; margin-top: 20px;">
+            <canvas id="iotConnectivityChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- SLIDE 10: Analytics Overview -->
+    <div class="slide">
+        <div class="slide-title">📈 Analytics Overview</div>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🌾</div>
+                <div class="stat-label">Active Crops</div>
+                <div class="stat-value">{{ dashboard.crops.active_crops|default:0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🐄</div>
+                <div class="stat-label">Total Livestock</div>
+                <div class="stat-value">{{ dashboard.livestock.total_animals|default:0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🚜</div>
+                <div class="stat-label">Equipment Available</div>
+                <div class="stat-value">{{ dashboard.equipment.available|default:0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🐛</div>
+                <div class="stat-label">Pest Reports</div>
+                <div class="stat-value">{{ dashboard.pest_detection.total_reports|default:0 }}</div>
+            </div>
+        </div>
+        <div class="chart-container" style="height: 300px; margin-top: 20px;">
+            <canvas id="cropStatusChart"></canvas>
+        </div>
+    </div>
+    
     <!-- Controls -->
     <div class="controls">
         <button class="btn-slide" onclick="previousSlide()">← Previous</button>
@@ -548,6 +647,99 @@
     
     // Auto-advance every 10 seconds
     setInterval(nextSlide, 10000);
+    
+    // Initialize charts when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Chart === 'undefined') return;
+        
+        const data = JSON.parse(document.getElementById('chartData').textContent);
+        const palette = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7', '#ef4444', '#14b8a6', '#ec4899', '#64748b'];
+        
+        // Financial Trends Chart (Line)
+        const trendCtx = document.getElementById('trendChart');
+        if (trendCtx && data.trends && data.trends.labels.length) {
+            new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: data.trends.labels,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: data.trends.revenue,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34,197,94,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                        },
+                        {
+                            label: 'Expenses',
+                            data: data.trends.expenses,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239,68,68,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { color: '#1e3c72' } } 
+                    },
+                    scales: { 
+                        y: { beginAtZero: true, ticks: { color: '#666' } },
+                        x: { ticks: { color: '#666' } }
+                    }
+                }
+            });
+        }
+        
+        // IoT Connectivity Chart (Doughnut)
+        const iotCtx = document.getElementById('iotConnectivityChart');
+        if (iotCtx && data.iot_connectivity) {
+            new Chart(iotCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.iot_connectivity.labels,
+                    datasets: [{ 
+                        data: data.iot_connectivity.values, 
+                        backgroundColor: ['#22c55e', '#ef4444', '#f59e0b'] 
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { color: '#1e3c72' } } 
+                    }
+                }
+            });
+        }
+        
+        // Crop Status Chart (Doughnut)
+        const cropCtx = document.getElementById('cropStatusChart');
+        if (cropCtx && data.crop_status) {
+            new Chart(cropCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.crop_status.labels,
+                    datasets: [{ 
+                        data: data.crop_status.values, 
+                        backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b'] 
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { color: '#1e3c72' } } 
+                    }
+                }
+            });
+        }
+    });
 </script>
 </body>
 </html>

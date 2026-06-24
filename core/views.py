@@ -249,13 +249,15 @@ def api_keys_debug(request):
 @login_required
 def wallboard(request):
     """System admin wallboard with statistical data - Admin only"""
+    from core.services.system_analytics_service import SystemAnalyticsService
     
     # Check if user is system admin or superuser
     if request.user.user_type != 'admin' and not request.user.is_superuser:
         messages.error(request, 'Access denied. Only system administrators can view this page.')
         return redirect('core:dashboard')
     
-    # Gather system-wide statistics
+    # Get comprehensive analytics data (system-wide, no farm filter)
+    dashboard_data = SystemAnalyticsService.get_complete_dashboard(request.user, farm_id=None, days=30)
     
     # User statistics
     total_users = User.objects.count()
@@ -320,6 +322,88 @@ def wallboard(request):
         activity_count=Count('activities', distinct=True)
     ).order_by('-activity_count')[:10]
     
+    # Prepare chart data for visualizations
+    financial = dashboard_data.get('financial', {}) or {}
+    crops = dashboard_data.get('crops', {}) or {}
+    livestock = dashboard_data.get('livestock', {}) or {}
+    equipment = dashboard_data.get('equipment', {}) or {}
+    pests = dashboard_data.get('pest_detection', {}) or {}
+    iot = dashboard_data.get('iot', {}) or {}
+    trends = dashboard_data.get('trends', {}) or {}
+    breakdown = financial.get('breakdown', {}) or {}
+    
+    chart_data = {
+        'financial': {
+            'revenue': financial.get('total_revenue', 0),
+            'expenses': financial.get('total_expenses', 0),
+            'net_profit': financial.get('net_profit', 0),
+        },
+        'trends': {
+            'labels': trends.get('labels', []),
+            'revenue': trends.get('revenue', []),
+            'expenses': trends.get('expenses', []),
+        },
+        'expense_breakdown': {
+            'labels': ['Crop Inputs', 'Payroll'],
+            'values': [breakdown.get('crop_inputs', 0), breakdown.get('payroll', 0)],
+        },
+        'revenue_breakdown': {
+            'labels': ['Marketplace Sales', 'Equipment Rentals'],
+            'values': [breakdown.get('marketplace_sales', 0), breakdown.get('equipment_rentals', 0)],
+        },
+        'crop_status': {
+            'labels': ['Active', 'Harvested', 'Planned'],
+            'values': [
+                crops.get('active_crops', 0),
+                crops.get('harvested_crops', 0),
+                crops.get('planned_crops', 0),
+            ],
+        },
+        'livestock_by_type': {
+            'labels': list((livestock.get('by_type', {}) or {}).keys()),
+            'values': list((livestock.get('by_type', {}) or {}).values()),
+        },
+        'livestock_health': {
+            'labels': list((livestock.get('health_status', {}) or {}).keys()),
+            'values': list((livestock.get('health_status', {}) or {}).values()),
+        },
+        'equipment_status': {
+            'labels': ['Available', 'Rented Out', 'Maintenance Due'],
+            'values': [
+                equipment.get('available', 0),
+                equipment.get('rented_out', 0),
+                equipment.get('maintenance_due', 0),
+            ],
+        },
+        'pest_severity': {
+            'labels': list((pests.get('by_severity', {}) or {}).keys()),
+            'values': list((pests.get('by_severity', {}) or {}).values()),
+        },
+        'iot_device_status': {
+            'labels': list((iot.get('by_status', {}) or {}).keys()),
+            'values': list((iot.get('by_status', {}) or {}).values()),
+        },
+        'iot_device_type': {
+            'labels': list((iot.get('by_type', {}) or {}).keys()),
+            'values': list((iot.get('by_type', {}) or {}).values()),
+        },
+        'iot_connectivity': {
+            'labels': ['Online', 'Offline', 'Low Battery'],
+            'values': [
+                iot.get('online_devices', 0),
+                iot.get('offline_devices', 0),
+                iot.get('low_battery_devices', 0),
+            ],
+        },
+        'iot_data_quality': {
+            'labels': ['Valid Readings', 'Invalid Readings'],
+            'values': [
+                iot.get('valid_readings', 0),
+                iot.get('invalid_readings', 0),
+            ],
+        },
+    }
+    
     context = {
         'total_users': total_users,
         'user_types': list(user_types),
@@ -347,6 +431,8 @@ def wallboard(request):
         'active_policies': active_policies,
         'total_claims': total_claims,
         'total_pest_reports': total_pest_reports,
+        'chart_data': chart_data,
+        'dashboard': dashboard_data,
         'pest_types': list(pest_types),
         'recent_activities': recent_activities,
         'verification_rate': verification_rate,
