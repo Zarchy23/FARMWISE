@@ -257,7 +257,7 @@ urlpatterns = [
     # ============================================================
     # MACHINE LEARNING API ENDPOINTS
     # ============================================================
-    path('api/ml/model-status/', include('core.ml.urls')),
+    # path('api/ml/model-status/', include('core.ml.urls')),
     
     # ============================================================
     # SUPERMARKET MANAGEMENT
