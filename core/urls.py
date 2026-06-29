@@ -255,6 +255,11 @@ urlpatterns = [
     path('iot/monitoring/', views.iot_real_time_monitoring, name='iot_real_time_monitoring'),
     
     # ============================================================
+    # MACHINE LEARNING API ENDPOINTS
+    # ============================================================
+    path('api/ml/model-status/', include('core.ml.urls')),
+    
+    # ============================================================
     # SUPERMARKET MANAGEMENT
     # ============================================================
     path('supermarket/', include('core.urls_supermarket')),
