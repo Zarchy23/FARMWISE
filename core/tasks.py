@@ -11,6 +11,9 @@ import logging
 from decimal import Decimal
 
 from .models import *
+from .ml.training_service import ModelTrainingService
+from .ml.monitoring import ModelMonitor
+from .ml.decision_engine import DecisionEngine
 
 logger = logging.getLogger(__name__)
 
@@ -894,41 +897,129 @@ def generate_weather_alerts(farm_id):
             )
             alerts_created += 1
             
-            if 'thunderstorm' in weather_data.condition.lower():
-                WeatherAlert.objects.create(
-                    farm=farm,
-                    alert_type='storm',
-                    severity='emergency',
-                    title='Thunderstorm Warning',
-                    message='Thunderstorm approaching. Secure livestock, move equipment to shelter, and avoid outdoor activities.',
-                    start_date=now,
-                    end_date=now + timedelta(hours=6)
-                )
-                alerts_created += 1
-        
-        # DRY CONDITIONS ALERT
-        if weather_data.humidity < 30 and 'rain' not in weather_data.condition.lower():
-            WeatherAlert.objects.create(
-                farm=farm,
-                alert_type='drought',
-                severity='warning',
-                title='Dry Conditions - Irrigation Recommended',
-                message=f'Low humidity ({weather_data.humidity}%) and no rainfall expected. Plan irrigation to prevent drought stress.',
-                start_date=now,
-                end_date=now + timedelta(hours=24)
-            )
-            alerts_created += 1
-        
-        logger.info(f"Generated {alerts_created} weather alerts for farm {farm.name}")
-        return f"Generated {alerts_created} alerts for {farm.name}"
-    
-    except Farm.DoesNotExist:
-        logger.error(f"Farm {farm_id} not found")
-        return f"Farm {farm_id} not found"
-    except Exception as e:
-        logger.error(f"Error generating weather alerts: {str(e)}")
-        return f"Error generating alerts: {str(e)}"
+# ============================================================
+# MACHINE LEARNING TASKS
+# ============================================================
 
+@shared_task
+def auto_train_all_models():
+    """Automatically train all ML models with current data"""
+    logger.info("Starting automatic ML model training")
+    
+    try:
+        service = ModelTrainingService()
+        results = service.train_all_models()
+        
+        logger.info(f"ML model training completed: {results['successful']}/{results['total_models']} successful")
+        
+        # Send notification to admin about training results
+        if results['failed'] > 0:
+            from .services.email_service import EmailService
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            admins = User.objects.filter(is_superuser=True)
+            for admin in admins:
+                EmailService.send_notification_email(
+                    admin,
+                    'ML Model Training Partially Failed',
+                    f'ML model training completed with {results["failed"]} failures. Check the logs for details.'
+                )
+        
+        return results
+    except Exception as e:
+        logger.error(f"ML model training failed: {str(e)}")
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task
+def auto_retrain_if_needed():
+    """Check model freshness and retrain if needed"""
+    logger.info("Checking ML model freshness")
+    
+    try:
+        monitor = ModelMonitor()
+        results = monitor.retrain_if_needed()
+        
+        retrained_count = sum(1 for r in results['retrain_results'].values() if r['status'] == 'retrained')
+        logger.info(f"ML model freshness check completed: {retrained_count} models retrained")
+        
+        return results
+    except Exception as e:
+        logger.error(f"ML model freshness check failed: {str(e)}")
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task
+def generate_ai_recommendations_for_farm(farm_id):
+    """Generate AI recommendations for a specific farm"""
+    logger.info(f"Generating AI recommendations for farm {farm_id}")
+    
+    try:
+        engine = DecisionEngine()
+        recommendations = engine.get_farm_recommendations(farm_id)
+        
+        # Create notification for priority actions
+        from .models import Farm, Notification
+        farm = Farm.objects.get(id=farm_id)
+        
+        priority_actions = recommendations.get('priority_actions', [])
+        if priority_actions:
+            action_summary = "\n".join([
+                f"- {a['category']}: {a['action']}" 
+                for a in priority_actions[:5]
+            ])
+            
+            Notification.objects.create(
+                user=farm.owner,
+                notification_type='info',
+                title='AI Farm Recommendations',
+                message=f'AI has generated {len(priority_actions)} priority actions for your farm:\n{action_summary}',
+                link=f'/dashboard/'
+            )
+        
+        logger.info(f"AI recommendations generated for farm {farm_id}")
+        return recommendations
+    except Exception as e:
+        logger.error(f"AI recommendation generation failed for farm {farm_id}: {str(e)}")
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task
+def generate_ai_recommendations_for_all_farms():
+    """Generate AI recommendations for all farms"""
+    logger.info("Generating AI recommendations for all farms")
+    
+    try:
+        from .models import Farm
+        farms = Farm.objects.all()
+        
+        results = []
+        for farm in farms:
+            task = generate_ai_recommendations_for_farm.delay(farm.id)
+            results.append({'farm_id': farm.id, 'task_id': task.id})
+        
+        logger.info(f"AI recommendation tasks queued for {len(farms)} farms")
+        return {'status': 'queued', 'farms': len(farms), 'tasks': results}
+    except Exception as e:
+        logger.error(f"AI recommendation generation failed: {str(e)}")
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task
+def monitor_model_performance():
+    """Monitor ML model performance and generate reports"""
+    logger.info("Monitoring ML model performance")
+    
+    try:
+        monitor = ModelMonitor()
+        report = monitor.get_monitoring_report()
+        
+        logger.info(f"ML model monitoring report generated")
+        return report
+    except Exception as e:
+        logger.error(f"ML model monitoring failed: {str(e)}")
+        return {'status': 'error', 'error': str(e)}
 
 
 # ============================================================
