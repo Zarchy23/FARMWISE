@@ -51,8 +51,8 @@ Twisted==26.4.0
 pyOpenSSL==26.3.0
 
 # Machine Learning dependencies
-scikit-learn==1.6.1
-tensorflow==2.18.0
+scikit-learn==1.5.2
+tensorflow==2.16.1
 joblib==1.4.2
 pandas==2.2.3
-numpy==2.2.4
+numpy==1.26.4
