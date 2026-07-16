@@ -71,6 +71,23 @@
                 <i class="ri-dashboard-line"></i><span>Dashboard</span>
             </a>
 
+            <!-- Farmer Advisory (All Users) -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'advisory' ? null : 'advisory'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-lightbulb-line"></i><span>Advisory</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'advisory' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'advisory'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'advisory:dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="{% url 'advisory:land_guides' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Land Preparation</a>
+                    <a href="{% url 'advisory:pest_guides' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Pest Management</a>
+                    <a href="{% url 'advisory:dosage_calculator' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dosage Calculator</a>
+                    <a href="{% url 'advisory:veterinary_database' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Veterinary Guide</a>
+                    <a href="{% url 'advisory:submit_request' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Ask Expert</a>
+                </div>
+            </div>
+
             <!-- Wallboard (System Admins Only) -->
             {% if user.user_type == 'admin' or user.is_superuser %}
             <a href="{% url 'core:wallboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition bg-green-600 text-white font-bold">
