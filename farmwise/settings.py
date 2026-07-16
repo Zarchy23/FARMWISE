@@ -69,7 +69,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',
     # 'django.contrib.gis',  # PostGIS for geospatial data - DISABLED for development (requires GDAL)
     
     # Third party apps
@@ -278,7 +277,6 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Django AllAuth
-SITE_ID = 1
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_UNIQUE_EMAIL = True
