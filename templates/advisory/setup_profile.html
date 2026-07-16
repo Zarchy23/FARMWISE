@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Farm Profile{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">{% if profile %}Edit Farm Profile{% else %}Setup Farm Profile{% endif %}</h1>
+        <p class="text-gray-600">Provide information about your farm to receive personalized advisory services</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="border-b pb-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Basic Information</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Farm Name *</label>
+                        <input type="text" name="farm_name" value="{% if profile %}{{ profile.farm_name }}{% endif %}" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Farm Type *</label>
+                        <select name="farm_type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            {% for value, label in farm_types %}
+                            <option value="{{ value }}" {% if profile and profile.farm_type == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Location (District/Province) *</label>
+                        <input type="text" name="location" value="{% if profile %}{{ profile.location }}{% endif %}" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Agro-Ecological Zone *</label>
+                        <select name="agro_ecological_zone" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            {% for value, label in agro_zones %}
+                            <option value="{{ value }}" {% if profile and profile.agro_ecological_zone == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Land Resources -->
+            <div class="border-b pb-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Land Resources</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Total Land Area (Hectares) *</label>
+                        <input type="number" step="0.01" name="total_land_area_hectares" value="{% if profile %}{{ profile.total_land_area_hectares }}{% endif %}" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Arable Land (Hectares) *</label>
+                        <input type="number" step="0.01" name="arable_land_hectares" value="{% if profile %}{{ profile.arable_land_hectares }}{% endif %}" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Primary Land Preparation Method *</label>
+                        <select name="primary_land_preparation_method" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            {% for value, label in land_methods %}
+                            <option value="{{ value }}" {% if profile and profile.primary_land_preparation_method == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Soil Type</label>
+                        <input type="text" name="soil_type" value="{% if profile %}{{ profile.soil_type }}{% endif %}"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="e.g., Sandy loam, Clay soil">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resources and Equipment -->
+            <div class="border-b pb-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Resources and Equipment</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Labor Availability</label>
+                        <textarea name="labor_availability" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Describe available labor (family, hired, etc.)">{% if profile %}{{ profile.labor_availability }}{% endif %}</textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Equipment Inventory</label>
+                        <textarea name="equipment_inventory" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="List available equipment (tractors, plows, sprayers, etc.)">{% if profile %}{{ profile.equipment_inventory }}{% endif %}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Water Access -->
+            <div class="border-b pb-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Water Access</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Water Source</label>
+                        <input type="text" name="water_source" value="{% if profile %}{{ profile.water_source }}{% endif %}"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="e.g., Borehole, River, Dam">
+                    </div>
+                    
+                    <div class="flex items-center mt-6">
+                        <input type="checkbox" name="irrigation_access" id="irrigation_access" {% if profile and profile.irrigation_access %}checked{% endif %}
+                            class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                        <label for="irrigation_access" class="ml-2 block text-sm text-gray-700">Irrigation Access Available</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Farming Experience -->
+            <div class="border-b pb-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Farming Experience</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Years of Farming Experience</label>
+                        <input type="number" name="farming_experience_years" value="{% if profile %}{{ profile.farming_experience_years }}{% endif %}"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Activities -->
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Current Farming Activities</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Primary Crops</label>
+                        <textarea name="primary_crops" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="List primary crops grown">{% if profile %}{{ profile.primary_crops }}{% endif %}</textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Livestock Types</label>
+                        <textarea name="livestock_types" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="List livestock types and approximate numbers">{% if profile %}{{ profile.livestock_types }}{% endif %}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'advisory:dashboard' %}" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                    Cancel
+                </a>
+                <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                    {% if profile %}Update Profile{% else %}Create Profile{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

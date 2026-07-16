@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Farmer Advisory Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Farmer Advisory System</h1>
+        <p class="text-gray-600">Get expert guidance for land preparation, pest management, and livestock care</p>
+    </div>
+
+    <!-- Farm Profile Summary -->
+    {% if farm_profile %}
+    <div class="bg-gradient-to-r from-green-500 to-teal-600 rounded-lg shadow-lg p-6 mb-8 text-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold mb-1">{{ farm_profile.farm_name }}</h2>
+                <p class="opacity-90">{{ farm_profile.get_farm_type_display }} | {{ farm_profile.location }}</p>
+                <p class="opacity-90 text-sm mt-1">Agro-ecological Zone: {{ farm_profile.get_agro_ecological_zone_display }}</p>
+            </div>
+            <a href="{% url 'advisory:setup_farm_profile' %}" class="bg-white text-green-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition">
+                Edit Profile
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-8">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-yellow-700">
+                    <strong>Setup Required:</strong> Please complete your farm profile to receive personalized advisory services.
+                    <a href="{% url 'advisory:setup_farm_profile' %}" class="underline font-semibold">Setup Profile</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <a href="{% url 'advisory:land_guides' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-green-500">
+            <div class="flex items-center mb-4">
+                <div class="bg-green-100 p-3 rounded-full">
+                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 class="ml-3 text-lg font-semibold text-gray-800">Land Preparation</h3>
+            </div>
+            <p class="text-gray-600 text-sm">Get guidance on land preparation methods and planting techniques</p>
+        </a>
+
+        <a href="{% url 'advisory:pest_guides' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-red-500">
+            <div class="flex items-center mb-4">
+                <div class="bg-red-100 p-3 rounded-full">
+                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <h3 class="ml-3 text-lg font-semibold text-gray-800">Pest Management</h3>
+            </div>
+            <p class="text-gray-600 text-sm">Integrated pest management and pesticide guidance</p>
+        </a>
+
+        <a href="{% url 'advisory:dosage_calculator' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-blue-500">
+            <div class="flex items-center mb-4">
+                <div class="bg-blue-100 p-3 rounded-full">
+                    <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <h3 class="ml-3 text-lg font-semibold text-gray-800">Dosage Calculator</h3>
+            </div>
+            <p class="text-gray-600 text-sm">Calculate precise pesticide and veterinary drug dosages</p>
+        </a>
+
+        <a href="{% url 'advisory:veterinary_database' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-purple-500">
+            <div class="flex items-center mb-4">
+                <div class="bg-purple-100 p-3 rounded-full">
+                    <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                </div>
+                <h3 class="ml-3 text-lg font-semibold text-gray-800">Veterinary Guide</h3>
+            </div>
+            <p class="text-gray-600 text-sm">Animal health guidance and dosage information</p>
+        </a>
+    </div>
+
+    <!-- Recent Advisory Requests -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Recent Advisory Requests</h2>
+            <a href="{% url 'advisory:my_requests' %}" class="text-green-600 hover:text-green-700 font-semibold">View All</a>
+        </div>
+        
+        {% if recent_requests %}
+        <div class="space-y-4">
+            {% for request in recent_requests %}
+            <div class="border-b pb-4 last:border-b-0">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-semibold text-gray-800">{{ request.subject }}</h3>
+                        <p class="text-sm text-gray-600">{{ request.get_request_type_display }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ request.created_at|timesince }} ago</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold
+                        {% if request.status == 'completed' %}bg-green-100 text-green-800
+                        {% elif request.status == 'processing' %}bg-blue-100 text-blue-800
+                        {% elif request.status == 'needs_followup' %}bg-yellow-100 text-yellow-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ request.get_status_display }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-center py-4">No advisory requests yet. <a href="{% url 'advisory:submit_request' %}" class="text-green-600 hover:underline">Submit your first request</a></p>
+        {% endif %}
+    </div>
+
+    <!-- Relevant Guides -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Land Preparation Guides -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Land Preparation Guides</h2>
+                <a href="{% url 'advisory:land_guides' %}" class="text-green-600 hover:text-green-700 font-semibold">View All</a>
+            </div>
+            
+            {% if land_guides %}
+            <div class="space-y-3">
+                {% for guide in land_guides %}
+                <a href="{% url 'advisory:land_detail' guide.id %}" class="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                    <h3 class="font-semibold text-gray-800">{{ guide.title }}</h3>
+                    <p class="text-sm text-gray-600">{{ guide.crop_type|title }} | {{ guide.get_agro_ecological_zone_display }}</p>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-center py-4">No guides available for your region.</p>
+            {% endif %}
+        </div>
+
+        <!-- Pest Management Guides -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Pest Management Guides</h2>
+                <a href="{% url 'advisory:pest_guides' %}" class="text-green-600 hover:text-green-700 font-semibold">View All</a>
+            </div>
+            
+            {% if pest_guides %}
+            <div class="space-y-3">
+                {% for guide in pest_guides %}
+                <a href="{% url 'advisory:pest_detail' guide.id %}" class="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                    <h3 class="font-semibold text-gray-800">{{ guide.pest_name }}</h3>
+                    <p class="text-sm text-gray-600">{{ guide.affected_crops }}</p>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-center py-4">No pest guides available.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Submit New Request Button -->
+    <div class="mt-8 text-center">
+        <a href="{% url 'advisory:submit_request' %}" class="bg-green-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-700 transition inline-flex items-center">
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Submit Advisory Request
+        </a>
+    </div>
+</div>
+{% endblock %}

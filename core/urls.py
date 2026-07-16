@@ -305,6 +305,11 @@ urlpatterns = [
     path('webhooks/', include('core.payments.webhooks_urls')),  # Webhook endpoints
     
     # ============================================================
+    # FARMER ADVISORY SYSTEM
+    # ============================================================
+    path('advisory/', include('core.urls_advisory')),
+    
+    # ============================================================
     # LEGACY API ENDPOINTS (for AJAX/JavaScript)
     # ============================================================
     path('api/chat/message/', views_dashboards.api_chat_message, name='api_chat_message'),
