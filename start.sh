@@ -7,9 +7,26 @@ python manage.py migrate --run-syncdb --noinput || echo "Migrations may have alr
 echo "Collecting static files..."
 python manage.py collectstatic --noinput --clear || true
 
-# Skip data loading on initial deployment to ensure schema is created first
-# Data loading will be done manually after successful deployment
-echo "Skipping automatic data loading on initial deployment..."
+# Force data loading for this deployment to ensure user accounts are available
+echo "Loading production data (including user accounts)..."
+if [ -f "production_data.json" ]; then
+    python manage.py loaddata production_data.json || echo "Production data loaddata failed (continuing)"
+else
+    echo "production_data.json not found, skipping..."
+fi
+
+# Load additional data files if they exist
+if [ -f "data.json" ]; then
+    echo "Loading additional system data..."
+    python manage.py loaddata data.json || echo "Additional data loaddata failed (continuing)"
+fi
+
+if [ -f "users_data.json" ]; then
+    echo "Loading user accounts..."
+    python manage.py loaddata users_data.json || echo "User accounts loaddata failed (continuing)"
+fi
+
+echo "Data loading completed."
 
 echo "Starting FarmWise..."
 python -m gunicorn farmwise.wsgi:application \
