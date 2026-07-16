@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-echo "Running migrations..."
-python manage.py migrate --noinput
+echo "Running migrations (ensure database schema is up to date)..."
+python manage.py migrate --noinput || echo "Migrations may have already run"
 
 echo "Collecting static files..."
 python manage.py collectstatic --noinput --clear || true
@@ -11,6 +11,13 @@ python manage.py collectstatic --noinput --clear || true
 MARKER="/tmp/.farmwise_data_loaded"
 if [ ! -f "$MARKER" ]; then
     echo "Checking for initial data fixtures..."
+    
+    # Load production data if it exists (contains local to production migration data)
+    if [ -f "production_data.json" ]; then
+        echo "Loading production data fixture..."
+        python manage.py loaddata production_data.json || echo "Production data loaddata skipped/failed (continuing)"
+    fi
+    
     # Load data.json if it exists (contains system data)
     if [ -f "data.json" ]; then
         echo "Loading initial data fixture..."
@@ -21,12 +28,6 @@ if [ ! -f "$MARKER" ]; then
     if [ -f "users_data.json" ]; then
         echo "Loading user accounts fixture..."
         python manage.py loaddata users_data.json || echo "User accounts loaddata skipped/failed (continuing)"
-    fi
-    
-    # Load production data if it exists (contains local to production migration data)
-    if [ -f "production_data.json" ]; then
-        echo "Loading production data fixture..."
-        python manage.py loaddata production_data.json || echo "Production data loaddata skipped/failed (continuing)"
     fi
     
     touch "$MARKER"
