@@ -96,7 +96,6 @@ INSTALLED_APPS = [
     # Local apps
     'core',
     'core.analytics',
-    'core.iot',
 ]
 
 MIDDLEWARE = [
@@ -426,8 +425,23 @@ CRISPY_TEMPLATE_PACK = "tailwind"
 # ============================================================
 # REST Framework
 # ============================================================
+# NOTE: Browsable API interface is disabled globally. All API endpoints
+# return JSON only. Do not add BrowsableAPIRenderer to new views.
 
-# REST_FRAMEWORK removed - using traditional Django views instead
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 50,
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
+}
 
 # JWT Settings
 SIMPLE_JWT = {
@@ -601,7 +615,7 @@ class IgnoreRemovedAPIEndpointsFilter(logging.Filter):
     """Suppress 404 logs for permanently removed API endpoints"""
     def filter(self, record):
         # Suppress 404s for removed DRF API endpoints
-        removed_paths = ['/api/analytics/', '/api/iot/', '/api/payments/']
+        removed_paths = ['/api/analytics/', '/api/payments/']
         return not any(path in record.getMessage() for path in removed_paths)
 
 LOGGING = {

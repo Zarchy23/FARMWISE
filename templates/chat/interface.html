@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chat - FarmWise AI Chatbot{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .message {
+        display: flex;
+        margin-bottom: 16px;
+        animation: slideIn 0.3s ease-out;
+    }
+    
+    .message.user {
+        justify-content: flex-end;
+    }
+    
+    .message.bot {
+        justify-content: flex-start;
+    }
+    
+    .message-bubble {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        word-wrap: break-word;
+    }
+    
+    .message.user .message-bubble {
+        background: #16a34a;
+        color: white;
+        border-radius: 12px 4px 12px 12px;
+    }
+    
+    .message.bot .message-bubble {
+        background: white;
+        color: #333;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px 12px 12px 12px;
+    }
+    
+    .message-time {
+        font-size: 0.75rem;
+        color: #999;
+        margin-top: 4px;
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .chat-input-area {
+        padding: 16px;
+        background: white;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    .input-group {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .input-group input {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+    
+    .input-group input:focus {
+        outline: none;
+        border-color: #16a34a;
+        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+    }
+    
+    .input-group button {
+        padding: 12px 24px;
+        background: #16a34a;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .input-group button:hover {
+        background: #15803d;
+    }
+    
+    .input-group button:active {
+        transform: scale(0.98);
+    }
+    
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #999;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 16px;
+        color: #d1d5db;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2 flex items-center">
+                    <i class="ri-chat-4-line mr-3 text-green-600"></i>
+                    AI Chatbot
+                </h1>
+                <p class="text-gray-600">Agricultural guidance & farming advice</p>
+            </div>
+            <a href="{% url 'core:chatbot_dashboard' %}" class="inline-flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-semibold transition">
+                <i class="ri-dashboard-line"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg mb-6">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Chat Interface -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden" style="height: calc(100vh - 250px); min-height: 500px;">
+        <div class="chat-container h-full flex flex-col">
+            <!-- Messages Area -->
+            <div class="chat-messages" id="messagesContainer">
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="message {% if message.message_type == 'user' %}user{% else %}bot{% endif %}">
+                        <div class="message-bubble">
+                            {{ message.content }}
+                            <div class="message-time">{{ message.created_at|date:"H:i" }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="ri-chat-bubble-line"></i>
+                    <p class="text-lg">Start a conversation</p>
+                    <p class="text-sm">Ask me anything about farming, crops, livestock, and more!</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Quick Suggestions -->
+            <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                <p class="text-xs text-gray-500 mb-2 font-medium">Quick Questions:</p>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="quick-suggestion px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition">
+                        How do I prevent tomato blight?
+                    </button>
+                    <button type="button" class="quick-suggestion px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition">
+                        Best fertilizer for maize?
+                    </button>
+                    <button type="button" class="quick-suggestion px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition">
+                        When to harvest potatoes?
+                    </button>
+                    <button type="button" class="quick-suggestion px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition">
+                        Chicken feeding schedule
+                    </button>
+                    <button type="button" class="quick-suggestion px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition">
+                        Drip irrigation setup
+                    </button>
+                    <button type="button" class="quick-suggestion px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition">
+                        Organic pest control
+                    </button>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-area">
+                <form id="chatForm" method="post" class="input-group" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="flex items-center gap-2 flex-1">
+                        <label class="cursor-pointer text-gray-500 hover:text-green-600 transition">
+                            <i class="ri-image-add-line text-xl"></i>
+                            <input type="file" id="imageInput" name="image" accept="image/*" class="hidden">
+                        </label>
+                        <input 
+                            type="text" 
+                            id="messageInput" 
+                            name="message" 
+                            placeholder="Ask anything about farming, crops, livestock, pests, soil, irrigation, markets... (optional: attach an image)" 
+                            autocomplete="off"
+                            class="flex-1">
+                    </div>
+                    <button type="submit" class="flex items-center gap-2">
+                        <i class="ri-send-plane-line"></i>
+                        Send
+                    </button>
+                </form>
+                <div id="imagePreview" class="hidden mt-2 relative inline-block">
+                    <img id="previewImg" class="h-20 w-20 object-cover rounded-lg border border-gray-300">
+                    <button type="button" id="removeImage" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Info -->
+    <div class="mt-6 text-sm text-gray-600">
+        <p>Session: <strong>{{ session.id }}</strong> • Started: <strong>{{ session.started_at|date:"M d, Y H:i" }}</strong></p>
+    </div>
+</div>
+
+<script>
+    const sessionId = '{{ session.id }}';
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Auto-scroll to latest message
+    function scrollToBottom() {
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+    
+    // Format time as HH:MM
+    function formatTime(date) {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    }
+    
+    // Add message to DOM
+    function addMessageToDOM(content, messageType) {
+        const messagesContainer = document.getElementById('messagesContainer');
+        
+        // Remove empty state if it exists
+        const emptyState = messagesContainer.querySelector('.empty-state');
+        if (emptyState) {
+            emptyState.remove();
+        }
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${messageType}`;
+        
+        const now = new Date();
+        const timeStr = formatTime(now);
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        bubble.innerHTML = `${content}<div class="message-time">${timeStr}</div>`;
+        
+        messageDiv.appendChild(bubble);
+        messagesContainer.appendChild(messageDiv);
+        
+        scrollToBottom();
+    }
+    
+    // Show loading indicator (DISABLED - loads in background)
+    function showLoading() {
+        // Loading animation disabled - processes silently in background
+    }
+    
+    // Remove loading indicator (DISABLED)
+    function removeLoading() {
+        // Removed - no loading indicator shown
+    }
+    
+    // Focus on input
+    document.getElementById('messageInput')?.focus();
+    
+    // Handle image upload and preview
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    const removeImageBtn = document.getElementById('removeImage');
+    let selectedImage = null;
+    
+    imageInput?.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            selectedImage = file;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                imagePreview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    removeImageBtn?.addEventListener('click', function() {
+        selectedImage = null;
+        imageInput.value = '';
+        imagePreview.classList.add('hidden');
+        previewImg.src = '';
+    });
+    
+    // Handle quick suggestion buttons
+    document.querySelectorAll('.quick-suggestion').forEach(button => {
+        button.addEventListener('click', function() {
+            const messageInput = document.getElementById('messageInput');
+            messageInput.value = this.textContent.trim();
+            messageInput.focus();
+        });
+    });
+    
+    // Handle form submission via AJAX with image support
+    document.getElementById('chatForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+        
+        if (!message && !selectedImage) return;
+        
+        try {
+            // Add user message to DOM
+            let userMessageContent = message;
+            if (selectedImage) {
+                userMessageContent += ' 📎 (image attached)';
+            }
+            addMessageToDOM(userMessageContent, 'user');
+            messageInput.value = '';
+            
+            // Prepare form data with image
+            const formData = new FormData();
+            formData.append('session_id', sessionId);
+            formData.append('message', message);
+            if (selectedImage) {
+                formData.append('image', selectedImage);
+            }
+            
+            // Send message to API (load in background)
+            const response = await fetch('/api/chat/message/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                addMessageToDOM(`Error: ${error.error || 'Failed to send message'}`, 'bot');
+                console.error('API Error:', error);
+                return;
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Add bot response to DOM
+                addMessageToDOM(data.response, 'bot');
+                
+                // Show image analysis if available
+                if (data.image_analysis) {
+                    const analysisDiv = document.createElement('div');
+                    analysisDiv.className = 'message bot';
+                    analysisDiv.innerHTML = `
+                        <div class="message-bubble" style="background: #f0fdf4; border-color: #22c55e;">
+                            <strong>🔍 Image Analysis:</strong><br>
+                            Detected: ${data.image_analysis.pest_name}<br>
+                            Confidence: ${data.image_analysis.confidence}%<br>
+                            <em>${data.image_analysis.treatment}</em>
+                        </div>
+                    `;
+                    document.getElementById('messagesContainer').appendChild(analysisDiv);
+                    scrollToBottom();
+                }
+                
+                // Show intent info if available
+                if (data.intent) {
+                    console.log(`Intent: ${data.intent} (Confidence: ${(data.confidence * 100).toFixed(1)}%)`);
+                }
+            } else {
+                addMessageToDOM(`Error: ${data.error || 'Failed to process message'}`, 'bot');
+            }
+            
+            // Clear image after sending
+            if (selectedImage) {
+                selectedImage = null;
+                imageInput.value = '';
+                imagePreview.classList.add('hidden');
+                previewImg.src = '';
+            }
+            
+            messageInput.focus();
+        } catch (error) {
+            console.error('Error:', error);
+            addMessageToDOM(`Error: ${error.message}`, 'bot');
+        }
+    });
+    
+    // Initial scroll to bottom
+    scrollToBottom();
+</script>
+{% endblock %}

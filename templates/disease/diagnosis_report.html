@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Diagnosis Report - FarmWise{% endblock %}
+
+{% block page_title %}Diagnosis Report{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Print Button -->
+    <div class="mb-6 flex gap-2">
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+            <i class="ri-printer-line"></i>
+            Print Report
+        </button>
+        <a href="/disease/diagnoses/{{ diagnosis.id }}/" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition flex items-center gap-2">
+            <i class="ri-arrow-left-line"></i>
+            Back
+        </a>
+    </div>
+
+    <!-- Report Content -->
+    <div class="bg-white rounded-xl shadow-sm p-12 print:shadow-none">
+        <!-- Header -->
+        <div class="border-b pb-8 mb-8">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-800">Disease Diagnosis Report</h1>
+                    <p class="text-gray-600 mt-2">Generated on {{ generated_at|date:"F d, Y H:i" }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-600">Report ID: {{ diagnosis.id }}</p>
+                    <p class="text-sm text-gray-600">Farm: {{ diagnosis.farm.name }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Diagnosis Summary -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Diagnosis Summary</h2>
+            
+            <div class="grid grid-cols-2 gap-8">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium mb-1">Disease Name</p>
+                    <p class="text-xl font-semibold text-gray-800">{{ diagnosis.disease.name }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600 text-sm font-medium mb-1">Category</p>
+                    <p class="text-xl font-semibold text-gray-800">{{ diagnosis.disease.category.name }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600 text-sm font-medium mb-1">Confidence Score</p>
+                    <div class="flex items-center gap-3 mt-1">
+                        <div class="w-32 bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ diagnosis.confidence_score }}%"></div>
+                        </div>
+                        <span class="font-bold text-green-600">{{ diagnosis.confidence_score }}%</span>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-gray-600 text-sm font-medium mb-1">Status</p>
+                    <p class="text-lg font-semibold {% if diagnosis.status == 'confirmed' %}text-green-600{% elif diagnosis.status == 'pending' %}text-yellow-600{% else %}text-blue-600{% endif %}">
+                        {{ diagnosis.get_status_display }}
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Farm & Crop Information -->
+        <section class="mb-8 page-break">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Affected Farm & Crop</h2>
+            
+            <div class="grid grid-cols-2 gap-8">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium mb-2">Farm</p>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="font-semibold">{{ diagnosis.farm.name }}</p>
+                        <p class="text-sm text-gray-600">{{ diagnosis.farm.location }}</p>
+                        <p class="text-sm text-gray-600 mt-1">Area: {{ diagnosis.farm.area_hectares }} hectares</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-gray-600 text-sm font-medium mb-2">Crop</p>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="font-semibold">{% if diagnosis.crop %}{{ diagnosis.crop.name }}{% else %}Not specified{% endif %}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Description -->
+        {% if diagnosis.description %}
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Description</h2>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <p class="text-gray-700 leading-relaxed">{{ diagnosis.description }}</p>
+                                <i class="ri-alert-line"></i> Quarantine Required
+                            {% else %}
+                                <i class="ri-check-line"></i> No Quarantine Required
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                {% if diagnosis.disease.symptom_set.all %}
+                <div>
+                    <p class="text-gray-600 text-sm font-medium mb-2">Common Symptoms</p>
+                    {% if diagnosis.detected_symptoms %}
+                    <ul class="space-y-2">
+                        {% for symptom in diagnosis.detected_symptoms %}
+                        <li class="flex items-center gap-2">
+                            <i class="ri-check-line text-green-600"></i>
+                            <span>{{ symptom }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-gray-600 italic">No symptoms recorded</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Treatment Plan -->
+        {% if treatment_plan %}
+        <section class="mb-8 page-break">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Recommended Treatment Plan</h2>
+            
+            <div class="space-y-6">
+                {% for treatment in treatment_plan %}
+                <div class="border border-gray-200 rounded-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-3">{{ treatment.name }}</h3>
+                    
+                    {% if treatment.description %}
+                    <p class="text-gray-700 mb-4">{{ treatment.description }}</p>
+                    {% endif %}
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
+                        <div>
+                            <p class="text-gray-600 font-medium">Active Ingredient</p>
+                            <p class="text-gray-800">{{ treatment.active_ingredient }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 font-medium">Dosage</p>
+                            <p class="text-gray-800">{{ treatment.dosage }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 font-medium">Application Method</p>
+                            <p class="text-gray-800">{{ treatment.application_method }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 font-medium">Frequency</p>
+                            <p class="text-gray-800">{{ treatment.frequency }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 font-medium">Duration</p>
+                            <p class="text-gray-800">{{ treatment.duration_days }} days</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 font-medium">Effectiveness</p>
+                            <p class="text-green-600 font-bold">{{ treatment.effectiveness_percent }}%</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded p-3 text-sm">
+                        <p class="text-gray-600 font-medium mb-1">Organic Approved</p>
+                        <p class="text-gray-800">{% if treatment.organic_approved %}<span class="text-green-600">✓ Yes</span>{% else %}<span class="text-red-600">✗ No</span>{% endif %}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Disclaimer -->
+        <section class="mt-12 pt-8 border-t">
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <p class="text-sm text-yellow-800">
+                    <strong>Disclaimer:</strong> This report is generated based on the symptoms and observations recorded. 
+                    For accurate diagnosis and treatment recommendations, always consult with qualified agronomists or agricultural extension officers. 
+                    This report should not be considered as professional agricultural advice.
+                </p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <div class="mt-8 pt-8 border-t text-center text-sm text-gray-600">
+            <p>FarmWise Disease Diagnosis System</p>
+            <p>{{ generated_at|date:"F d, Y H:i:s" }}</p>
+        </div>
+    </div>
+</div>
+
+<style media="print">
+    body {
+        background: white;
+    }
+    .print\:shadow-none {
+        box-shadow: none !important;
+    }
+    .page-break {
+        page-break-after: always;
+    }
+</style>
+{% endblock %}

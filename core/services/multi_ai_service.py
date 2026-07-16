@@ -90,6 +90,43 @@ class MultiAIService:
             'error': reason,
             'provider': 'fallback'
         }
+    
+    def query_gemini(self, prompt: str, model_type: str = 'gemini') -> str:
+        """
+        Query Gemini AI for text generation responses
+        """
+        if not self.available_providers:
+            logger.error("[MULTI-AI] No AI providers available for text generation")
+            return None
+        
+        # Try Gemini first, then fallback to other providers
+        providers_to_try = []
+        if 'gemini' in self.available_providers:
+            providers_to_try.append('gemini')
+        
+        # Add other providers that support text generation
+        for provider in ['groq', 'together']:
+            if provider in self.available_providers and provider not in providers_to_try:
+                providers_to_try.append(provider)
+        
+        for provider_name in providers_to_try:
+            try:
+                logger.info(f"[MULTI-AI] Trying {provider_name} for text generation...")
+                provider = self.providers[provider_name]
+                
+                if hasattr(provider, 'generate_text'):
+                    result = provider.generate_text(prompt)
+                    if result:
+                        logger.info(f"[MULTI-AI] ✓ Text generation success with {provider_name}")
+                        return result
+                else:
+                    logger.warning(f"[MULTI-AI] {provider_name} doesn't support text generation")
+            except Exception as e:
+                logger.error(f"[MULTI-AI] ✗ Error with {provider_name}: {str(e)}")
+                continue
+        
+        logger.error("[MULTI-AI] All text generation providers failed")
+        return None
 
 
 class HuggingFaceProvider:
@@ -215,6 +252,38 @@ class GroqProvider:
     def is_available(self) -> bool:
         return bool(self.api_key)
     
+    def generate_text(self, prompt: str) -> str:
+        """Generate text response using Groq"""
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data['choices'][0]['message']['content'].strip()
+            
+            return None
+        except Exception as e:
+            logger.error(f"[GROQ] Text generation failed: {str(e)}")
+            return None
+    
     def detect_pest(self, image_file) -> Dict:
         try:
             # Groq supports vision through OpenAI-compatible API
@@ -289,6 +358,38 @@ class TogetherProvider:
     
     def is_available(self) -> bool:
         return bool(self.api_key)
+    
+    def generate_text(self, prompt: str) -> str:
+        """Generate text response using Together AI"""
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+            
+            response = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data['choices'][0]['message']['content'].strip()
+            
+            return None
+        except Exception as e:
+            logger.error(f"[TOGETHER] Text generation failed: {str(e)}")
+            return None
     
     def detect_pest(self, image_file) -> Dict:
         try:
@@ -365,6 +466,15 @@ class GeminiProvider:
     
     def is_available(self) -> bool:
         return self.available
+    
+    def generate_text(self, prompt: str) -> str:
+        """Generate text response using Gemini"""
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip() if response.text else None
+        except Exception as e:
+            logger.error(f"[GEMINI] Text generation failed: {str(e)}")
+            return None
     
     def detect_pest(self, image_file) -> Dict:
         try:

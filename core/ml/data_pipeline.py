@@ -186,43 +186,6 @@ class DataPipeline:
         return pd.DataFrame(data)
     
     @staticmethod
-    def get_iot_sensor_data(farm_id=None, days=30):
-        """
-        Collect IoT sensor data for various predictions
-        """
-        from django.utils import timezone
-        
-        cutoff_date = timezone.now() - timedelta(days=days)
-        
-        try:
-            from core.models_iot import SensorDataPoint, IoTDevice
-            
-            data_points = SensorDataPoint.objects.filter(
-                server_timestamp__gte=cutoff_date
-            ).select_related('device', 'sensor_config')
-            
-            if farm_id:
-                data_points = data_points.filter(device__farm_id=farm_id)
-            
-            data = []
-            for dp in data_points:
-                feature = {
-                    'device_id': dp.device.id,
-                    'sensor_type': dp.sensor_config.sensor_type if dp.sensor_config else 'unknown',
-                    'value': float(dp.value),
-                    'signal_strength': dp.signal_strength,
-                    'is_valid': 1 if dp.is_valid else 0,
-                    'timestamp': dp.server_timestamp,
-                    'hour': dp.server_timestamp.hour,
-                    'day_of_week': dp.server_timestamp.weekday(),
-                }
-                data.append(feature)
-            
-            return pd.DataFrame(data)
-        except:
-            return pd.DataFrame()
-    
-    @staticmethod
     def get_pest_detection_data(farm_id=None, days=365):
         """
         Collect pest detection data for training/improving detection models

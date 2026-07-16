@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Market Dashboard - FarmWise{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 100%);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
+    }
+
+    .icon-badge {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        font-size: 28px;
+    }
+
+    .section-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card {
+        animation: slideInUp 0.5s ease-out;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+    .listing-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s;
+    }
+
+    .listing-card:hover {
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        transform: translateY(-4px);
+    }
+
+    .price-badge {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
+    <div class="container mx-auto px-4">
+        <!-- Header -->
+        <div class="mb-12">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h1 class="section-title mb-2">🏪 Market Dashboard</h1>
+                    <p class="text-gray-600 text-lg">Monitor prices, listings, and inquiries</p>
+                </div>
+                <a href="{% url 'core:market' %}" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                    <i class="ri-store-line"></i> Market
+                </a>
+            </div>
+        </div>
+
+        <!-- Status Overview -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <!-- Latest Prices -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Latest Prices</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ latest_prices|length }}</p>
+                        <p class="text-xs text-gray-500 mt-2">Commodity prices</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-green-100 to-green-50">
+                        <i class="ri-stock-line text-green-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Listings -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">My Listings</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ my_listings|length }}</p>
+                        <p class="text-xs text-gray-500 mt-2">Active listings</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-blue-100 to-blue-50">
+                        <i class="ri-list-check-line text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Inquiries -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Pending Inquiries</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ pending_inquiries }}</p>
+                        <p class="text-xs text-gray-500 mt-2">Awaiting response</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-orange-100 to-orange-50">
+                        <i class="ri-mail-line text-orange-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Commodities -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Commodities</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ total_commodities }}</p>
+                        <p class="text-xs text-gray-500 mt-2">Available types</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-purple-100 to-purple-50">
+                        <i class="ri-box-line text-purple-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Listings -->
+        {% if my_listings %}
+        <div class="bg-white rounded-2xl shadow-lg p-8 border border-gray-100 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="ri-list-check-line mr-3 text-purple-600"></i>
+                Recent Listings
+            </h2>
+            <div class="space-y-4">
+                {% for listing in my_listings %}
+                <div class="listing-card">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-800">{{ listing.title }}</h3>
+                            <p class="text-sm text-gray-600 mt-1">{{ listing.description|truncatewords:20 }}</p>
+                            <p class="text-xs text-gray-500 mt-2">
+                                <i class="ri-calendar-line"></i> {{ listing.created_at|date:"M d, Y" }}
+                            </p>
+                        </div>
+                        <span class="price-badge">{{ listing.quantity }} units</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-8">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

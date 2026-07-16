@@ -317,7 +317,7 @@ def wallboard(request):
     
     # Top farms by activity
     top_farms = Farm.objects.annotate(
-        crop_count=Count('fields__crops', distinct=True),
+        crop_count=Count('crop_fields', distinct=True),
         animal_count=Count('animals', distinct=True),
         activity_count=Count('activities', distinct=True)
     ).order_by('-activity_count')[:10]
@@ -328,7 +328,6 @@ def wallboard(request):
     livestock = dashboard_data.get('livestock', {}) or {}
     equipment = dashboard_data.get('equipment', {}) or {}
     pests = dashboard_data.get('pest_detection', {}) or {}
-    iot = dashboard_data.get('iot', {}) or {}
     trends = dashboard_data.get('trends', {}) or {}
     breakdown = financial.get('breakdown', {}) or {}
     
@@ -378,29 +377,6 @@ def wallboard(request):
         'pest_severity': {
             'labels': list((pests.get('by_severity', {}) or {}).keys()),
             'values': list((pests.get('by_severity', {}) or {}).values()),
-        },
-        'iot_device_status': {
-            'labels': list((iot.get('by_status', {}) or {}).keys()),
-            'values': list((iot.get('by_status', {}) or {}).values()),
-        },
-        'iot_device_type': {
-            'labels': list((iot.get('by_type', {}) or {}).keys()),
-            'values': list((iot.get('by_type', {}) or {}).values()),
-        },
-        'iot_connectivity': {
-            'labels': ['Online', 'Offline', 'Low Battery'],
-            'values': [
-                iot.get('online_devices', 0),
-                iot.get('offline_devices', 0),
-                iot.get('low_battery_devices', 0),
-            ],
-        },
-        'iot_data_quality': {
-            'labels': ['Valid Readings', 'Invalid Readings'],
-            'values': [
-                iot.get('valid_readings', 0),
-                iot.get('invalid_readings', 0),
-            ],
         },
     }
     
@@ -731,9 +707,29 @@ def animal_list(request):
     if species_filter:
         animals = animals.filter(animal_type__species=species_filter)
     
+    # Filter by dosing program type
+    filter_type = request.GET.get('filter')
+    if filter_type in ['medication', 'vaccination', 'treatments']:
+        # Get animals with relevant health records
+        from .models import HealthRecord
+        animals_with_records = Animal.objects.filter(
+            farm__owner=request.user,
+            health_records__record_type=filter_type
+        ).distinct()
+        animals = animals_with_records
+    elif filter_type == 'breeding':
+        # Get animals with breeding records
+        from .models import BreedingRecord
+        animals_with_breeding = Animal.objects.filter(
+            farm__owner=request.user,
+            breeding_records__isnull=False
+        ).distinct()
+        animals = animals_with_breeding
+    
     return render(request, 'livestock/list.html', {
         'animals': animals,
         'export_url': reverse('core:export_livestock'),
+        'filter_type': filter_type,
     })
 
 
@@ -836,6 +832,13 @@ def health_record_add(request, animal_id):
         form = HealthRecordForm(initial={'record_date': timezone.now().date()})
     
     return render(request, 'livestock/health.html', {'form': form, 'animal': animal})
+
+
+@login_required
+def breeding_record_select_animal(request):
+    """Select animal before adding breeding record"""
+    animals = Animal.objects.filter(farm__owner=request.user)
+    return render(request, 'livestock/select_breeding.html', {'animals': animals})
 
 
 @login_required
@@ -2460,7 +2463,13 @@ def file_claim(request, policy_id):
 def my_claims(request):
     """View user's claims"""
     claims = InsuranceClaim.objects.filter(policy__farmer=request.user).order_by('-claim_date')
-    return render(request, 'insurance/claims.html', {'claims': claims})
+    pending_count = claims.filter(status='pending').count()
+    approved_count = claims.filter(status='approved').count()
+    return render(request, 'insurance/claims.html', {
+        'claims': claims,
+        'pending_count': pending_count,
+        'approved_count': approved_count
+    })
 
 
 # ============================================================
@@ -2565,6 +2574,21 @@ def edit_worker(request, pk):
 
 
 @login_required
+def log_hours_select_worker(request):
+    """Select a worker to log hours for"""
+    farms = Farm.objects.filter(owner=request.user)
+    workers = Worker.objects.filter(farm__in=farms, is_active=True)
+    
+    if request.method == 'POST':
+        worker_id = request.POST.get('worker_id')
+        if worker_id:
+            return redirect('core:log_hours', worker_id=worker_id)
+        else:
+            messages.error(request, 'Please select a worker')
+    
+    return render(request, 'labor/select_worker_hours.html', {'workers': workers})
+
+
 def log_hours(request, worker_id):
     """Log work hours for a worker"""
     worker = get_object_or_404(Worker, pk=worker_id, farm__owner=request.user)
@@ -2575,16 +2599,22 @@ def log_hours(request, worker_id):
             shift = form.save(commit=False)
             shift.worker = worker
             shift.wage_rate = worker.hourly_wage
+            shift.overtime_rate = worker.hourly_wage * Decimal('1.5')  # Default 1.5x for overtime
             shift.recorded_by = request.user
             shift.save()
             messages.success(request, f'{shift.hours_worked} hours logged for {worker.worker.get_full_name()}')
-            return redirect('core:labor')
+            return redirect('core:payroll_list')
+        else:
+            messages.error(request, f'Form validation failed: {form.errors}')
     else:
-        form = WorkShiftForm(initial={'date': timezone.now().date()})
+        form = WorkShiftForm(initial={'date': timezone.now().date(), 'wage_rate': worker.hourly_wage, 'overtime_rate': worker.hourly_wage * Decimal('1.5')})
         # Filter fields to show only fields on the worker's farm
         form.fields['field'].queryset = Field.objects.filter(farm=worker.farm)
         # Make field optional as not all work is tied to a specific field
         form.fields['field'].required = False
+        # Make overtime fields optional
+        form.fields['overtime_hours'].required = False
+        form.fields['overtime_rate'].required = False
     
     # Get fields for the worker's farm to pass to template
     fields = Field.objects.filter(farm=worker.farm)
@@ -2603,8 +2633,19 @@ def payroll_list(request):
     
     farms = Farm.objects.filter(owner=request.user)
     payrolls = Payroll.objects.filter(worker__farm__in=farms).order_by('-period_start')
+    workers = Worker.objects.filter(farm__in=farms, is_active=True)
+    
+    # Calculate summary stats
+    total_payroll = sum(p.net_pay for p in payrolls if p.period_start.month == timezone.now().month)
+    pending_count = payrolls.filter(status='pending').count()
+    
     context = {
         'payrolls': payrolls,
+        'workers': workers,
+        'farms': farms,
+        'total_payroll': total_payroll,
+        'pending_count': pending_count,
+        'workers_count': workers.count(),
         'export_url': reverse('core:export_payroll'),
     }
     return render(request, 'labor/payroll.html', context)
@@ -2616,24 +2657,54 @@ def process_payroll(request, pk):
     worker = get_object_or_404(Worker, pk=pk, farm__owner=request.user)
     
     # Get shifts for current month
+    current_date = timezone.now().date()
+    period_start = current_date.replace(day=1)
+    period_end = current_date
+    
     shifts = WorkShift.objects.filter(
         worker=worker,
-        date__month=timezone.now().month
+        date__gte=period_start,
+        date__lte=period_end
     )
     
-    total_hours = shifts.aggregate(total=Sum('hours_worked'))['total'] or 0
-    total_pay = total_hours * worker.hourly_wage
+    total_hours = shifts.aggregate(total=Sum('hours_worked'))['total'] or Decimal('0')
+    overtime_hours = shifts.aggregate(total=Sum('overtime_hours'))['total'] or Decimal('0')
     
-    payroll = Payroll.objects.create(
+    # Calculate regular pay and overtime pay
+    regular_pay = total_hours * worker.hourly_wage
+    overtime_pay = overtime_hours * (worker.hourly_wage * Decimal('1.5'))  # 1.5x for overtime
+    total_pay = regular_pay + overtime_pay
+    
+    # Check if payroll already exists for this period
+    existing_payroll = Payroll.objects.filter(
         worker=worker,
-        period_start=timezone.now().date().replace(day=1),
-        period_end=timezone.now().date(),
-        total_hours=total_hours,
-        total_pay=total_pay,
-        net_pay=total_pay  # No deductions for simplicity
-    )
+        period_start=period_start,
+        period_end=period_end
+    ).first()
     
-    messages.success(request, f'Payroll processed: ${total_pay} for {total_hours} hours')
+    if existing_payroll:
+        # Update existing payroll
+        existing_payroll.total_hours = total_hours
+        existing_payroll.overtime_hours = overtime_hours
+        existing_payroll.total_pay = total_pay
+        existing_payroll.overtime_pay = overtime_pay
+        existing_payroll.net_pay = total_pay - existing_payroll.deductions
+        existing_payroll.save()
+        messages.success(request, f'Payroll updated: ${total_pay} for {total_hours} hours (including {overtime_hours} overtime hours)')
+    else:
+        # Create new payroll
+        payroll = Payroll.objects.create(
+            worker=worker,
+            period_start=period_start,
+            period_end=period_end,
+            total_hours=total_hours,
+            overtime_hours=overtime_hours,
+            total_pay=total_pay,
+            overtime_pay=overtime_pay,
+            net_pay=total_pay  # No deductions initially
+        )
+        messages.success(request, f'Payroll processed: ${total_pay} for {total_hours} hours (including {overtime_hours} overtime hours)')
+    
     return redirect('core:payroll_list')
 
 
@@ -3118,6 +3189,9 @@ def emission_record_create(request):
 def carbon_report(request):
     """View carbon footprint reports"""
     from datetime import datetime
+    from django.db.models import Sum, Q
+    from decimal import Decimal
+    from .services.voice_assistant_service import VoiceAssistantService
     
     farms = request.user.farms.all()
     reports = CarbonFootprintReport.objects.filter(farm__in=farms)
@@ -3134,19 +3208,42 @@ def carbon_report(request):
     if period and year:
         try:
             year = int(year)
+            
+            # Try to get existing report
             if period == 'monthly':
                 # For monthly, get the latest month of that year
                 report = reports.filter(year=year, report_period='monthly').order_by('-month').first()
             elif period == 'yearly':
                 report = reports.filter(year=year, report_period='yearly').first()
+            
+            # If no report exists, generate one
+            if not report:
+                report = VoiceAssistantService.generate_carbon_report(farms, period, year)
+                if report:
+                    messages.success(request, f'Carbon footprint report generated for {period} {year}')
+                else:
+                    messages.warning(request, 'No emission data available to generate report')
+                    
         except (ValueError, TypeError):
             pass
+    
+    # Prepare report data for JSON serialization
+    report_data = None
+    if report:
+        report_data = {
+            'fuel_emissions': float(report.fuel_emissions),
+            'electricity_emissions': float(report.electricity_emissions),
+            'fertilizer_emissions': float(report.fertilizer_emissions),
+            'total_emissions': float(report.total_emissions_kg_co2e),
+            'is_carbon_neutral': report.is_carbon_neutral
+        }
     
     context = {
         'farms': farms, 
         'reports': reports,
         'available_years': available_years,
         'report': report,
+        'report_data': report_data,
         'selected_period': period,
         'selected_year': year,
         'export_url': reverse('core:export_carbon_report'),
@@ -3224,8 +3321,8 @@ def farm_map(request):
         farms_data.append({
             'id': farm.id,
             'name': farm.name,
-            'lat': float(farm.latitude) if farm.latitude else None,
-            'lon': float(farm.longitude) if farm.longitude else None,
+            'location_lat': float(farm.latitude) if farm.latitude else None,
+            'location_lng': float(farm.longitude) if farm.longitude else None,
             'address': farm.address,
             'total_area_hectares': float(farm.total_area_hectares) if farm.total_area_hectares else None,
         })
@@ -3250,14 +3347,38 @@ def farm_map(request):
         
         livestock_data.append({
             'id': animal.id,
-            'name': animal.name,
+            'name': animal.name or animal.tag_number,
             'tag_number': animal.tag_number,
-            'breed': animal.animal_type.breed if hasattr(animal, 'animal_type') else None,
-            'lat': float(latest_location.latitude) if latest_location else None,
-            'lon': float(latest_location.longitude) if latest_location else None,
+            'animal_type': f"{animal.animal_type.get_species_display()} ({animal.animal_type.breed})" if hasattr(animal, 'animal_type') and animal.animal_type else 'Unknown',
+            'location_lat': float(latest_location.latitude) if latest_location and latest_location.latitude else None,
+            'location_lng': float(latest_location.longitude) if latest_location and latest_location.longitude else None,
+            'status': animal.status,
             'last_updated': latest_location.recorded_at.strftime('%Y-%m-%d %H:%M') if latest_location else animal.updated_at.strftime('%Y-%m-%d %H:%M'),
-            'accuracy_meters': latest_location.accuracy_meters if latest_location else None,
-            'is_inside_geofence': latest_location.is_inside_assigned_geofence if latest_location else None,
+        })
+    
+    # Prepare crops data
+    crops_data = []
+    for crop in CropSeason.objects.filter(field__farm__owner=request.user):
+        crops_data.append({
+            'id': crop.id,
+            'crop_name': crop.crop_type.name if crop.crop_type else 'Unknown',
+            'status': crop.status,
+            'planting_date': crop.planting_date.strftime('%Y-%m-%d') if crop.planting_date else '',
+            'expected_harvest_date': crop.expected_harvest_date.strftime('%Y-%m-%d') if crop.expected_harvest_date else '',
+            'field_boundary': crop.field.boundary if crop.field and crop.field.boundary else None,
+        })
+    
+    # Prepare equipment data - Equipment is owned by user, not farm
+    equipment_data = []
+    for item in Equipment.objects.filter(owner=request.user, status='available'):
+        equipment_data.append({
+            'id': item.id,
+            'name': item.name,
+            'category': item.category,
+            'status': item.status,
+            'daily_rate': float(item.daily_rate) if item.daily_rate else 0,
+            'location_lat': None,
+            'location_lng': None,
         })
     
     # Prepare geofences data
@@ -3274,10 +3395,12 @@ def farm_map(request):
         })
     
     context = {
-        'farms_data': json.dumps(farms_data),
-        'fields_data': json.dumps(fields_data),
-        'livestock_data': json.dumps(livestock_data),
-        'geofences_data': json.dumps(geofences_data),
+        'farms': json.dumps(farms_data),
+        'fields': json.dumps(fields_data),
+        'livestock': json.dumps(livestock_data),
+        'crops': json.dumps(crops_data),
+        'equipment': json.dumps(equipment_data),
+        'geofences': json.dumps(geofences_data),
     }
     
     return render(request, 'mapping/farm_map.html', context)
@@ -3356,13 +3479,29 @@ def geofence_edit(request, pk):
     geofence = get_object_or_404(Geofence, pk=pk)
     if geofence.farm.owner != request.user:
         return redirect('core:geofence_list')
+    
     if request.method == 'POST':
         geofence.name = request.POST.get('name', geofence.name)
         geofence.enable_exit_alerts = request.POST.get('enable_exit_alerts') == 'on'
+        geofence.enable_entry_alerts = request.POST.get('enable_entry_alerts') == 'on'
+        
+        # Update boundary if provided
+        boundary_str = request.POST.get('geojson_boundary')
+        if boundary_str:
+            try:
+                geofence.geojson_boundary = json.loads(boundary_str)
+            except json.JSONDecodeError:
+                pass
+        
         geofence.save()
         messages.success(request, 'Geofence updated successfully!')
         return redirect('core:geofence_detail', pk=geofence.id)
-    context = {'geofence': geofence}
+    
+    farms = Farm.objects.filter(owner=request.user)
+    context = {
+        'geofence': geofence,
+        'farms': farms,
+    }
     return render(request, 'mapping/geofence_form.html', context)
 
 
@@ -3376,25 +3515,35 @@ def livestock_tracking(request):
     livestock = Animal.objects.filter(
         farm__owner=request.user, 
         status='alive'
-    ).select_related('animal_type')
+    ).select_related('animal_type').prefetch_related('location_history', 'health_records')
     
     livestock_data = []
     active_tracking = 0
     inside_geofence = 0
     outside_geofence = 0
+    healthy_count = 0
+    sick_count = 0
     
     for animal in livestock:
-        last_location = None
-        if hasattr(animal, 'last_location'):
-            last_location = animal.last_location
+        # Get latest location from LivestockLocation
+        last_location = animal.location_history.order_by('-recorded_at').first()
         
+        # Determine health status from recent health records
+        health_status = 'alive'
+        recent_health = animal.health_records.filter(
+            record_type__in=['treatment', 'checkup']
+        ).order_by('-record_date').first()
+        
+        if recent_health and recent_health.symptoms:
+            health_status = 'sick'
+            sick_count += 1
+        else:
+            healthy_count += 1
+        
+        # Check if outside geofence
         is_outside = False
-        if last_location and hasattr(animal, 'assigned_geofence'):
-            is_outside = not is_point_in_geofence(
-                last_location.latitude, 
-                last_location.longitude, 
-                animal.assigned_geofence
-            )
+        if last_location:
+            is_outside = not last_location.is_inside_assigned_geofence
         
         if last_location:
             active_tracking += 1
@@ -3407,23 +3556,33 @@ def livestock_tracking(request):
             'id': animal.id,
             'name': animal.name or animal.tag_number,
             'tag_number': animal.tag_number,
-            'breed': animal.animal_type.breed if animal.animal_type else None,
+            'breed': animal.animal_type.breed if animal.animal_type else 'Unknown',
+            'species': animal.animal_type.get_species_display() if animal.animal_type else 'Unknown',
             'gender': animal.get_gender_display(),
+            'age_months': animal.age_months,
+            'weight_kg': float(animal.weight_kg) if animal.weight_kg else None,
+            'status': health_status,
+            'location_name': animal.location or 'Unknown',
             'latitude': float(last_location.latitude) if last_location else None,
             'longitude': float(last_location.longitude) if last_location else None,
+            'accuracy_meters': last_location.accuracy_meters if last_location else None,
+            'signal_strength': last_location.signal_strength if last_location else None,
             'last_updated': last_location.recorded_at.strftime('%Y-%m-%d %H:%M:%S') if last_location else None,
             'is_outside': is_outside,
         })
     
     geofences_data = []
     for geofence in Geofence.objects.filter(farm__owner=request.user, is_active=True):
+        boundary_data = None
+        if geofence.geojson_boundary:
+            boundary_data = geofence.geojson_boundary
         geofences_data.append({
             'id': geofence.id,
             'name': geofence.name,
             'is_active': geofence.is_active,
             'enable_exit_alerts': geofence.enable_exit_alerts,
             'enable_entry_alerts': geofence.enable_entry_alerts,
-            'boundary': geofence.geojson_boundary,
+            'boundary': boundary_data,
         })
     
     context = {
@@ -3431,6 +3590,8 @@ def livestock_tracking(request):
         'active_tracking': active_tracking,
         'inside_geofence': inside_geofence,
         'outside_geofence': outside_geofence,
+        'healthy_count': healthy_count,
+        'sick_count': sick_count,
         'livestock': livestock,
         'livestock_data': json.dumps(livestock_data),
         'geofences_data': json.dumps(geofences_data),
@@ -3441,7 +3602,7 @@ def livestock_tracking(request):
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('ajax'):
         return JsonResponse({'livestock': livestock_data})
     
-    return render(request, 'maps/livestock_tracking.html', context)
+    return render(request, 'mapping/livestock_tracking.html', context)
 
 
 @login_required
@@ -3481,10 +3642,12 @@ def geofence_alerts(request, geofence_id=None):
     
     if geofence_id:
         geofence = get_object_or_404(Geofence, id=geofence_id, farm__owner=request.user)
-        alerts = GeofenceAlert.objects.filter(geofence=geofence).order_by('-alert_time')
+        from core.models_location import FarmGeofenceAlert
+        alerts = FarmGeofenceAlert.objects.filter(geofence=geofence).order_by('-alert_time')
     else:
         farms = Farm.objects.filter(owner=request.user)
-        alerts = GeofenceAlert.objects.filter(geofence__farm__in=farms).order_by('-alert_time')
+        from core.models_location import FarmGeofenceAlert
+        alerts = FarmGeofenceAlert.objects.filter(geofence__farm__in=farms).order_by('-alert_time')
         geofence = None
     
     status_filter = request.GET.get('status')
@@ -3532,7 +3695,8 @@ def geofence_alerts(request, geofence_id=None):
 def resolve_geofence_alert(request, alert_id):
     """Mark an alert as resolved"""
     
-    alert = get_object_or_404(GeofenceAlert, id=alert_id, geofence__farm__owner=request.user)
+    from core.models_location import FarmGeofenceAlert
+    alert = get_object_or_404(FarmGeofenceAlert, id=alert_id, geofence__farm__owner=request.user)
     
     if request.method == 'POST':
         alert.is_resolved = True
@@ -4571,7 +4735,6 @@ def analytics_dashboard(request):
     livestock = dashboard_data.get('livestock', {}) or {}
     equipment = dashboard_data.get('equipment', {}) or {}
     pests = dashboard_data.get('pest_detection', {}) or {}
-    iot = dashboard_data.get('iot', {}) or {}
     trends = dashboard_data.get('trends', {}) or {}
     breakdown = financial.get('breakdown', {}) or {}
 
@@ -4621,29 +4784,6 @@ def analytics_dashboard(request):
         'pest_severity': {
             'labels': list((pests.get('by_severity', {}) or {}).keys()),
             'values': list((pests.get('by_severity', {}) or {}).values()),
-        },
-        'iot_device_status': {
-            'labels': list((iot.get('by_status', {}) or {}).keys()),
-            'values': list((iot.get('by_status', {}) or {}).values()),
-        },
-        'iot_device_type': {
-            'labels': list((iot.get('by_type', {}) or {}).keys()),
-            'values': list((iot.get('by_type', {}) or {}).values()),
-        },
-        'iot_connectivity': {
-            'labels': ['Online', 'Offline', 'Low Battery'],
-            'values': [
-                iot.get('online_devices', 0),
-                iot.get('offline_devices', 0),
-                iot.get('low_battery_devices', 0),
-            ],
-        },
-        'iot_data_quality': {
-            'labels': ['Valid Readings', 'Invalid Readings'],
-            'values': [
-                iot.get('valid_readings', 0),
-                iot.get('invalid_readings', 0),
-            ],
         },
     }
 
@@ -4794,45 +4934,3 @@ def generate_analytics_report(request):
     else:
         messages.error(request, 'Invalid report type')
         return redirect('core:analytics_dashboard')
-
-
-# ============================================================
-# IoT DEVICE MANAGEMENT
-# ============================================================
-
-@login_required
-def iot_devices(request):
-    """List IoT devices connected to farms"""
-    farms = Farm.objects.filter(owner=request.user)
-    
-    # In a real implementation, this would connect to actual IoT devices
-    # For now, show a placeholder dashboard
-    context = {
-        'farms': farms,
-        'device_count': 0,
-        'active_devices': 0,
-        'last_update': timezone.now(),
-    }
-    return render(request, 'iot/devices.html', context)
-
-
-@login_required
-def iot_provisioning(request):
-    """IoT device provisioning and setup"""
-    farms = Farm.objects.filter(owner=request.user)
-    
-    context = {
-        'farms': farms,
-    }
-    return render(request, 'iot/provisioning.html', context)
-
-
-@login_required
-def iot_real_time_monitoring(request):
-    """Real-time monitoring of IoT devices"""
-    farms = Farm.objects.filter(owner=request.user)
-    
-    context = {
-        'farms': farms,
-    }
-    return render(request, 'iot/real_time_monitoring.html', context)

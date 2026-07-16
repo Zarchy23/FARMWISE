@@ -990,7 +990,7 @@ class WorkShiftForm(forms.ModelForm):
     
     class Meta:
         model = WorkShift
-        fields = ['field', 'date', 'task', 'hours_worked', 'notes']
+        fields = ['field', 'date', 'task', 'hours_worked', 'overtime_hours', 'wage_rate', 'overtime_rate', 'notes']
         widgets = {
             'field': forms.Select(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
@@ -1006,7 +1006,25 @@ class WorkShiftForm(forms.ModelForm):
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'step': '0.5',
                 'min': '0',
-                'placeholder': 'Hours worked'
+                'placeholder': 'Regular hours worked'
+            }),
+            'overtime_hours': forms.NumberInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'step': '0.5',
+                'min': '0',
+                'placeholder': 'Overtime hours'
+            }),
+            'wage_rate': forms.NumberInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Hourly wage rate'
+            }),
+            'overtime_rate': forms.NumberInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Overtime hourly rate (usually 1.5x)'
             }),
             'notes': forms.Textarea(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
@@ -1019,6 +1037,10 @@ class WorkShiftForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Make field optional
         self.fields['field'].required = False
+        # Make overtime fields optional
+        self.fields['overtime_hours'].required = False
+        self.fields['wage_rate'].required = False
+        self.fields['overtime_rate'].required = False
 
 
 # ============================================================
@@ -1119,13 +1141,18 @@ class PayrollForm(forms.ModelForm):
     
     class Meta:
         model = Payroll
-        fields = ['deductions', 'status', 'payment_date', 'payment_method', 'transaction_id', 'notes']
+        fields = ['deductions', 'deduction_breakdown', 'status', 'payment_date', 'payment_method', 'transaction_id', 'notes']
         widgets = {
             'deductions': forms.NumberInput(attrs={
                 'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
                 'step': '0.01',
                 'min': '0',
-                'placeholder': 'Deductions amount'
+                'placeholder': 'Total deductions amount'
+            }),
+            'deduction_breakdown': forms.Textarea(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'rows': 3,
+                'placeholder': 'JSON format: {"tax": 100, "insurance": 50, "other": 20}'
             }),
             'status': forms.Select(attrs={
                 'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'

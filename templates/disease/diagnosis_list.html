@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Diagnoses - FarmWise{% endblock %}
+
+{% block page_title %}My Diagnoses{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-wrap justify-between items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">All Diagnoses</h1>
+            <p class="text-gray-500">Track all disease diagnoses across your farms</p>
+        </div>
+        <a href="/disease/diagnoses/create/" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+            <i class="ri-add-line"></i>
+            <span>New Diagnosis</span>
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <div class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <input type="text" id="searchInput" placeholder="Search by disease or farm..." class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="statusFilter" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="cured">Cured</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="applyFilters()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                    Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ total_diagnoses|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Total Diagnoses</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-yellow-600">{{ pending_count|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Pending</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ confirmed_count|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Confirmed</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">{{ cured_count|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Cured</div>
+        </div>
+    </div>
+
+    <!-- Diagnoses Table -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b">
+                    <tr>
+                        <th class="text-left p-4 text-sm font-semibold text-gray-600">Disease</th>
+                        <th class="text-left p-4 text-sm font-semibold text-gray-600">Farm / Crop</th>
+                        <th class="text-left p-4 text-sm font-semibold text-gray-600">Confidence</th>
+                        <th class="text-left p-4 text-sm font-semibold text-gray-600">Status</th>
+                        <th class="text-left p-4 text-sm font-semibold text-gray-600">Diagnosed</th>
+                        <th class="text-left p-4 text-sm font-semibold text-gray-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="diagnosisTableBody">
+                    {% for diagnosis in diagnoses %}
+                    <tr class="border-b hover:bg-gray-50 transition diagnosis-row" data-diagnosis-id="{{ diagnosis.id }}">
+                        <td class="p-4">
+                            <div class="font-medium text-gray-800">{{ diagnosis.disease.name }}</div>
+                            <div class="text-xs text-gray-500">{{ diagnosis.disease.category.name }}</div>
+                        </td>
+                        <td class="p-4">
+                            <div>{{ diagnosis.farm.name }}</div>
+                            <div class="text-xs text-gray-500">{{ diagnosis.crop.crop_type.name }}</div>
+                        </td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-12 bg-gray-200 rounded-full h-1.5">
+                                    <div class="bg-green-600 h-1.5 rounded-full" style="width: {{ diagnosis.confidence_score }}%"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700">{{ diagnosis.confidence_score }}%</span>
+                            </div>
+                        </td>
+                        <td class="p-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if diagnosis.status == 'confirmed' %}bg-green-100 text-green-800
+                                {% elif diagnosis.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                {% elif diagnosis.status == 'cured' %}bg-blue-100 text-blue-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {% if diagnosis.status == 'confirmed' %}
+                                    <i class="ri-checkbox-circle-line mr-1"></i>
+                                {% elif diagnosis.status == 'pending' %}
+                                    <i class="ri-time-line mr-1"></i>
+                                {% elif diagnosis.status == 'cured' %}
+                                    <i class="ri-check-double-line mr-1"></i>
+                                {% endif %}
+                                {{ diagnosis.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-sm text-gray-600">
+                            {{ diagnosis.created_at|date:"M d, Y" }}
+                        </td>
+                        <td class="p-4">
+                            <div class="flex space-x-2">
+                                <a href="/disease/diagnoses/{{ diagnosis.id }}/" class="text-blue-600 hover:text-blue-800" title="View Details">
+                                    <i class="ri-eye-line text-lg"></i>
+                                </a>
+                                <a href="/disease/diagnoses/{{ diagnosis.id }}/edit/" class="text-yellow-600 hover:text-yellow-800" title="Edit">
+                                    <i class="ri-edit-line text-lg"></i>
+                                </a>
+                                <button onclick="deleteDiagnosis({{ diagnosis.id }})" class="text-red-600 hover:text-red-800" title="Delete">
+                                    <i class="ri-delete-bin-line text-lg"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="p-8 text-center">
+                            <div class="text-gray-500">
+                                <i class="ri-inbox-line text-4xl mb-2 text-gray-300"></i>
+                                <p class="text-lg">No diagnoses found</p>
+                                <p class="text-sm mb-4">Create your first diagnosis to get started</p>
+                                <a href="/disease/diagnoses/create/" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition inline-block">
+                                    Create Diagnosis
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="bg-white rounded-xl shadow-sm p-4 flex justify-center items-center gap-2">
+        {% if page_obj.has_previous %}
+            <a href="?page=1" class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100">Previous</a>
+        {% endif %}
+        
+        <span class="px-3 py-2">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}" class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100">Last</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function deleteDiagnosis(diagnosisId) {
+    if (confirm('Are you sure you want to delete this diagnosis?')) {
+        // Make DELETE request to API
+        fetch(`/api/disease/diagnosis/${diagnosisId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            }
+        }).then(() => location.reload());
+    }
+}
+
+function applyFilters() {
+    const search = document.getElementById('searchInput').value;
+    const status = document.getElementById('statusFilter').value;
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    window.location.href = '?' + params.toString();
+}
+</script>
+{% endblock %}

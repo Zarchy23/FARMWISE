@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Select Animal - Breeding Record{% endblock %}
+{% block page_title %}Add Breeding Record{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-2">Select Animal for Breeding Record</h1>
+        <p class="text-gray-500 mb-6">Choose an animal to add a breeding record</p>
+        
+        {% if animals %}
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for animal in animals %}
+            <a href="{% url 'core:breeding_record_add' animal.id %}" class="block border rounded-lg p-4 hover:bg-green-50 hover:border-green-500 transition">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="ri-cow-line text-green-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold">{{ animal.tag_number }}</h3>
+                        <p class="text-sm text-gray-500">{{ animal.animal_type.breed }}</p>
+                        <p class="text-xs text-gray-400">{{ animal.get_gender_display }}</p>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8">
+            <p class="text-gray-500 mb-4">No animals found. Add an animal first.</p>
+            <a href="{% url 'core:animal_add' %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">Add Animal</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

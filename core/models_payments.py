@@ -207,7 +207,7 @@ class PaymentMethod(models.Model):
         ('mtn', 'MTN Mobile Money'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payment_methods')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='payment_methods')
     method_type = models.CharField(max_length=20, choices=PAYMENT_METHODS)
     
     # Card details (encrypted in production)
@@ -281,8 +281,8 @@ class PaymentTransaction(models.Model):
     ]
     
     transaction_id = models.CharField(max_length=100, unique=True, db_index=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
-    recipient = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_transactions')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='transactions')
+    recipient = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='received_transactions')
     
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=14, decimal_places=2)
@@ -500,7 +500,7 @@ class PlanChange(models.Model):
         ('trial_end', 'Trial Ended'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='plan_changes')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='plan_changes')
     old_plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True, blank=True, related_name='plan_changes_from')
     new_plan = models.ForeignKey(SubscriptionPlan, on_delete=models.CASCADE, related_name='plan_changes_to')
     change_type = models.CharField(max_length=20, choices=CHANGE_TYPES)
@@ -533,7 +533,7 @@ class Invoice(models.Model):
     ]
     
     invoice_number = models.CharField(max_length=50, unique=True, db_index=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='invoices')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='invoices')
     transaction = models.OneToOneField(PaymentTransaction, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoice')
     
     invoice_date = models.DateField()
@@ -593,8 +593,8 @@ class EscrowPayment(models.Model):
     ]
     
     order = models.OneToOneField('core.Order', on_delete=models.CASCADE, related_name='escrow')
-    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='escrow_buyer')
-    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='escrow_seller')
+    buyer = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='escrow_buyer')
+    seller = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='escrow_seller')
     
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')
@@ -612,7 +612,7 @@ class EscrowPayment(models.Model):
     
     # Dispute info
     dispute_reason = models.TextField(blank=True)
-    dispute_resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='resolved_disputes')
+    dispute_resolved_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='resolved_disputes')
     
     class Meta:
         db_table = 'escrow_payments'
@@ -665,7 +665,7 @@ class SellerPayout(models.Model):
         ('mobile_money', 'To Mobile Money'),
     ]
     
-    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payouts')
+    seller = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='payouts')
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')
     payout_method = models.CharField(max_length=20, choices=PAYOUT_METHODS)
@@ -712,7 +712,7 @@ class FarmLoan(models.Model):
         ('defaulted', 'Defaulted'),
     ]
     
-    farmer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='loans')
+    farmer = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='loans')
     farm = models.ForeignKey('Farm', on_delete=models.SET_NULL, null=True, blank=True, related_name='loans')
     
     amount_requested = models.DecimalField(max_digits=14, decimal_places=2)
@@ -725,7 +725,7 @@ class FarmLoan(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     
     # Approval
-    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_loans')
+    approved_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_loans')
     approved_at = models.DateTimeField(null=True, blank=True)
     rejection_reason = models.TextField(blank=True)
     
@@ -957,7 +957,7 @@ class FarmInvestmentProject(models.Model):
         ('cancelled', 'Cancelled'),
     ]
     
-    farmer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='investment_projects')
+    farmer = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='investment_projects')
     farm = models.ForeignKey('Farm', on_delete=models.SET_NULL, null=True, blank=True, related_name='investment_projects')
     
     title = models.CharField(max_length=255)
@@ -1006,7 +1006,7 @@ class Investment(models.Model):
     """Individual investment record"""
     
     project = models.ForeignKey(FarmInvestmentProject, on_delete=models.CASCADE, related_name='investments')
-    investor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='investments')
+    investor = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='investments')
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     expected_return = models.DecimalField(max_digits=5, decimal_places=2)
     

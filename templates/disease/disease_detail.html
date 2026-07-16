@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ disease.name }} - FarmWise{% endblock %}
+
+{% block page_title %}{{ disease.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Breadcrumb -->
+    <div class="flex items-center space-x-2 text-sm text-gray-600">
+        <a href="/disease/" class="hover:text-green-600"><i class="ri-home-line"></i> Dashboard</a>
+        <i class="ri-arrow-right-s-line"></i>
+        <a href="/disease/library/" class="hover:text-green-600">Disease Library</a>
+        <i class="ri-arrow-right-s-line"></i>
+        <span>{{ disease.name }}</span>
+    </div>
+
+    <!-- Disease Header -->
+    <div class="bg-gradient-to-r from-green-500 to-blue-500 rounded-xl shadow-sm p-8 text-white">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-green-100 mb-2">{{ disease.category.name }}</p>
+                <h1 class="text-4xl font-bold mb-2">{{ disease.name }}</h1>
+                <p class="text-lg text-green-50">{{ disease.description }}</p>
+            </div>
+            <div class="text-6xl opacity-50">
+                <i class="ri-virus-line"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <p class="text-gray-500 text-sm font-medium">Progression Rate</p>
+            <p class="text-3xl font-bold text-gray-800 mt-2">{{ disease.progression_rate }}%</p>
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div class="bg-orange-500 h-2 rounded-full" style="width: {{ disease.progression_rate }}%"></div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <p class="text-gray-500 text-sm font-medium">Quarantine</p>
+            <p class="text-3xl font-bold {% if disease.quarantine_required %}text-red-600{% else %}text-green-600{% endif %} mt-2">
+                {% if disease.quarantine_required %}Required{% else %}Not Required{% endif %}
+            </p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <p class="text-gray-500 text-sm font-medium">Affected Crops</p>
+            <p class="text-3xl font-bold text-gray-800 mt-2">{{ disease.affected_crops.all|length }}</p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <p class="text-gray-500 text-sm font-medium">Total Diagnoses</p>
+            <p class="text-3xl font-bold text-gray-800 mt-2">{{ diagnosis_count|default:"0" }}</p>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: Symptoms & Treatments -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Symptoms -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Symptoms</h2>
+                
+                {% if disease.symptom_set.all %}
+                <div class="space-y-3">
+                    {% for symptom in disease.symptom_set.all %}
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="font-medium text-gray-800">{{ symptom.name }}</p>
+                                {% if symptom.description %}
+                                <p class="text-sm text-gray-600 mt-1">{{ symptom.description }}</p>
+                                {% endif %}
+                            </div>
+                            {% if symptom.is_primary_symptom %}
+                            <span class="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded font-medium">Primary</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500">No symptoms recorded</p>
+                {% endif %}
+            </div>
+
+            <!-- Treatment Options -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Treatment Options</h2>
+                
+                {% if disease.treatmentoption_set.all %}
+                <div class="space-y-3">
+                    {% for treatment in disease.treatmentoption_set.all %}
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="font-medium text-gray-800">{{ treatment.name }}</p>
+                            <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-medium">
+                                {{ treatment.effectiveness_percent }}% Effective
+                            </span>
+                        </div>
+                        
+                        {% if treatment.description %}
+                        <p class="text-sm text-gray-600 mb-3">{{ treatment.description }}</p>
+                        {% endif %}
+
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <p class="text-gray-600">Active Ingredient</p>
+                                <p class="font-medium text-gray-800">{{ treatment.active_ingredient }}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Dosage</p>
+                                <p class="font-medium text-gray-800">{{ treatment.dosage }}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Application</p>
+                                <p class="font-medium text-gray-800">{{ treatment.application_method }}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Frequency</p>
+                                <p class="font-medium text-gray-800">{{ treatment.frequency }}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Duration</p>
+                                <p class="font-medium text-gray-800">{{ treatment.duration_days }} days</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Organic</p>
+                                <p class="font-medium text-gray-800">
+                                    {% if treatment.organic_approved %}<span class="text-green-600">✓ Yes</span>{% else %}<span class="text-red-600">✗ No</span>{% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500">No treatments recorded</p>
+                {% endif %}
+            </div>
+
+            <!-- Prevention Measures -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Prevention Measures</h2>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <ul class="space-y-2">
+                        <li class="flex items-start gap-3">
+                            <i class="ri-check-line text-blue-600 mt-0.5"></i>
+                            <span class="text-gray-700">Maintain proper field sanitation</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="ri-check-line text-blue-600 mt-0.5"></i>
+                            <span class="text-gray-700">Monitor weather conditions regularly</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="ri-check-line text-blue-600 mt-0.5"></i>
+                            <span class="text-gray-700">Use disease-resistant crop varieties</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="ri-check-line text-blue-600 mt-0.5"></i>
+                            <span class="text-gray-700">Implement proper irrigation practices</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Affected Crops -->
+        <div class="space-y-6">
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Affected Crops</h2>
+                
+                {% if disease.affected_crops.all %}
+                <div class="space-y-2">
+                    {% for crop in disease.affected_crops.all %}
+                    <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                        <i class="ri-plant-line text-green-600 text-lg"></i>
+                        <span class="text-gray-800 font-medium">{{ crop.name }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500">No specific crops listed</p>
+                {% endif %}
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
+                <div class="space-y-2">
+                    <a href="/disease/diagnoses/create/" class="block w-full bg-green-600 hover:bg-green-700 text-white text-center py-3 rounded-lg transition font-medium">
+                        <i class="ri-add-line"></i> Create Diagnosis
+                    </a>
+                    <a href="/disease/library/" class="block w-full bg-gray-200 hover:bg-gray-300 text-gray-800 text-center py-3 rounded-lg transition font-medium">
+                        <i class="ri-arrow-left-line"></i> Back to Library
+                    </a>
+                </div>
+            </div>
+
+            <!-- Information Box -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+                <p class="text-sm text-yellow-800 mb-3">
+                    <i class="ri-information-line mr-2"></i> 
+                    <strong>Important:</strong> This is general information. Always consult with agronomists for specific treatment recommendations.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

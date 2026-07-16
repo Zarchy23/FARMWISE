@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chatbot Dashboard - FarmWise{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 100%);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
+    }
+
+    .icon-badge {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        font-size: 28px;
+    }
+
+    .section-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card {
+        animation: slideInUp 0.5s ease-out;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+
+    .session-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s;
+    }
+
+    .session-card:hover {
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        transform: translateY(-4px);
+    }
+
+    .session-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background-color: #f3e8ff;
+        color: #6b21a8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
+    <div class="container mx-auto px-4">
+        <!-- Header -->
+        <div class="mb-12">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h1 class="section-title mb-2">💬 AI Chatbot Dashboard</h1>
+                    <p class="text-gray-600 text-lg">Monitor chat sessions and interactions</p>
+                </div>
+                <a href="/chat/dashboard/" class="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                    <i class="ri-chat-3-line"></i> Chat
+                </a>
+            </div>
+        </div>
+
+        <!-- Status Overview -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <!-- Total Sessions -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Total Sessions</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ recent_sessions|length }}</p>
+                        <p class="text-xs text-gray-500 mt-2">Chat sessions</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-green-100 to-green-50">
+                        <i class="ri-chat-3-line text-green-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Messages -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Total Messages</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ total_messages }}</p>
+                        <p class="text-xs text-gray-500 mt-2">All conversations</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-blue-100 to-blue-50">
+                        <i class="ri-message-2-line text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Avg Messages Per Session -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Avg Per Session</p>
+                        {% if recent_sessions|length > 0 %}
+                            <p class="text-4xl font-bold text-gray-800 mt-3">{{ avg_messages_per_session|floatformat:1 }}</p>
+                        {% else %}
+                            <p class="text-4xl font-bold text-gray-500 mt-3">—</p>
+                        {% endif %}
+                        <p class="text-xs text-gray-500 mt-2">Messages</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-purple-100 to-purple-50">
+                        <i class="ri-bar-chart-line text-purple-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Chat Sessions -->
+        {% if recent_sessions %}
+        <div class="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="ri-chat-history-line mr-3 text-green-600"></i>
+                Recent Chat Sessions
+            </h2>
+            <div class="space-y-4">
+                {% for session in recent_sessions %}
+                <div class="session-card">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800">Chat Session</p>
+                            <p class="text-sm text-gray-600 mt-1">
+                                <i class="ri-time-line"></i> {{ session.created_at|date:"M d, Y H:i" }}
+                            </p>
+                        </div>
+                        <span class="session-badge">Active</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-8">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

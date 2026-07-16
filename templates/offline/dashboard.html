@@ -1,0 +1,447 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load string_filters %}
+
+{% block title %}Offline Dashboard - FarmWise{% endblock %}
+
+{% block extra_css %}
+<style>
+    .section-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .status-badge.enabled {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.1));
+        color: #059669;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .status-badge.disabled {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+        color: #991b1b;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 100%);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
+    }
+
+    .icon-badge {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        font-size: 28px;
+    }
+
+    .feature-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e5e7eb;
+        background: white;
+        transition: all 0.3s;
+    }
+
+    .feature-toggle:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 28px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e1;
+        transition: 0.4s;
+        border-radius: 28px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #10b981;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
+
+    .sync-item {
+        padding: 1rem;
+        border-radius: 0.75rem;
+        border-left: 4px solid #10b981;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.02));
+        transition: all 0.3s;
+    }
+
+    .sync-item:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #059669);
+        transition: width 0.3s ease;
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card {
+        animation: slideInUp 0.5s ease-out;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+    .section-container {
+        animation: slideInUp 0.5s ease-out;
+    }
+
+    .section-container:nth-of-type(2) { animation-delay: 0.2s; }
+    .section-container:nth-of-type(3) { animation-delay: 0.4s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
+    <div class="container mx-auto px-4">
+        <!-- Header -->
+        <div class="mb-12">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h1 class="section-title mb-2">📡 Offline Mode Dashboard</h1>
+                    <p class="text-gray-600 text-lg">Manage offline sync and cache settings</p>
+                </div>
+                <a href="{% url 'core:settings' %}" class="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                    <i class="ri-settings-line"></i> Settings
+                </a>
+            </div>
+        </div>
+
+        <!-- Status Overview -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <!-- Offline Mode Status -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Offline Mode</p>
+                        <div class="mt-3 mb-4">
+                            {% if offline_enabled %}
+                                <span class="status-badge enabled">
+                                    <i class="ri-check-line"></i> Enabled
+                                </span>
+                            {% else %}
+                                <span class="status-badge disabled">
+                                    <i class="ri-close-line"></i> Disabled
+                                </span>
+                            {% endif %}
+                        </div>
+                        <p class="text-xs text-gray-500">{{ sync_mode }} Mode</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-blue-100 to-blue-50">
+                        {% if offline_enabled %}<i class="ri-cloud-off-line text-blue-600"></i>{% else %}<i class="ri-cloud-line text-gray-400"></i>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Cache Size -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Cache Size</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ cache_stats.total_cache_size_mb|floatformat:1 }} MB</p>
+                        <p class="text-xs text-gray-500 mt-2">{{ cache_stats.total_cached_items }} items cached</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-purple-100 to-purple-50">
+                        <i class="ri-database-line text-purple-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Syncs -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Pending Syncs</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ pending_syncs_count }}</p>
+                        <p class="text-xs text-gray-500 mt-2">Waiting to sync</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-orange-100 to-orange-50">
+                        <i class="ri-upload-cloud-2-line text-orange-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Last Sync -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Last Sync</p>
+                        {% if recent_syncs %}
+                            <p class="text-2xl font-bold text-gray-800 mt-3">{{ recent_syncs.0.sync_timestamp|date:"H:i" }}</p>
+                            <p class="text-xs text-gray-500 mt-2">{{ recent_syncs.0.sync_timestamp|date:"M d, Y" }}</p>
+                        {% else %}
+                            <p class="text-2xl font-bold text-gray-500 mt-3">—</p>
+                            <p class="text-xs text-gray-400 mt-2">No syncs yet</p>
+                        {% endif %}
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-green-100 to-green-50">
+                        <i class="ri-check-double-line text-green-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Two Column Layout -->
+        <div class="grid lg:grid-cols-2 gap-8 mb-12">
+            <!-- Cache Statistics -->
+            <div class="section-container bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="ri-bar-chart-box-line mr-3 text-green-600"></i>
+                    Cache by Type
+                </h2>
+                <div class="space-y-4">
+                    {% if cache_stats.cache_by_type %}
+                        {% for type, count in cache_stats.cache_by_type.items %}
+                            <div class="flex items-center justify-between pb-4 border-b border-gray-100 last:border-b-0 last:pb-0">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-green-400 to-green-600"></div>
+                                    <span class="text-gray-700 font-medium capitalize">{{ type|replace:"_: " }}</span>
+                                </div>
+                                <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-semibold">{{ count }} items</span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500 text-center py-8">No cached data</p>
+                    {% endif %}
+                </div>
+
+                <!-- Overall Progress -->
+                {% if cache_stats.total_cache_size_kb > 0 %}
+                <div class="mt-6 pt-6 border-t border-gray-200">
+                    <p class="text-sm text-gray-600 font-semibold mb-2">Cache Utilization</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ cache_stats.total_cache_size_kb|add:"0"|divisibleby:"1000"|yesno:"100,75" }}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">{{ cache_stats.total_cache_size_kb|floatformat:0 }} KB used</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Feature Toggles -->
+            <div class="section-container bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="ri-toggle-line mr-3 text-green-600"></i>
+                    Cache Features
+                </h2>
+                <div class="space-y-3">
+                    <!-- Voice Cache -->
+                    <div class="feature-toggle">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center">
+                                <i class="ri-mic-2-line text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Voice Commands</p>
+                                <p class="text-xs text-gray-500">Cache voice data offline</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" {% if cache_features.voice %}checked{% endif %} disabled>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Chat Cache -->
+                    <div class="feature-toggle">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-green-100 to-green-50 rounded-lg flex items-center justify-center">
+                                <i class="ri-chat-3-line text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Chat Responses</p>
+                                <p class="text-xs text-gray-500">Cache AI responses</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" {% if cache_features.chat %}checked{% endif %} disabled>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Market Data Cache -->
+                    <div class="feature-toggle">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-orange-100 to-orange-50 rounded-lg flex items-center justify-center">
+                                <i class="ri-stock-line text-orange-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Market Data</p>
+                                <p class="text-xs text-gray-500">Cache market prices</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" {% if cache_features.market_data %}checked{% endif %} disabled>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Background Sync -->
+                    <div class="feature-toggle mt-4 pt-4 border-t border-gray-200">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-50 rounded-lg flex items-center justify-center">
+                                <i class="ri-refresh-line text-purple-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Background Sync</p>
+                                <p class="text-xs text-gray-500">Sync when not in use</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" {% if background_sync %}checked{% endif %} disabled>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- WiFi Only Sync -->
+                    <div class="feature-toggle">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-red-100 to-red-50 rounded-lg flex items-center justify-center">
+                                <i class="ri-wifi-line text-red-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">WiFi Only</p>
+                                <p class="text-xs text-gray-500">Sync only on WiFi</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" {% if sync_on_wifi_only %}checked{% endif %} disabled>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Sync History -->
+        {% if recent_syncs %}
+        <div class="section-container bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="ri-history-line mr-3 text-green-600"></i>
+                Recent Sync History
+            </h2>
+            <div class="space-y-3">
+                {% for sync in recent_syncs %}
+                <div class="sync-item">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800">
+                                {% if sync.status == 'Success' %}
+                                    <i class="ri-check-circle-line text-green-600 mr-2"></i>
+                                {% elif sync.status == 'Failed' %}
+                                    <i class="ri-close-circle-line text-red-600 mr-2"></i>
+                                {% else %}
+                                    <i class="ri-time-line text-yellow-600 mr-2"></i>
+                                {% endif %}
+                                {{ sync.status }}
+                            </p>
+                            <p class="text-sm text-gray-600 mt-1">{{ sync.details }}</p>
+                            <p class="text-xs text-gray-500 mt-2">
+                                <i class="ri-time-line"></i> {{ sync.sync_timestamp|date:"M d, Y H:i" }}
+                            </p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold
+                            {% if sync.status == 'Success' %}
+                                bg-green-100 text-green-800
+                            {% elif sync.status == 'Failed' %}
+                                bg-red-100 text-red-800
+                            {% else %}
+                                bg-yellow-100 text-yellow-800
+                            {% endif %}">
+                            {{ sync.status }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

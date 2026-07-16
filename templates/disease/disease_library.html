@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Disease Library - FarmWise{% endblock %}
+
+{% block page_title %}Disease Library{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">Disease Library</h1>
+        <p class="text-gray-500">Browse and learn about crop diseases</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <div class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <input type="text" id="searchInput" placeholder="Search diseases..." class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select id="categoryFilter" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="applyFilters()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                    Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diseases Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="diseasesGrid">
+        {% for disease in diseases %}
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition">
+            <div class="bg-gradient-to-r from-green-500 to-blue-500 p-4 text-white">
+                <h3 class="text-lg font-semibold">{{ disease.name }}</h3>
+                <p class="text-sm opacity-90">{{ disease.category.name }}</p>
+            </div>
+            
+            <div class="p-4 space-y-3">
+                {% if disease.description %}
+                <p class="text-sm text-gray-600">{{ disease.description|truncatewords:20 }}</p>
+                {% endif %}
+
+                <!-- Disease Stats -->
+                <div class="grid grid-cols-2 gap-2 py-3 border-y">
+                    <div>
+                        <p class="text-xs text-gray-500">Progression Rate</p>
+                        <p class="font-semibold text-gray-800">{{ disease.progression_rate }}%</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Quarantine</p>
+                        <p class="font-semibold text-gray-800">
+                            {% if disease.quarantine_required %}
+                                <span class="text-red-600">Required</span>
+                            {% else %}
+                                <span class="text-green-600">Not Required</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Affected Crops -->
+                {% if disease.affected_crops.all %}
+                <div>
+                    <p class="text-xs text-gray-600 font-medium mb-2">Affected Crops</p>
+                    <div class="flex flex-wrap gap-1">
+                        {% for crop in disease.affected_crops.all|slice:":3" %}
+                        <span class="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{{ crop.name }}</span>
+                        {% endfor %}
+                        {% if disease.affected_crops.all|length > 3 %}
+                        <span class="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">+{{ disease.affected_crops.all|length|add:"-3" }} more</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Symptoms Preview -->
+                {% if disease.symptom_set.all %}
+                <div>
+                    <p class="text-xs text-gray-600 font-medium mb-2">Common Symptoms</p>
+                    <ul class="space-y-1">
+                        {% for symptom in disease.symptom_set.all|slice:":2" %}
+                        <li class="text-xs text-gray-700">
+                            <i class="ri-check-line text-green-600"></i> {{ symptom.name }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Action Button -->
+                <a href="/disease/library/{{ disease.id }}/" class="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 rounded-lg transition text-sm font-medium mt-4">
+                    View Details
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-3 text-center py-12">
+            <i class="ri-inbox-line text-5xl text-gray-300 mb-3"></i>
+            <p class="text-gray-500 text-lg">No diseases found</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="bg-white rounded-xl shadow-sm p-4 flex justify-center items-center gap-2">
+        {% if page_obj.has_previous %}
+            <a href="?page=1" class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100">Previous</a>
+        {% endif %}
+        
+        <span class="px-3 py-2">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}" class="px-3 py-2 rounded border border-gray-300 hover:bg-gray-100">Last</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function applyFilters() {
+    const search = document.getElementById('searchInput').value;
+    const category = document.getElementById('categoryFilter').value;
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (category) params.append('category', category);
+    window.location.href = '?' + params.toString();
+}
+</script>
+{% endblock %}

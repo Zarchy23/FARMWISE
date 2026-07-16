@@ -2,6 +2,10 @@
 
 {% block title %}Carbon Footprint Report - FarmWise{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
 {% block content %}
 <style>
     :root {
@@ -471,30 +475,30 @@
             </div>
         </div>
         
-        <div class="stat-card success stat-success">
+        <div class="stat-card warning stat-warning">
             <div class="stat-card-content">
-                <div class="stat-label">🌿 Carbon Sequestration</div>
-                <div class="stat-value">{{ report.total_sequestration_kg_co2e|floatformat:0 }}</div>
+                <div class="stat-label">⛽ Fuel Emissions</div>
+                <div class="stat-value">{{ report.fuel_emissions|floatformat:0 }}</div>
+                <div class="stat-unit">kg CO₂e</div>
+            </div>
+        </div>
+        
+        <div class="stat-card info stat-info">
+            <div class="stat-card-content">
+                <div class="stat-label">⚡ Electricity Emissions</div>
+                <div class="stat-value">{{ report.electricity_emissions|floatformat:0 }}</div>
                 <div class="stat-unit">kg CO₂e</div>
             </div>
         </div>
         
         <div class="stat-card {% if report.is_carbon_neutral %}success stat-success{% else %}warning stat-warning{% endif %}">
             <div class="stat-card-content">
-                <div class="stat-label">📊 Net Footprint</div>
-                <div class="stat-value">{{ report.net_carbon_footprint_kg_co2e|floatformat:0 }}</div>
+                <div class="stat-label">� Fertilizer Emissions</div>
+                <div class="stat-value">{{ report.fertilizer_emissions|floatformat:0 }}</div>
                 <div class="stat-unit">kg CO₂e</div>
                 {% if report.is_carbon_neutral %}
                 <div class="carbon-neutral-badge">✓ Carbon Neutral</div>
                 {% endif %}
-            </div>
-        </div>
-        
-        <div class="stat-card info stat-info">
-            <div class="stat-card-content">
-                <div class="stat-label">🎯 Per Hectare</div>
-                <div class="stat-value">{{ report.emissions_per_hectare|floatformat:1 }}</div>
-                <div class="stat-unit">kg CO₂e/ha</div>
             </div>
         </div>
     </div>
@@ -506,21 +510,33 @@
                 <h5><i class="ri-pie-chart-2-line"></i> Emission Breakdown</h5>
             </div>
             <div class="section-body">
-                {% if report.emission_breakdown %}
-                    {% for source, amount in report.emission_breakdown.items %}
-                    <div class="emission-item">
-                        <div class="emission-label">
-                            <strong>{{ source }}</strong>
-                            <small>{{ amount|floatformat:0 }} kg CO₂e</small>
-                        </div>
-                        <div class="progress-bar-custom">
-                            <div class="progress-fill" style="width: {% widthratio amount report.total_emissions_kg_co2e 100 %}%"></div>
-                        </div>
+                <div class="emission-item">
+                    <div class="emission-label">
+                        <strong>Fuel (Diesel + Petrol)</strong>
+                        <small>{{ report.fuel_emissions|floatformat:0 }} kg CO₂e</small>
                     </div>
-                    {% endfor %}
-                {% else %}
-                    <p class="recommendation-text">No emission data available for this period.</p>
-                {% endif %}
+                    <div class="progress-bar-custom">
+                        <div class="progress-fill" style="width: {% widthratio report.fuel_emissions report.total_emissions_kg_co2e 100 %}%"></div>
+                    </div>
+                </div>
+                <div class="emission-item">
+                    <div class="emission-label">
+                        <strong>Electricity</strong>
+                        <small>{{ report.electricity_emissions|floatformat:0 }} kg CO₂e</small>
+                    </div>
+                    <div class="progress-bar-custom">
+                        <div class="progress-fill" style="width: {% widthratio report.electricity_emissions report.total_emissions_kg_co2e 100 %}%"></div>
+                    </div>
+                </div>
+                <div class="emission-item">
+                    <div class="emission-label">
+                        <strong>Fertilizer</strong>
+                        <small>{{ report.fertilizer_emissions|floatformat:0 }} kg CO₂e</small>
+                    </div>
+                    <div class="progress-bar-custom">
+                        <div class="progress-fill" style="width: {% widthratio report.fertilizer_emissions report.total_emissions_kg_co2e 100 %}%"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -529,17 +545,10 @@
                 <h5><i class="ri-lightbulb-line"></i> Recommendations</h5>
             </div>
             <div class="section-body">
-                {% if report.recommendations %}
-                    <p class="recommendation-text">{{ report.recommendations|linebreaks }}</p>
+                {% if report.is_carbon_neutral %}
+                    <p class="recommendation-text">✨ Great job! Your farm is carbon neutral for this period.</p>
                 {% else %}
-                    <p class="recommendation-text">✨ Great job! No actionable recommendations at this time.</p>
-                {% endif %}
-
-                {% if report.offset_needed_kg_co2e > 0 %}
-                <div class="offset-alert">
-                    <strong>⚠️ Carbon Offset Needed</strong>
-                    <div>{{ report.offset_needed_kg_co2e|floatformat:0 }} kg CO₂e to reach carbon neutral</div>
-                </div>
+                    <p class="recommendation-text">Consider reducing fuel consumption, switching to renewable energy sources, or optimizing fertilizer application to reduce your carbon footprint.</p>
                 {% endif %}
             </div>
         </div>
@@ -551,11 +560,70 @@
             <h5><i class="ri-line-chart-line"></i> Year-over-Year Trends</h5>
         </div>
         <div class="trends-body">
-            <div class="trends-placeholder">
-                📈 Chart visualization - integration with charting library recommended
-            </div>
+            <canvas id="emissionsChart" style="max-height: 300px;"></canvas>
         </div>
     </div>
+
+    {{ report_data|json_script:"reportData" }}
+    <script>
+        // Chart.js initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('emissionsChart');
+            if (ctx) {
+                const reportData = JSON.parse(document.getElementById('reportData').textContent);
+                
+                if (reportData) {
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Fuel', 'Electricity', 'Fertilizer'],
+                            datasets: [{
+                                label: 'Emissions (kg CO₂e)',
+                                data: [
+                                    reportData.fuel_emissions,
+                                    reportData.electricity_emissions,
+                                    reportData.fertilizer_emissions
+                                ],
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.7)',
+                                    'rgba(54, 162, 235, 0.7)',
+                                    'rgba(75, 192, 192, 0.7)'
+                                ],
+                                borderColor: [
+                                    'rgba(255, 99, 132, 1)',
+                                    'rgba(54, 162, 235, 1)',
+                                    'rgba(75, 192, 192, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Emission Breakdown by Source'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'kg CO₂e'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    </script>
 
     {% else %}
     <div class="empty-state">

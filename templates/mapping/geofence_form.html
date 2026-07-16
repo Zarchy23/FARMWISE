@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Geofence - FarmWise{% endblock %}
-{% block page_title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Geofence{% endblock %}
+{% block title %}{% if geofence.pk %}Edit{% else %}Create{% endif %} Geofence - FarmWise{% endblock %}
+{% block page_title %}{% if geofence.pk %}Edit{% else %}Create{% endif %} Geofence{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -134,17 +134,17 @@
 <div class="form-container">
     <!-- Form Panel -->
     <div class="form-panel">
-        <h2 style="margin-bottom: 1.5rem;">{% if form.instance.pk %}Edit{% else %}Create{% endif %} Geofence</h2>
+        <h2 style="margin-bottom: 1.5rem;">{% if geofence.pk %}Edit{% else %}Create{% endif %} Geofence</h2>
         
-        <form method="post">
+        <form method="post" id="geofenceForm">
             {% csrf_token %}
             
             <div class="form-group">
                 <label for="id_farm">Select Farm</label>
-                <select name="farm" id="id_farm">
+                <select name="farm" id="id_farm" required>
                     <option value="">-- Select Farm --</option>
                     {% for farm in farms %}
-                    <option value="{{ farm.id }}" {% if farm.id == form.instance.farm_id %}selected{% endif %}>
+                    <option value="{{ farm.id }}" {% if farm.id == geofence.farm_id %}selected{% endif %}>
                         {{ farm.name }}
                     </option>
                     {% endfor %}
@@ -154,7 +154,7 @@
             <div class="form-group">
                 <label for="id_name">Geofence Name</label>
                 <input type="text" name="name" id="id_name" placeholder="e.g., North Pasture" 
-                       value="{{ form.instance.name }}" required>
+                       value="{{ geofence.name }}" required>
                 <small style="color: #9ca3af;">Describe the area or purpose</small>
             </div>
             
@@ -162,26 +162,37 @@
                 <label>Alert Settings</label>
                 <div class="checkbox-group">
                     <input type="checkbox" name="enable_exit_alerts" id="id_enable_exit" 
-                           {% if form.instance.enable_exit_alerts %}checked{% endif %}>
-                    <label for="id_enable_exit" style="margin-bottom: 0;">Alert on Exit</label>
+                           {% if geofence.enable_exit_alerts %}checked{% endif %}>
+                    <label for="id_enable_exit" style="margin-bottom: 0;">🚨 Alert on Exit</label>
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" name="enable_entry_alerts" id="id_enable_entry"
-                           {% if form.instance.enable_entry_alerts %}checked{% endif %}>
-                    <label for="id_enable_entry" style="margin-bottom: 0;">Alert on Entry</label>
+                           {% if geofence.enable_entry_alerts %}checked{% endif %}>
+                    <label for="id_enable_entry" style="margin-bottom: 0;">📍 Alert on Entry</label>
                 </div>
             </div>
             
+            <!-- Hidden field for geojson boundary -->
+            <input type="hidden" name="geojson_boundary" id="id_geojson_boundary" 
+                   value='{% if geofence.geojson_boundary %}{{ geofence.geojson_boundary|safe }}{% endif %}'>
+            
             <div class="form-group">
-                <label for="id_description">Description</label>
-                <textarea name="description" id="id_description" rows="3" 
-                          placeholder="Optional notes about this geofence..."></textarea>
+                <label>Boundary Status</label>
+                <div style="padding: 0.75rem; background: #f3f4f6; border-radius: 0.5rem; font-size: 0.9rem;">
+                    <span id="boundaryStatus">
+                        {% if geofence.geojson_boundary %}
+                        ✅ Boundary Defined
+                        {% else %}
+                        ⚠️ Draw boundary on map
+                        {% endif %}
+                    </span>
+                </div>
             </div>
             
             <div class="form-actions">
                 <a href="{% url 'core:geofence_list' %}" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
-                    {% if form.instance.pk %}Save Changes{% else %}Create Geofence{% endif %}
+                    {% if geofence.pk %}Save Changes{% else %}Create Geofence{% endif %}
                 </button>
             </div>
         </form>
@@ -190,14 +201,11 @@
     <!-- Map Panel -->
     <div class="map-panel">
         <div class="map-instructions">
-            <strong>📍 Instructions:</strong><br>
-            {% if form.instance.pk %}
-            • Boundaries already drawn
-            {% else %}
-            • Draw polygon boundary
-            • Add markers for reference
-            • Minimum 3 points
-            {% endif %}
+            <strong>📍 Draw Boundary:</strong><br>
+            • Click map to add points<br>
+            • Close polygon to finish<br>
+            • Use edit tools to modify<br>
+            <button onclick="clearDrawing()" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; margin-top: 0.5rem; cursor: pointer; width: 100%;">Clear Boundary</button>
         </div>
         <div id="geofence-map"></div>
     </div>
@@ -205,23 +213,33 @@
 
 <script>
     let map;
+    let drawnItems;
+    let currentPolygon;
     const farms = [
         {% for farm in farms %}
-        { id: {{ farm.id }}, name: '{{ farm.name }}', lat: {{ farm.location_lat|default:-1.286389 }}, lng: {{ farm.location_lng|default:36.817223 }} },
+        { id: {{ farm.id }}, name: '{{ farm.name }}', lat: {% if farm.location_lat %}{{ farm.location_lat }}{% else %}-1.286389{% endif %}, lng: {% if farm.location_lng %}{{ farm.location_lng }}{% else %}36.817223{% endif %} },
         {% endfor %}
     ];
     
     const existingGeofence = {
-        id: {{ form.instance.pk|default:'null' }},
-        name: '{{ form.instance.name }}',
-        boundary: {{ form.instance.geojson_boundary|safe|default:'null' }}
+        id: {{ geofence.pk|default:'null' }},
+        name: '{{ geofence.name }}',
+        boundary: {% if geofence.geojson_boundary %}{{ geofence.geojson_boundary|safe }}{% else %}null{% endif %}
     };
     
     function initMap() {
         let defaultLat = -1.286389;
         let defaultLng = 36.817223;
         
-        if (farms.length > 0) {
+        // Use current geofence farm location, or first farm, or default
+        if (document.getElementById('id_farm').value) {
+            const farmId = parseInt(document.getElementById('id_farm').value);
+            const farm = farms.find(f => f.id === farmId);
+            if (farm) {
+                defaultLat = farm.lat;
+                defaultLng = farm.lng;
+            }
+        } else if (farms.length > 0) {
             defaultLat = farms[0].lat;
             defaultLng = farms[0].lng;
         }
@@ -233,27 +251,132 @@
             maxZoom: 20
         }).addTo(map);
         
+        // Initialize featureGroup for drawing
+        drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        
         // Show existing boundary if editing
-        if (existingGeofence.boundary) {
-            const coords = existingGeofence.boundary;
-            L.polygon(coords, {
-                color: '#8b5cf6',
-                weight: 3,
-                fillColor: '#8b5cf6',
-                fillOpacity: 0.2
-            }).addTo(map);
+        if (existingGeofence.boundary && Array.isArray(existingGeofence.boundary)) {
+            try {
+                const coords = existingGeofence.boundary;
+                currentPolygon = L.polygon(coords, {
+                    color: '#8b5cf6',
+                    weight: 3,
+                    fillColor: '#8b5cf6',
+                    fillOpacity: 0.2
+                }).addTo(drawnItems);
+                
+                updateBoundaryStatus(true);
+            } catch (e) {
+                console.error('Error loading boundary:', e);
+            }
         }
+        
+        // Add map click handler to draw polygon
+        let isDrawing = false;
+        let points = [];
+        
+        map.on('click', function(e) {
+            if (!isDrawing) {
+                isDrawing = true;
+                points = [];
+            }
+            
+            points.push([e.latlng.lat, e.latlng.lng]);
+            
+            // Draw point
+            L.circleMarker([e.latlng.lat, e.latlng.lng], {
+                radius: 5,
+                fillColor: '#16a34a',
+                color: '#15803d',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(drawnItems);
+            
+            // Update polygon if we have 3+ points
+            if (points.length >= 3) {
+                if (currentPolygon) {
+                    drawnItems.removeLayer(currentPolygon);
+                }
+                currentPolygon = L.polygon(points, {
+                    color: '#8b5cf6',
+                    weight: 2,
+                    fillColor: '#8b5cf6',
+                    fillOpacity: 0.2,
+                    dashArray: '5, 5'
+                }).addTo(drawnItems);
+            }
+        });
+        
+        // Handle right-click to finish polygon
+        map.on('contextmenu', function(e) {
+            if (isDrawing && points.length >= 3) {
+                isDrawing = false;
+                
+                // Finalize polygon
+                if (currentPolygon) {
+                    drawnItems.removeLayer(currentPolygon);
+                }
+                
+                currentPolygon = L.polygon(points, {
+                    color: '#8b5cf6',
+                    weight: 3,
+                    fillColor: '#8b5cf6',
+                    fillOpacity: 0.2
+                }).addTo(drawnItems);
+                
+                // Save to hidden field
+                saveBoundary();
+                updateBoundaryStatus(true);
+            }
+        });
+        
+        // Disable context menu
+        map.on('contextmenu', function(e) { 
+            L.DomEvent.preventDefault(e); 
+        });
+    }
+    
+    function saveBoundary() {
+        if (currentPolygon) {
+            const coords = currentPolygon.getLatLngs()[0];
+            const geojsonCoords = coords.map(c => [c.lat, c.lng]);
+            document.getElementById('id_geojson_boundary').value = JSON.stringify(geojsonCoords);
+        }
+    }
+    
+    function updateBoundaryStatus(hasBoundary) {
+        const status = document.getElementById('boundaryStatus');
+        if (hasBoundary) {
+            status.innerHTML = '✅ Boundary Defined';
+            status.style.color = '#16a34a';
+        } else {
+            status.innerHTML = '⚠️ Draw boundary on map';
+            status.style.color = '#d97706';
+        }
+    }
+    
+    function clearDrawing() {
+        drawnItems.clearLayers();
+        currentPolygon = null;
+        document.getElementById('id_geojson_boundary').value = '';
+        updateBoundaryStatus(false);
     }
     
     // Update map center when farm changes
     document.getElementById('id_farm').addEventListener('change', function() {
-        const farmId = this.value;
-        const farm = farms.find(f => f.id == farmId);
-        if (farm) {
+        const farmId = parseInt(this.value);
+        const farm = farms.find(f => f.id === farmId);
+        if (farm && map) {
             map.setView([farm.lat, farm.lng], 14);
         }
     });
     
+    // Auto-save boundary on form submission
+    document.getElementById('geofenceForm').addEventListener('submit', function(e) {
+        saveBoundary();
+    });
+    
     document.addEventListener('DOMContentLoaded', initMap);
 </script>
-{% endblock %}

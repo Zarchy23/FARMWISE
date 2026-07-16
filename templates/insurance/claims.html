@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}My Insurance Claims{% endblock %}
+{% block page_title %}Insurance Claims{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold">My Insurance Claims</h1>
+            <p class="text-gray-500">View and manage your insurance claims</p>
+        </div>
+        <a href="{% url 'core:insurance' %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+            <i class="fas fa-plus"></i> File New Claim
+        </a>
+    </div>
+
+    <!-- Claims Summary -->
+    <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ claims.count }}</div>
+            <div class="text-sm text-gray-500">Total Claims</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-yellow-600">{{ pending_count|default:0 }}</div>
+            <div class="text-sm text-gray-500">Pending</div>
+        </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ approved_count|default:0 }}</div>
+            <div class="text-sm text-gray-500">Approved</div>
+        </div>
+    </div>
+
+    <!-- Claims Table -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="text-left p-4">Claim ID</th>
+                        <th class="text-left p-4">Policy</th>
+                        <th class="text-left p-4">Date Filed</th>
+                        <th class="text-left p-4">Amount</th>
+                        <th class="text-left p-4">Status</th>
+                        <th class="text-left p-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for claim in claims %}
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-4 font-medium">#{{ claim.id }}</td>
+                        <td class="p-4">{{ claim.policy.policy_type|title }}</td>
+                        <td class="p-4">{{ claim.claim_date|date:"M d, Y" }}</td>
+                        <td class="p-4">${{ claim.claim_amount|floatformat:2 }}</td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold 
+                                {% if claim.status == 'approved' %}bg-green-100 text-green-700
+                                {% elif claim.status == 'pending' %}bg-yellow-100 text-yellow-700
+                                {% elif claim.status == 'rejected' %}bg-red-100 text-red-700
+                                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                {{ claim.status|title }}
+                            </span>
+                        </td>
+                        <td class="p-4 space-x-2">
+                            <a href="{% url 'core:claim_detail' claim.id %}" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">View</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center p-8 text-gray-500">No claims found. <a href="{% url 'core:insurance' %}" class="text-blue-600 hover:underline">File your first claim</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -9,16 +9,22 @@
             <h1 class="text-2xl font-bold">Payroll</h1>
             <p class="text-gray-500">Process and manage worker payments</p>
         </div>
-        <button type="button" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition flex items-center space-x-2" data-bs-toggle="modal" data-bs-target="#exportModal">
-            <i class="fas fa-download"></i>
-            <span>Export</span>
-        </button>
+        <div class="flex space-x-2">
+            <a href="{% url 'core:add_worker' %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+                <i class="fas fa-user-plus"></i>
+                <span>Add Worker</span>
+            </a>
+            <button type="button" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition flex items-center space-x-2" data-bs-toggle="modal" data-bs-target="#exportModal">
+                <i class="fas fa-download"></i>
+                <span>Export</span>
+            </button>
+        </div>
     </div>
 
     <!-- Payroll Summary -->
-    <div class="grid md:grid-cols-3 gap-6">
+    <div class="grid md:grid-cols-4 gap-6">
         <div class="bg-white rounded-xl shadow p-4 text-center">
-            <div class="text-2xl font-bold text-green-600">${{ total_payroll }}</div>
+            <div class="text-2xl font-bold text-green-600">${{ total_payroll|floatformat:2 }}</div>
             <div class="text-sm text-gray-500">Total Payroll This Month</div>
         </div>
         <div class="bg-white rounded-xl shadow p-4 text-center">
@@ -29,18 +35,71 @@
             <div class="text-2xl font-bold text-purple-600">{{ workers_count }}</div>
             <div class="text-sm text-gray-500">Active Workers</div>
         </div>
+        <div class="bg-white rounded-xl shadow p-4 text-center">
+            <div class="text-2xl font-bold text-orange-600">{{ payrolls.count }}</div>
+            <div class="text-sm text-gray-500">Total Payroll Records</div>
+        </div>
+    </div>
+
+    <!-- Workers Section -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="p-4 border-b bg-gray-50">
+            <h2 class="text-lg font-semibold">Active Workers</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="text-left p-4">Worker</th>
+                        <th class="text-left p-4">Farm</th>
+                        <th class="text-left p-4">Hourly Wage</th>
+                        <th class="text-left p-4">Status</th>
+                        <th class="text-left p-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for worker in workers %}
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-4 font-medium">{{ worker.worker.get_full_name }}</td>
+                        <td class="p-4">{{ worker.farm.name }}</td>
+                        <td class="p-4">${{ worker.hourly_wage|floatformat:2 }}/hr</td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold 
+                                {% if worker.is_active %}bg-green-100 text-green-700
+                                {% else %}bg-red-100 text-red-700{% endif %}">
+                                {% if worker.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </td>
+                        <td class="p-4 space-x-2">
+                            <a href="{% url 'core:process_payroll' worker.id %}" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">Process Payroll</a>
+                            <a href="{% url 'core:edit_worker' worker.id %}" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Edit</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center p-8 text-gray-500">No workers found. <a href="{% url 'core:add_worker' %}" class="text-blue-600 hover:underline">Add your first worker</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Payroll Table -->
     <div class="bg-white rounded-xl shadow overflow-hidden">
+        <div class="p-4 border-b bg-gray-50">
+            <h2 class="text-lg font-semibold">Payroll Records</h2>
+        </div>
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="text-left p-4">Worker</th>
                         <th class="text-left p-4">Period</th>
-                        <th class="text-left p-4">Hours</th>
+                        <th class="text-left p-4">Regular Hours</th>
+                        <th class="text-left p-4">Overtime Hours</th>
                         <th class="text-left p-4">Total Pay</th>
+                        <th class="text-left p-4">Deductions</th>
                         <th class="text-left p-4">Net Pay</th>
                         <th class="text-left p-4">Status</th>
                         <th class="text-left p-4">Actions</th>
@@ -52,7 +111,9 @@
                         <td class="p-4 font-medium">{{ payroll.worker.worker.get_full_name }}</td>
                         <td class="p-4">{{ payroll.period_start|date:"M d" }} - {{ payroll.period_end|date:"M d" }}</td>
                         <td class="p-4">{{ payroll.total_hours|floatformat:1 }}</td>
+                        <td class="p-4 text-orange-600">{{ payroll.overtime_hours|floatformat:1 }}</td>
                         <td class="p-4">${{ payroll.total_pay|floatformat:2 }}</td>
+                        <td class="p-4 text-red-600">${{ payroll.deductions|floatformat:2 }}</td>
                         <td class="p-4 font-bold text-green-600">${{ payroll.net_pay|floatformat:2 }}</td>
                         <td class="p-4">
                             <span class="px-2 py-1 rounded-full text-xs font-semibold 
@@ -71,7 +132,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center p-8 text-gray-500">No payroll records found</td>
+                        <td colspan="9" class="text-center p-8 text-gray-500">No payroll records found</td>
                     </tr>
                     {% endfor %}
                 </tbody>

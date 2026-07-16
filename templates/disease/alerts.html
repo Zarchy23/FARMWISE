@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Disease Alerts - FarmWise{% endblock %}
+
+{% block page_title %}Disease Alerts{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-wrap justify-between items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Disease Alerts</h1>
+            <p class="text-gray-500">Monitor active disease alerts and outbreaks</p>
+        </div>
+        <a href="/disease/" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center space-x-2">
+            <i class="ri-arrow-left-line"></i>
+            <span>Back to Dashboard</span>
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+        <div class="flex flex-wrap gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Alert Type</label>
+                <select id="typeFilter" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                    <option value="">All Types</option>
+                    <option value="outbreak">Outbreak</option>
+                    <option value="warning">Warning</option>
+                    <option value="information">Information</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="statusFilter" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="expired">Expired</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="applyFilters()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                    Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-red-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm font-medium">Outbreaks</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-1">{{ outbreak_count|default:"0" }}</p>
+                </div>
+                <div class="bg-red-100 rounded-lg p-3">
+                    <i class="ri-alert-line text-red-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm font-medium">Warnings</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-1">{{ warning_count|default:"0" }}</p>
+                </div>
+                <div class="bg-yellow-100 rounded-lg p-3">
+                    <i class="ri-alert-fill text-yellow-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-500 text-sm font-medium">Active Alerts</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-1">{{ total_alerts|default:"0" }}</p>
+                </div>
+                <div class="bg-blue-100 rounded-lg p-3">
+                    <i class="ri-information-line text-blue-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Timeline -->
+    <div class="space-y-4" id="alertsContainer">
+        {% for alert in alerts %}
+        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 
+            {% if alert.alert_type == 'outbreak' %}border-red-500{% elif alert.alert_type == 'warning' %}border-yellow-500{% else %}border-blue-500{% endif %}"
+             data-alert-id="{{ alert.id }}">
+            
+            <!-- Alert Header -->
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                            {% if alert.alert_type == 'outbreak' %}bg-red-100 text-red-800
+                            {% elif alert.alert_type == 'warning' %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-blue-100 text-blue-800{% endif %}">
+                            {% if alert.alert_type == 'outbreak' %}
+                                <i class="ri-alert-line mr-1"></i> Outbreak
+                            {% elif alert.alert_type == 'warning' %}
+                                <i class="ri-alert-fill mr-1"></i> Warning
+                            {% else %}
+                                <i class="ri-information-line mr-1"></i> Information
+                            {% endif %}
+                        </span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                            {% if alert.is_active %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {% if alert.is_active %}<i class="ri-check-line mr-1"></i> Active{% else %}<i class="ri-close-line mr-1"></i> Expired{% endif %}
+                        </span>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800">{{ alert.title }}</h3>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-600">
+                        <i class="ri-calendar-line"></i> {{ alert.issued_at|date:"M d, Y H:i" }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Alert Details -->
+            <div class="mb-4">
+                <p class="text-gray-700 mb-4">{{ alert.description }}</p>
+                
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 py-4 bg-gray-50 rounded-lg p-4">
+                    <div>
+                        <p class="text-xs text-gray-600 font-medium mb-1">Disease</p>
+                        <p class="font-semibold text-gray-800">{{ alert.disease.name }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-600 font-medium mb-1">Urgency Level</p>
+                        <div class="flex items-center gap-2">
+                            <div class="w-16 bg-gray-300 rounded-full h-2">
+                                <div class="bg-orange-500 h-2 rounded-full" style="width: {% widthratio alert.urgency_level 10 100 %}%"></div>
+                            </div>
+                            <span class="font-semibold text-gray-800">{{ alert.urgency_level }}/10</span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-600 font-medium mb-1">Expires</p>
+                        <p class="font-semibold text-gray-800">{{ alert.expires_at|date:"M d, Y" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Affected Regions & Crops -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {% if alert.affected_regions.all %}
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-2">Affected Regions</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for region in alert.affected_regions.all %}
+                        <span class="inline-block bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
+                            <i class="ri-map-pin-line"></i> {{ region }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if alert.affected_crops.all %}
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-2">Affected Crops</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for crop in alert.affected_crops.all %}
+                        <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                            <i class="ri-plant-line"></i> {{ crop }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Recommended Actions -->
+            {% if alert.recommended_actions %}
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p class="text-sm font-medium text-blue-900 mb-2">
+                    <i class="ri-lightbulb-line"></i> Recommended Actions
+                </p>
+                <p class="text-sm text-blue-800">{{ alert.recommended_actions }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="flex gap-2">
+                <button onclick="acknowledgeAlert({{ alert.id }})" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
+                    <i class="ri-check-line mr-1"></i> Acknowledge
+                </button>
+                <a href="/disease/library/{{ alert.disease.id }}/" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg text-sm font-medium transition">
+                    <i class="ri-book-line mr-1"></i> Disease Info
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="bg-white rounded-xl shadow-sm p-12 text-center">
+            <i class="ri-check-double-line text-6xl text-green-300 mb-3"></i>
+            <p class="text-gray-500 text-lg">No active alerts</p>
+            <p class="text-sm text-gray-400 mb-4">Your farms are disease-free!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function applyFilters() {
+    const type = document.getElementById('typeFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const params = new URLSearchParams();
+    if (type) params.append('type', type);
+    if (status) params.append('status', status);
+    window.location.href = '?' + params.toString();
+}
+
+function acknowledgeAlert(alertId) {
+    if (confirm('Mark this alert as acknowledged?')) {
+        fetch(`/api/disease/alerts/${alertId}/acknowledge/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            }
+        }).then(response => {
+            if (response.ok) {
+                alert('Alert acknowledged');
+                location.reload();
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

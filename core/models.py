@@ -176,7 +176,7 @@ class AuditLog(models.Model):
         ('low', 'Low'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='audit_logs')
+    user = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='audit_logs')
     action = models.CharField(max_length=20, choices=ACTIONS)
     model_name = models.CharField(max_length=100)
     object_id = models.CharField(max_length=100)
@@ -243,7 +243,7 @@ class ValidationLog(models.Model):
         ('mobile', 'Mobile'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='validation_logs')
+    user = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='validation_logs')
     field_name = models.CharField(max_length=255)
     rule_code = models.CharField(max_length=100)
     provided_value = models.TextField(blank=True)
@@ -266,7 +266,7 @@ class ValidationLog(models.Model):
 class UserHistory(models.Model):
     """Track user field value history for auto-completion learning"""
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='field_history')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='field_history')
     field_name = models.CharField(max_length=255)
     field_value = models.TextField()
     usage_count = models.IntegerField(default=1)
@@ -330,7 +330,7 @@ class Supermarket(models.Model):
         ('other', 'Other'),
     ]
     
-    owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name='supermarket_profile')
+    owner = models.OneToOneField('core.User', on_delete=models.CASCADE, related_name='supermarket_profile')
     shop_name = models.CharField(max_length=255)
     business_type = models.CharField(max_length=20, choices=BUSINESS_TYPES)
     registration_number = models.CharField(max_length=100, blank=True, unique=True, null=True)
@@ -377,7 +377,7 @@ class Cooperative(models.Model):
     
     name = models.CharField(max_length=255)
     registration_number = models.CharField(max_length=100, unique=True)
-    admin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='cooperatives')
+    admin = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='cooperatives')
     location = models.JSONField(null=True, blank=True)  # Store as {"lat": ..., "lng": ...} - switch to PointField with PostGIS
     address = models.TextField(blank=True)
     phone_number = models.CharField(max_length=15)
@@ -421,7 +421,7 @@ class Farm(models.Model):
         ('suspended', 'Suspended'),
     ]
     
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='farms')
+    owner = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='farms')
     cooperative = models.ForeignKey(Cooperative, on_delete=models.SET_NULL, null=True, blank=True, related_name='farms')
     name = models.CharField(max_length=255)
     location = models.JSONField(null=True, blank=True)  # {"lat": ..., "lng": ...} - switch to PointField with PostGIS
@@ -496,7 +496,7 @@ class Field(models.Model):
         ('very_poor', 'Very Poor'),
     ]
     
-    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='fields')
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='crop_fields')
     name = models.CharField(max_length=255)
     area_hectares = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     boundary = models.JSONField(null=True, blank=True)  # GeoJSON - switch to PolygonField with PostGIS
@@ -604,7 +604,7 @@ class CropSeason(models.Model):
     actual_revenue = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     photo = models.ImageField(upload_to='crops/', null=True, blank=True, help_text="Crop photo (optional)")
     notes = models.TextField(blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_crops')
+    created_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='created_crops')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -665,7 +665,7 @@ class InputApplication(models.Model):
     cost_per_unit = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     application_date = models.DateField()
     application_method = models.CharField(max_length=100, blank=True)
-    applied_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    applied_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -704,7 +704,7 @@ class Harvest(models.Model):
     waste_kg = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     buyer_name = models.CharField(max_length=255, blank=True)
     notes = models.TextField(blank=True)
-    harvested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    harvested_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -831,6 +831,12 @@ class HealthRecord(models.Model):
         ('laboratory', 'Laboratory Test'),
     ]
     
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('overdue', 'Overdue'),
+    ]
+    
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='health_records')
     record_type = models.CharField(max_length=20, choices=RECORD_TYPES)
     record_date = models.DateField()
@@ -842,6 +848,7 @@ class HealthRecord(models.Model):
     administered_by = models.CharField(max_length=255, blank=True)
     cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     next_due_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -900,7 +907,7 @@ class MilkProduction(models.Model):
     fat_content = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     protein_content = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     notes = models.TextField(blank=True)
-    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    recorded_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -945,7 +952,7 @@ class Equipment(models.Model):
         ('broken', 'Broken'),
     ]
     
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_equipment')
+    owner = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='owned_equipment')
     name = models.CharField(max_length=255)
     category = models.CharField(max_length=20, choices=CATEGORIES)
     description = models.TextField(blank=True)
@@ -987,7 +994,7 @@ class EquipmentBooking(models.Model):
     ]
     
     equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name='bookings')
-    renter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='equipment_rentals')
+    renter = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='equipment_rentals')
     start_date = models.DateField()
     end_date = models.DateField()
     total_days = models.IntegerField(editable=False)
@@ -1098,7 +1105,7 @@ class Order(models.Model):
         ('refunded', 'Refunded'),
     ]
     
-    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
+    buyer = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='purchases')
     listing = models.ForeignKey(ProductListing, on_delete=models.CASCADE, related_name='orders')
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -1147,7 +1154,7 @@ class PestReport(models.Model):
         ('severe', 'Severe'),
     ]
     
-    farmer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pest_reports')
+    farmer = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='pest_reports')
     farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='pest_reports')
     field = models.ForeignKey(Field, on_delete=models.CASCADE, related_name='pest_reports', null=True, blank=True)
     crop = models.ForeignKey(CropSeason, on_delete=models.CASCADE, related_name='pest_reports', null=True, blank=True)
@@ -1162,7 +1169,7 @@ class PestReport(models.Model):
     organic_options = models.TextField(blank=True, null=True)
     agronomist_verified = models.BooleanField(default=False)
     agronomist_notes = models.TextField(blank=True)
-    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='verified_reports')
+    verified_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='verified_reports')
     status = models.CharField(max_length=20, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1283,7 +1290,7 @@ class IrrigationSchedule(models.Model):
     actual_date = models.DateField(null=True, blank=True)
     actual_duration_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     notes = models.TextField(blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -1318,7 +1325,7 @@ class InsurancePolicy(models.Model):
         ('claimed', 'Claimed'),
     ]
     
-    farmer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='insurance_policies')
+    farmer = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='insurance_policies')
     farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='insurance_policies')
     policy_type = models.CharField(max_length=20, choices=POLICY_TYPES)
     policy_number = models.CharField(max_length=100, unique=True)
@@ -1374,7 +1381,7 @@ class InsuranceClaim(models.Model):
     photos = models.JSONField(default=list, blank=True)
     status = models.CharField(max_length=20, choices=STATUS, default='pending')
     adjuster_notes = models.TextField(blank=True)
-    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='reviewed_claims')
+    reviewed_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='reviewed_claims')
     paid_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1398,7 +1405,7 @@ class InsuranceClaim(models.Model):
 class Worker(models.Model):
     """Farm workers"""
     
-    worker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='worker_profiles')
+    worker = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='worker_profiles')
     farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='workers')
     hourly_wage = models.DecimalField(max_digits=8, decimal_places=2)
     skills = models.JSONField(default=list, blank=True, null=True)
@@ -1444,10 +1451,12 @@ class WorkShift(models.Model):
     date = models.DateField()
     task = models.CharField(max_length=20, choices=TASKS)
     hours_worked = models.DecimalField(max_digits=5, decimal_places=2, validators=[MinValueValidator(0)])
-    wage_rate = models.DecimalField(max_digits=8, decimal_places=2)
+    overtime_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0, blank=True, validators=[MinValueValidator(0)])
+    wage_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0, blank=True)
+    overtime_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0, blank=True, help_text='Overtime hourly rate (usually 1.5x regular rate)')
     total_pay = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
     notes = models.TextField(blank=True)
-    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='recorded_shifts')
+    recorded_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='recorded_shifts')
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -1459,7 +1468,10 @@ class WorkShift(models.Model):
         ordering = ['-date']
     
     def save(self, *args, **kwargs):
-        self.total_pay = self.hours_worked * self.wage_rate
+        # Calculate regular pay + overtime pay
+        regular_pay = self.hours_worked * self.wage_rate
+        overtime_pay = self.overtime_hours * self.overtime_rate if self.overtime_rate else 0
+        self.total_pay = regular_pay + overtime_pay
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -1480,8 +1492,11 @@ class Payroll(models.Model):
     period_start = models.DateField()
     period_end = models.DateField()
     total_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    overtime_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     total_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    overtime_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     deductions = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    deduction_breakdown = models.JSONField(default=dict, blank=True, help_text='Detailed breakdown of deductions: {"tax": 100, "insurance": 50, "other": 20}')
     net_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS, default='pending')
     payment_date = models.DateField(null=True, blank=True)
@@ -1538,7 +1553,7 @@ class Transaction(models.Model):
     receipt = models.FileField(upload_to='receipts/%Y/%m/', null=True, blank=True)
     related_crop = models.ForeignKey(CropSeason, on_delete=models.SET_NULL, null=True, blank=True)
     related_animal = models.ForeignKey(Animal, on_delete=models.SET_NULL, null=True, blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -1568,7 +1583,7 @@ class Notification(models.Model):
         ('warning', 'Warning'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='notifications')
     notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
     title = models.CharField(max_length=255)
     message = models.TextField()
@@ -1674,7 +1689,7 @@ class Template(models.Model):
         ('public', 'Public Marketplace'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='templates')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='templates')
     farm = models.ForeignKey(Farm, on_delete=models.CASCADE, null=True, blank=True, related_name='templates')
     name = models.CharField(max_length=255)
     category = models.CharField(max_length=50, choices=CATEGORIES)
@@ -1706,7 +1721,7 @@ class TemplateRating(models.Model):
     """User ratings for shared templates"""
     
     template = models.ForeignKey(Template, on_delete=models.CASCADE, related_name='ratings')
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE)
     rating = models.IntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
@@ -1751,7 +1766,7 @@ class RecurringAction(models.Model):
     frequency = models.CharField(max_length=20, choices=FREQUENCIES)
     cron_expression = models.CharField(max_length=255, help_text='CRON expression for scheduling')
     action_config = models.JSONField(help_text='Action-specific configuration data')
-    assigned_to = models.ManyToManyField(User, blank=True, related_name='assigned_recurring_actions')
+    assigned_to = models.ManyToManyField('core.User', blank=True, related_name='assigned_recurring_actions')
     status = models.CharField(max_length=20, choices=STATUS, default='active')
     next_due = models.DateTimeField(null=True, blank=True)
     last_executed = models.DateTimeField(null=True, blank=True)
@@ -1786,7 +1801,7 @@ class RecurringActionLog(models.Model):
     
     action = models.ForeignKey(RecurringAction, on_delete=models.CASCADE, related_name='execution_logs')
     scheduled_for = models.DateTimeField()
-    executed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    executed_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True)
     executed_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUSES, default='pending')
     notes = models.TextField(blank=True)
@@ -1823,7 +1838,7 @@ class BatchOperation(models.Model):
         ('failed', 'Failed'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='batch_operations')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='batch_operations')
     farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='batch_operations')
     operation_type = models.CharField(max_length=50, choices=OPERATION_TYPES)
     description = models.CharField(max_length=255)
@@ -1935,7 +1950,7 @@ class ScheduledExport(models.Model):
         ('monthly', 'Monthly'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='scheduled_exports')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='scheduled_exports')
     farm = models.ForeignKey(Farm, on_delete=models.CASCADE, null=True, blank=True)
     export_type = models.CharField(max_length=50, choices=EXPORT_TYPES)
     file_format = models.CharField(max_length=20, choices=FORMATS)
@@ -1979,7 +1994,7 @@ class WorkspacePreference(models.Model):
         ('admin', 'Administrator'),
     ]
     
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='workspace_preference')
+    user = models.OneToOneField('core.User', on_delete=models.CASCADE, related_name='workspace_preference')
     primary_workspace = models.CharField(max_length=50, choices=WORKSPACE_TYPES)
     secondary_workspaces = models.JSONField(default=list, help_text='List of secondary workspace types')
     last_accessed_workspace = models.CharField(max_length=50, choices=WORKSPACE_TYPES)
@@ -2047,7 +2062,7 @@ class Report(models.Model):
         ('ready', 'Ready'),
     ], default='pending')
     
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -2072,8 +2087,8 @@ class Task(models.Model):
     description = models.TextField()
     
     # Assignment
-    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='tasks_created_by_me')
+    assigned_to = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True)
+    assigned_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='tasks_created_by_me')
     
     # Timeline
     due_date = models.DateField()
@@ -2123,9 +2138,9 @@ class Document(models.Model):
     
     # Sharing
     is_shared = models.BooleanField(default=False)
-    shared_with_users = models.ManyToManyField(User, blank=True, related_name='feature_shared_documents')
+    shared_with_users = models.ManyToManyField('core.User', blank=True, related_name='feature_shared_documents')
     
-    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='feature_documents_uploaded')
+    uploaded_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='feature_documents_uploaded')
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -2184,7 +2199,7 @@ class WaterUsageLog(models.Model):
     cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     field = models.ForeignKey('Field', on_delete=models.SET_NULL, null=True, blank=True)
-    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    recorded_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -2267,7 +2282,7 @@ class WeatherAlertFeature(models.Model):
     recommended_actions = models.TextField(blank=True)
     
     is_acknowledged = models.BooleanField(default=False)
-    acknowledged_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    acknowledged_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -2289,7 +2304,7 @@ class Reminder(models.Model):
     """Smart reminders for farm activities"""
     
     farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='feature_reminders')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='farm_reminders')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='farm_reminders')
     
     title = models.CharField(max_length=255)
     reminder_type = models.CharField(max_length=100)
@@ -2420,7 +2435,7 @@ class DiscussionForum(models.Model):
     
     # Moderator
     is_moderated = models.BooleanField(default=True)
-    moderators = models.ManyToManyField(User, related_name='moderated_forums', blank=True)
+    moderators = models.ManyToManyField('core.User', related_name='moderated_forums', blank=True)
     
     # Settings
     allow_attachments = models.BooleanField(default=True)
@@ -2445,7 +2460,7 @@ class ForumThread(models.Model):
     """Individual discussion thread"""
     
     forum = models.ForeignKey(DiscussionForum, on_delete=models.CASCADE, related_name='threads')
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='forum_threads')
+    author = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='forum_threads')
     
     title = models.CharField(max_length=255)
     content = models.TextField()
@@ -2478,7 +2493,7 @@ class ForumReply(models.Model):
     """Reply to forum thread"""
     
     thread = models.ForeignKey(ForumThread, on_delete=models.CASCADE, related_name='replies')
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey('core.User', on_delete=models.CASCADE)
     
     content = models.TextField()
     attachments = models.JSONField(default=list)
@@ -2547,7 +2562,7 @@ class GroupBuyingParticipant(models.Model):
     """Farmer participation in group buying"""
     
     initiative = models.ForeignKey(GroupBuyingInitiative, on_delete=models.CASCADE, related_name='participants')
-    farmer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='group_buys')
+    farmer = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='group_buys')
     
     quantity_pledged = models.DecimalField(max_digits=10, decimal_places=2)
     quantity_received = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -2787,7 +2802,7 @@ class GeofenceAlert(models.Model):
     
     # Status
     is_resolved = models.BooleanField(default=False)
-    resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    resolved_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
     resolution_notes = models.TextField(blank=True)
     
@@ -2814,7 +2829,7 @@ class OfflineSyncQueue(models.Model):
         ('delete', 'Delete'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sync_queue')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='sync_queue')
     
     # Operation details
     model_name = models.CharField(max_length=100)  # e.g., 'Crop', 'Livestock'
@@ -2860,7 +2875,7 @@ class SyncConflict(models.Model):
         ('resolved_manual', 'Manual Resolved'),
     ], default='pending')
     resolved_data = models.JSONField(null=True, blank=True)
-    resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    resolved_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -2980,7 +2995,7 @@ class FarmProject(models.Model):
     priority = models.CharField(max_length=10, choices=PRIORITY, default='medium')
     status = models.CharField(max_length=20, choices=STATUS, default='planning')
     notes = models.TextField(blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_projects')
+    created_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='created_projects')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -3034,7 +3049,7 @@ class ProjectTask(models.Model):
     project = models.ForeignKey(FarmProject, on_delete=models.CASCADE, related_name='tasks')
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_project_tasks')
+    assigned_to = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_project_tasks')
     due_date = models.DateField()
     completed = models.BooleanField(default=False)
     completed_date = models.DateField(null=True, blank=True)
@@ -3101,6 +3116,3 @@ class ProjectMilestone(models.Model):
         indexes = [
             models.Index(fields=['project', 'achieved']),
         ]
-    
-    def __str__(self):
-        return f"{self.name} - {self.project.name}"

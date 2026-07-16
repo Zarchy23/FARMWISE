@@ -345,94 +345,6 @@ class SystemAnalyticsService:
             return {}
     
     @staticmethod
-    def get_iot_analytics(user, farm_id=None, days=30):
-        """IoT device and sensor analytics."""
-        try:
-            from core.models_iot import IoTDevice, SensorDataPoint, SensorConfiguration
-            
-            start_date = timezone.now() - timedelta(days=days)
-            
-            devices = IoTDevice.objects.filter(
-                user=user,
-                created_at__gte=start_date
-            ).select_related('farm', 'field')
-            if farm_id:
-                devices = devices.filter(farm_id=farm_id)
-            
-            # Device status breakdown
-            by_status = {}
-            by_type = {}
-            online_count = 0
-            offline_count = 0
-            low_battery_count = 0
-            
-            for device in devices:
-                # Status breakdown
-                status = device.status
-                by_status[status] = by_status.get(status, 0) + 1
-                
-                # Type breakdown
-                device_type = device.device_type
-                by_type[device_type] = by_type.get(device_type, 0) + 1
-                
-                # Online/offline
-                if device.is_online():
-                    online_count += 1
-                else:
-                    offline_count += 1
-                
-                # Low battery
-                if device.battery_level < 25:
-                    low_battery_count += 1
-            
-            # Sensor data analytics
-            data_points = SensorDataPoint.objects.filter(
-                device__user=user,
-                server_timestamp__gte=start_date
-            ).select_related('device', 'sensor_config__sensor_type')
-            if farm_id:
-                data_points = data_points.filter(device__farm_id=farm_id)
-            
-            # Data quality metrics
-            total_readings = data_points.count()
-            valid_readings = data_points.filter(is_valid=True).count()
-            invalid_readings = total_readings - valid_readings
-            
-            analytics = {
-                'total_devices': devices.count(),
-                'online_devices': online_count,
-                'offline_devices': offline_count,
-                'low_battery_devices': low_battery_count,
-                'by_status': by_status,
-                'by_type': by_type,
-                'total_readings': total_readings,
-                'valid_readings': valid_readings,
-                'invalid_readings': invalid_readings,
-                'data_quality_percentage': round((valid_readings / total_readings * 100) if total_readings > 0 else 0, 2),
-                'devices': []
-            }
-            
-            # Recent device activity
-            for device in devices[:10]:
-                device_data = {
-                    'id': device.id,
-                    'name': device.name,
-                    'device_id': device.device_id,
-                    'type': device.device_type,
-                    'status': device.status,
-                    'farm': device.farm.name,
-                    'battery_level': device.battery_level,
-                    'is_online': device.is_online(),
-                    'last_seen': device.last_seen.strftime('%Y-%m-%d %H:%M') if device.last_seen else 'Never',
-                }
-                analytics['devices'].append(device_data)
-            
-            return analytics
-        except Exception as e:
-            logger.error(f"Error generating IoT analytics: {e}")
-            return {}
-    
-    @staticmethod
     def get_financial_trends(user, farm_id=None, days=30):
         """Daily revenue vs expenses time-series for trend charts."""
         from core.models import InputApplication, Order
@@ -496,7 +408,6 @@ class SystemAnalyticsService:
             'financial': SystemAnalyticsService.get_financial_analytics(user, farm_id, days),
             'equipment': SystemAnalyticsService.get_equipment_analytics(user, farm_id, days),
             'pest_detection': SystemAnalyticsService.get_pest_detection_analytics(user, farm_id, days),
-            'iot': SystemAnalyticsService.get_iot_analytics(user, farm_id, days),
             'trends': SystemAnalyticsService.get_financial_trends(user, farm_id, days),
             'generated_at': timezone.now().isoformat()
         }

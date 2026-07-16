@@ -7,6 +7,29 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.db.models import Count, Sum
 from .models import *
+from .models_market import (
+    Commodity, MarketPrice, PriceTrend, PriceAlert,
+    SellerListing, BuyerInquiry, MarketAnalytics
+)
+from .models_voice import (
+    VoiceCommand, VoiceConversation, VoiceInteraction,
+    VoicePreference, VoiceNotification, VoiceCommandHistory
+)
+from core.models_chatbot import (
+    ChatIntent, ChatSession, ChatMessage, ChatResponse, ChatFeedback, ChatStatistics
+)
+from .models_location import (
+    FarmLocation, FarmField, FarmFieldZone, FarmGeofenceAlert,
+    FarmLocationAnalytics, FarmCropRotationPlan, FarmProximityAnalysis
+)
+from .models_offline import (
+    OfflineCache, SyncQueue, OfflinePreference, OfflineSyncLog,
+    CachedMarketPrice, CachedWeatherData, OfflineAnalytics
+)
+from .models_disease import (
+    DiseaseCategory, Disease, Symptom, TreatmentOption,
+    DiagnosisRecord, DiagnosisHistory, DiseaseAlert, DiseaseStatistics
+)
 
 # ============================================================
 # SECTION 1: USER ADMIN
@@ -62,7 +85,7 @@ class AuditLogAdmin(admin.ModelAdmin):
 # ============================================================
 
 class FieldInline(admin.TabularInline):
-    model = Field
+    model = FarmField
     extra = 1
     fields = ('name', 'area_hectares', 'soil_type', 'slope', 'is_active')
 
@@ -977,69 +1000,379 @@ class ProjectMilestoneInline(admin.TabularInline):
 
 @admin.register(FarmProject)
 class FarmProjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'farm', 'category', 'priority', 'status', 'get_budget_display', 'start_date', 'get_progress')
+    list_display = ('name', 'farm', 'category', 'priority', 'status', 'start_date', 'budget')
     list_filter = ('category', 'priority', 'status', 'start_date')
     search_fields = ('name', 'farm__name', 'description')
+
+
+# ============================================================
+# SECTION 18: MARKET PRICE INTELLIGENCE
+# ============================================================
+
+@admin.register(Commodity)
+class CommodityAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'unit', 'created_at')
+    list_filter = ('category',)
+    search_fields = ('name', 'description')
     readonly_fields = ('created_at', 'updated_at')
-    inlines = [ProjectTaskInline, ProjectResourceInline, ProjectMilestoneInline]
-    
-    fieldsets = (
-        ('Project Info', {
-            'fields': ('farm', 'name', 'category', 'description')
-        }),
-        ('Project Details', {
-            'fields': ('priority', 'status', 'budget', 'notes')
-        }),
-        ('Timeline', {
-            'fields': ('start_date', 'target_end_date')
-        }),
-        ('Metadata', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    
-    def get_budget_display(self, obj):
-        return f"KES {obj.budget:,.0f}" if obj.budget else "—"
-    get_budget_display.short_description = "Budget"
-    
-    def get_progress(self, obj):
-        tasks = obj.tasks.all()
-        if not tasks.exists():
-            return "0%"
-        completed = tasks.filter(status='completed').count()
-        progress = int((completed / tasks.count()) * 100)
-        color = 'green' if progress == 100 else 'orange' if progress >= 50 else 'red'
-        return format_html(
-            '<span style="color: {}; font-weight: bold;">{}%</span>',
-            color,
-            progress
-        )
-    get_progress.short_description = "Task Completion"
 
 
-@admin.register(ProjectTask)
-class ProjectTaskAdmin(admin.ModelAdmin):
-    list_display = ('name', 'project', 'assigned_to', 'due_date', 'completed')
-    list_filter = ('completed', 'due_date')
-    search_fields = ('name', 'project__name', 'assigned_to__username')
-    readonly_fields = ('created_at', 'completed_date')
-    
-    fieldsets = (
-        ('Task Info', {
-            'fields': ('project', 'title', 'description')
-        }),
-        ('Assignment', {
-            'fields': ('assigned_to', 'priority')
-        }),
-        ('Status', {
-            'fields': ('status', 'due_date', 'completed_date')
-        }),
-        ('Metadata', {
-            'fields': ('created_at',),
-            'classes': ('collapse',)
-        }),
-    )
+@admin.register(MarketPrice)
+class MarketPriceAdmin(admin.ModelAdmin):
+    list_display = ('commodity', 'price', 'currency', 'region', 'source', 'price_date', 'recorded_at')
+    list_filter = ('commodity', 'region', 'source', 'price_date')
+    search_fields = ('commodity__name', 'region', 'source_name')
+    readonly_fields = ('recorded_at',)
+    date_hierarchy = 'price_date'
+    ordering = ('-recorded_at',)
+
+
+@admin.register(PriceTrend)
+class PriceTrendAdmin(admin.ModelAdmin):
+    list_display = ('commodity', 'region', 'period', 'avg_price', 'trend_direction', 'percent_change', 'volatility_score')
+    list_filter = ('period', 'trend_direction', 'commodity')
+    search_fields = ('commodity__name', 'region')
+    readonly_fields = ('calculated_at',)
+
+
+@admin.register(PriceAlert)
+class PriceAlertAdmin(admin.ModelAdmin):
+    list_display = ('farmer', 'commodity', 'alert_type', 'threshold_price', 'is_active', 'is_triggered', 'created_at')
+    list_filter = ('alert_type', 'is_active', 'is_triggered', 'created_at')
+    search_fields = ('farmer__username', 'commodity__name', 'region')
+    readonly_fields = ('triggered_at', 'created_at', 'updated_at')
+
+
+@admin.register(SellerListing)
+class SellerListingAdmin(admin.ModelAdmin):
+    list_display = ('title', 'seller', 'commodity', 'asking_price', 'quantity_available', 'status', 'views', 'inquiry_count', 'created_at')
+    list_filter = ('status', 'commodity', 'created_at')
+    search_fields = ('title', 'seller__username', 'commodity__name', 'description')
+    readonly_fields = ('views', 'inquiry_count', 'created_at', 'updated_at')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(BuyerInquiry)
+class BuyerInquiryAdmin(admin.ModelAdmin):
+    list_display = ('buyer', 'listing', 'quantity_interested', 'status', 'replies_count', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('buyer__username', 'listing__title')
+    readonly_fields = ('replies_count', 'last_reply_at', 'created_at', 'updated_at')
+
+
+@admin.register(MarketAnalytics)
+class MarketAnalyticsAdmin(admin.ModelAdmin):
+    list_display = ('commodity', 'current_avg_price', 'recommendation', 'confidence_score', 'calculated_at')
+    list_filter = ('recommendation', 'commodity')
+    search_fields = ('commodity__name',)
+    readonly_fields = ('calculated_at',)
+
+
+# ============================================================
+# SECTION 19: VOICE ASSISTANT
+# ============================================================
+
+@admin.register(VoiceCommand)
+class VoiceCommandAdmin(admin.ModelAdmin):
+    list_display = ('command_name', 'command_type', 'is_active', 'created_at')
+    list_filter = ('command_type', 'is_active')
+    search_fields = ('command_name', 'description')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(VoiceConversation)
+class VoiceConversationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'farm', 'status', 'device_type', 'message_count', 'command_count', 'started_at')
+    list_filter = ('status', 'device_type', 'started_at')
+    search_fields = ('user__username', 'farm__name')
+    readonly_fields = ('started_at', 'ended_at', 'duration_seconds')
+    date_hierarchy = 'started_at'
+
+
+@admin.register(VoiceInteraction)
+class VoiceInteractionAdmin(admin.ModelAdmin):
+    list_display = ('conversation', 'interaction_type', 'recognized_command', 'confidence_score', 'success', 'created_at')
+    list_filter = ('interaction_type', 'success', 'created_at')
+    search_fields = ('user_input_text', 'system_response_text')
+    readonly_fields = ('created_at',)
+    date_hierarchy = 'created_at'
+
+
+@admin.register(VoicePreference)
+class VoicePreferenceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'is_enabled', 'tts_provider', 'stt_provider', 'speech_rate', 'volume_level')
+    list_filter = ('is_enabled', 'tts_provider', 'stt_provider')
+    search_fields = ('user__username',)
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(VoiceNotification)
+class VoiceNotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'notification_type', 'title', 'priority', 'is_read', 'is_played', 'created_at')
+    list_filter = ('notification_type', 'priority', 'is_read', 'is_played')
+    search_fields = ('user__username', 'title', 'message')
+    readonly_fields = ('created_at', 'read_at', 'sent_at')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(VoiceCommandHistory)
+class VoiceCommandHistoryAdmin(admin.ModelAdmin):
+    list_display = ('user', 'command', 'command_text', 'success', 'user_helpful', 'executed_at')
+    list_filter = ('success', 'user_helpful', 'executed_at')
+    search_fields = ('user__username', 'command_text')
+    readonly_fields = ('executed_at',)
+    date_hierarchy = 'executed_at'
+
+
+# ============================================================
+# SECTION 20: AI CHATBOT
+# ============================================================
+
+@admin.register(ChatIntent)
+class ChatIntentAdmin(admin.ModelAdmin):
+    list_display = ('intent_name', 'category', 'is_active', 'confidence_threshold', 'created_at')
+    list_filter = ('category', 'is_active')
+    search_fields = ('intent_name', 'keywords')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(ChatSession)
+class ChatSessionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'farm', 'status', 'message_count', 'user_satisfaction', 'started_at')
+    list_filter = ('status', 'language', 'started_at')
+    search_fields = ('user__username', 'farm__name')
+    readonly_fields = ('started_at', 'ended_at', 'message_count')
+    date_hierarchy = 'started_at'
+
+
+@admin.register(ChatMessage)
+class ChatMessageAdmin(admin.ModelAdmin):
+    list_display = ('session', 'message_type', 'intent', 'confidence_score', 'is_helpful', 'created_at')
+    list_filter = ('message_type', 'is_helpful', 'created_at')
+    search_fields = ('session__user__username', 'content')
+    readonly_fields = ('created_at', 'session')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(ChatResponse)
+class ChatResponseAdmin(admin.ModelAdmin):
+    list_display = ('question', 'category', 'usage_count', 'avg_satisfaction', 'is_approved', 'created_at')
+    list_filter = ('category', 'is_approved', 'created_at')
+    search_fields = ('question', 'answer', 'keywords')
+    readonly_fields = ('created_at', 'updated_at', 'usage_count')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(ChatFeedback)
+class ChatFeedbackAdmin(admin.ModelAdmin):
+    list_display = ('message', 'rating', 'user_submitted', 'created_at')
+    list_filter = ('rating', 'user_submitted', 'created_at')
+    search_fields = ('message__content', 'comment')
+    readonly_fields = ('created_at', 'message')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(ChatStatistics)
+class ChatStatisticsAdmin(admin.ModelAdmin):
+    list_display = ('date', 'total_sessions', 'total_messages', 'avg_satisfaction', 'unique_users', 'resolved_queries')
+    list_filter = ('date',)
+    readonly_fields = ('date', 'total_sessions', 'total_messages', 'avg_messages_per_session', 'avg_satisfaction', 'most_common_intent', 'unique_users', 'resolved_queries')
+    date_hierarchy = 'date'
+
+
+# ============================================================
+# SECTION 21: GPS MAPPING & LOCATION INTELLIGENCE
+# ============================================================
+
+@admin.register(FarmLocation)
+class FarmLocationAdmin(admin.ModelAdmin):
+    list_display = ('farm', 'region', 'district', 'latitude', 'longitude', 'altitude', 'verified', 'created_at')
+    list_filter = ('region', 'verified', 'created_at')
+    search_fields = ('farm__name', 'region', 'district', 'address')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(FarmFieldZone)
+class FarmFieldZoneAdmin(admin.ModelAdmin):
+    list_display = ('field', 'name', 'zone_type', 'area_hectares', 'severity_level', 'created_at')
+    list_filter = ('zone_type', 'severity_level', 'created_at')
+    search_fields = ('field__name', 'name')
+    readonly_fields = ('created_at', 'updated_at')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(FarmGeofenceAlert)
+class FarmGeofenceAlertAdmin(admin.ModelAdmin):
+    list_display = ('farm', 'name', 'alert_type', 'is_active', 'notify_on_entry', 'notify_on_exit', 'created_at')
+    list_filter = ('alert_type', 'is_active', 'created_at')
+    search_fields = ('farm__name', 'name')
+    readonly_fields = ('created_at', 'updated_at')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(FarmLocationAnalytics)
+class FarmLocationAnalyticsAdmin(admin.ModelAdmin):
+    list_display = ('farm', 'date', 'avg_yield_per_hectare', 'total_area_cultivated', 'total_production')
+    list_filter = ('date',)
+    search_fields = ('farm__name',)
+    readonly_fields = ('date',)
+    date_hierarchy = 'date'
+
+
+@admin.register(FarmCropRotationPlan)
+class FarmCropRotationPlanAdmin(admin.ModelAdmin):
+    list_display = ('field', 'current_crop', 'rotation_type', 'current_season')
+    list_filter = ('rotation_type', 'current_season')
+    search_fields = ('field__name', 'current_crop')
+    readonly_fields = ()
+
+
+@admin.register(FarmProximityAnalysis)
+class FarmProximityAnalysisAdmin(admin.ModelAdmin):
+    list_display = ('field', 'distance_to_water_source_km', 'distance_to_market_km', 'distance_to_road_km')
+    list_filter = ('water_availability', 'market_accessibility', 'road_accessibility')
+    search_fields = ('field__name',)
+    readonly_fields = ()
+
+
+# ============================================================
+# SECTION 22: OFFLINE AI CAPABILITIES
+# ============================================================
+
+@admin.register(OfflineCache)
+class OfflineCacheAdmin(admin.ModelAdmin):
+    list_display = ('user', 'cache_type', 'key', 'size_kb', 'created_at', 'expires_at')
+    list_filter = ('cache_type', 'created_at', 'expires_at')
+    search_fields = ('user__username', 'key')
+    readonly_fields = ('created_at', 'updated_at', 'size_kb')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(SyncQueue)
+class SyncQueueAdmin(admin.ModelAdmin):
+    list_display = ('user', 'operation_type', 'resource_type', 'status', 'retry_count', 'created_at')
+    list_filter = ('status', 'operation_type', 'created_at')
+    search_fields = ('user__username', 'resource_type')
+    readonly_fields = ('created_at', 'last_attempted_at', 'completed_at')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(OfflinePreference)
+class OfflinePreferenceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'enable_offline_mode', 'sync_mode', 'sync_frequency_minutes', 'cache_size_mb')
+    list_filter = ('enable_offline_mode', 'sync_mode')
+    search_fields = ('user__username',)
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(OfflineSyncLog)
+class OfflineSyncLogAdmin(admin.ModelAdmin):
+    list_display = ('user', 'sync_type', 'result', 'records_synced', 'records_failed', 'duration_seconds', 'sync_timestamp')
+    list_filter = ('result', 'sync_type', 'sync_timestamp')
+    search_fields = ('user__username',)
+    readonly_fields = ('sync_timestamp', 'duration_seconds')
+    date_hierarchy = 'sync_timestamp'
+
+
+@admin.register(CachedMarketPrice)
+class CachedMarketPriceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'commodity_name', 'price_per_unit', 'unit', 'source', 'timestamp', 'expires_at')
+    list_filter = ('commodity_category', 'source', 'timestamp')
+    search_fields = ('user__username', 'commodity_name')
+    readonly_fields = ('cached_at',)
+    date_hierarchy = 'timestamp'
+
+
+@admin.register(CachedWeatherData)
+class CachedWeatherDataAdmin(admin.ModelAdmin):
+    list_display = ('user', 'forecast_date', 'temperature_celsius', 'humidity_percent', 'condition', 'expires_at')
+    list_filter = ('condition', 'forecast_date')
+    search_fields = ('user__username',)
+    readonly_fields = ('cached_at',)
+    date_hierarchy = 'forecast_date'
+
+
+@admin.register(OfflineAnalytics)
+class OfflineAnalyticsAdmin(admin.ModelAdmin):
+    list_display = ('user', 'date', 'times_used_offline', 'total_offline_time_minutes', 'cache_hits', 'cache_misses')
+    list_filter = ('date',)
+    search_fields = ('user__username',)
+    readonly_fields = ('date', 'features_accessed')
+    date_hierarchy = 'date'
+
+
+# ============================================================
+# SECTION 23: DISEASE DIAGNOSIS & TREATMENT
+# ============================================================
+
+# @admin.register(DiseaseCategory)
+class DiseaseCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category_type', 'created_at')
+    list_filter = ('category_type',)
+    search_fields = ('name', 'description')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(Disease)
+class DiseaseAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'initial_severity', 'progression_rate', 'is_quarantine_required')
+    list_filter = ('category', 'initial_severity', 'is_quarantine_required')
+    search_fields = ('name', 'scientific_name', 'description')
+    filter_horizontal = ('affected_crops',)
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(Symptom)
+class SymptomAdmin(admin.ModelAdmin):
+    list_display = ('disease', 'name', 'affected_body_part', 'severity_indicator', 'is_primary_symptom')
+    list_filter = ('disease', 'affected_body_part', 'severity_indicator', 'is_primary_symptom')
+    search_fields = ('name', 'description', 'disease__name')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(TreatmentOption)
+class TreatmentOptionAdmin(admin.ModelAdmin):
+    list_display = ('disease', 'name', 'treatment_type', 'applicable_stage', 'effectiveness_percent', 'is_organic_approved')
+    list_filter = ('disease', 'treatment_type', 'applicable_stage', 'is_organic_approved')
+    search_fields = ('name', 'disease__name', 'active_ingredient')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(DiagnosisRecord)
+class DiagnosisRecordAdmin(admin.ModelAdmin):
+    list_display = ('disease', 'farm', 'crop', 'status', 'confidence_score', 'severity_level', 'detected_at')
+    list_filter = ('status', 'disease', 'severity_level', 'detected_at')
+    search_fields = ('farm__name', 'disease__name', 'user__username')
+    readonly_fields = ('detected_at', 'updated_at', 'confidence_score')
+    date_hierarchy = 'detected_at'
+
+
+@admin.register(DiagnosisHistory)
+class DiagnosisHistoryAdmin(admin.ModelAdmin):
+    list_display = ('diagnosis', 'status_before', 'status_after', 'changed_by', 'changed_at')
+    list_filter = ('status_after', 'changed_at')
+    search_fields = ('diagnosis__disease__name',)
+    readonly_fields = ('changed_at',)
+    date_hierarchy = 'changed_at'
+
+
+@admin.register(DiseaseAlert)
+class DiseaseAlertAdmin(admin.ModelAdmin):
+    list_display = ('disease', 'title', 'alert_type', 'urgency_level', 'is_active', 'issued_at')
+    list_filter = ('alert_type', 'is_active', 'urgency_level', 'issued_at')
+    search_fields = ('title', 'disease__name')
+    filter_horizontal = ('affected_crops',)
+    readonly_fields = ('issued_at',)
+    date_hierarchy = 'issued_at'
+
+
+@admin.register(DiseaseStatistics)
+class DiseaseStatisticsAdmin(admin.ModelAdmin):
+    list_display = ('farm', 'crop', 'date', 'total_diseases_detected', 'confirmed_diseases', 'treatment_success_rate')
+    list_filter = ('date', 'farm')
+    search_fields = ('farm__name',)
+    readonly_fields = ('date',)
+    date_hierarchy = 'date'
 
 
 @admin.register(ProjectResource)

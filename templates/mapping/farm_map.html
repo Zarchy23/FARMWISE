@@ -39,24 +39,42 @@
     .legend {
         position: absolute;
         bottom: 20px;
-        left: 20px;
+        right: 20px;
         z-index: 1000;
         background: white;
         padding: 0.75rem;
         border-radius: 0.5rem;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         font-size: 0.75rem;
+        max-width: 200px;
     }
     .legend-item {
         display: flex;
         align-items: center;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        padding: 0.4rem 0.5rem;
+        border-radius: 0.35rem;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    .legend-item:hover {
+        background: #f3f4f6;
+    }
+    .legend-item.inactive {
+        opacity: 0.4;
+    }
+    .legend-item.active {
+        background: #e0f2fe;
+        border-left: 3px solid #0284c7;
+        padding-left: 0.35rem;
     }
     .legend-color {
         width: 20px;
         height: 20px;
         border-radius: 4px;
         margin-right: 8px;
+        flex-shrink: 0;
     }
     .info-panel {
         position: absolute;
@@ -152,6 +170,10 @@
                 <input type="text" id="assetSearch" placeholder="Search assets..." class="w-full border rounded-lg px-3 py-2 text-sm">
             </div>
             <div id="assetList">
+                <!-- Farms Section -->
+                <div class="font-semibold text-gray-700 mb-2 mt-3">🏘️ Farms</div>
+                <div id="farmsList"></div>
+                
                 <!-- Crops Section -->
                 <div class="font-semibold text-gray-700 mb-2 mt-3">🌾 Crops</div>
                 <div id="cropsList"></div>
@@ -200,19 +222,38 @@
         </div>
         <div class="layer-control">
             <div class="text-xs font-semibold mb-2">View</div>
-            <button onclick="zoomToFit()" class="draw-btn w-full text-sm">🔍 Zoom to All Fields</button>
+            <button onclick="zoomToFit()" class="draw-btn w-full text-sm">🔍 Zoom to All Assets</button>
             <button onclick="getCurrentLocation()" class="draw-btn w-full text-sm mt-1">📍 My Location</button>
         </div>
     </div>
 
     <!-- Legend -->
     <div class="legend">
-        <div class="text-xs font-semibold mb-1">Legend</div>
-        <div class="legend-item"><div class="legend-color" style="background: #22c55e;"></div><span>Crop Field</span></div>
-        <div class="legend-item"><div class="legend-color" style="background: #f59e0b;"></div><span>Livestock</span></div>
-        <div class="legend-item"><div class="legend-color" style="background: #3b82f6;"></div><span>Equipment</span></div>
-        <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div><span>Alert Zone</span></div>
-        <div class="legend-item"><div class="legend-color" style="background: #8b5cf6;"></div><span>Geofence</span></div>
+        <div class="text-xs font-semibold mb-2">📊 Layers</div>
+        <div class="legend-item active" data-layer="farms" onclick="toggleLayer('farms')">
+            <div class="legend-color" style="background: #16a34a; border-radius: 50%;">🏦</div>
+            <span>Farms</span>
+        </div>
+        <div class="legend-item active" data-layer="fields" onclick="toggleLayer('fields')">
+            <div class="legend-color" style="background: #22c55e;"></div>
+            <span>Fields</span>
+        </div>
+        <div class="legend-item active" data-layer="livestock" onclick="toggleLayer('livestock')">
+            <div class="legend-color" style="background: #f59e0b;"></div>
+            <span>Livestock</span>
+        </div>
+        <div class="legend-item active" data-layer="equipment" onclick="toggleLayer('equipment')">
+            <div class="legend-color" style="background: #3b82f6;"></div>
+            <span>Equipment</span>
+        </div>
+        <div class="legend-item active" data-layer="crops" onclick="toggleLayer('crops')">
+            <div class="legend-color" style="background: #84cc16;"></div>
+            <span>Crops</span>
+        </div>
+        <div class="legend-item active" data-layer="geofences" onclick="toggleLayer('geofences')">
+            <div class="legend-color" style="background: #8b5cf6;"></div>
+            <span>Geofences</span>
+        </div>
     </div>
 
     <!-- Map Container -->
@@ -262,9 +303,13 @@
         let center = [-1.286389, 36.817223]; // Nairobi default
         let zoom = 13;
         
-        if (farms.length > 0 && farms[0].location_lat && farms[0].location_lng) {
-            center = [farms[0].location_lat, farms[0].location_lng];
-            zoom = 14;
+        // If farms exist, center on first farm
+        if (farms.length > 0) {
+            const firstFarm = farms[0];
+            if (firstFarm.location_lat && firstFarm.location_lng) {
+                center = [firstFarm.location_lat, firstFarm.location_lng];
+                zoom = 14;
+            }
         }
         
         map = L.map('farm-map').setView(center, zoom);
@@ -276,7 +321,8 @@
         drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
         
-        // Load existing data
+        // Load existing data - farms first for visibility
+        loadFarms();
         loadFields();
         loadLivestock();
         loadEquipment();
@@ -329,6 +375,49 @@
         } else {
             document.getElementById('satelliteBtn').classList.add('active');
         }
+    }
+    
+    // Load farms as markers with info
+    function loadFarms() {
+        farms.forEach(function(farm) {
+            if (farm.location_lat && farm.location_lng) {
+                // Create farm marker with green color
+                const marker = L.marker([farm.location_lat, farm.location_lng], {
+                    icon: L.divIcon({
+                        html: '<div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg shadow-lg"><i class="ri-bank-line"></i></div>',
+                        className: 'farm-marker',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 32],
+                        popupAnchor: [0, -32]
+                    })
+                }).addTo(map);
+                
+                // Create detailed popup
+                marker.bindPopup(`
+                    <div class="p-3 min-w-48">
+                        <h3 class="font-bold text-lg text-green-700">${farm.name}</h3>
+                        <hr class="my-2">
+                        <p class="text-xs text-gray-600"><strong>Address:</strong> ${farm.address || 'N/A'}</p>
+                        <p class="text-xs text-gray-600"><strong>Total Area:</strong> ${farm.total_area_hectares || 'N/A'} hectares</p>
+                        <p class="text-xs text-gray-600"><strong>Coordinates:</strong><br/>${farm.location_lat.toFixed(6)}, ${farm.location_lng.toFixed(6)}</p>
+                        <div class="mt-3 flex gap-2">
+                            <a href="/farms/${farm.id}/" class="flex-1 text-center bg-green-600 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-green-700">View Farm</a>
+                            <a href="/farms/${farm.id}/edit/" class="flex-1 text-center bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-blue-700">Edit</a>
+                        </div>
+                    </div>
+                `);
+                
+                markers[farm.id] = marker;
+                
+                // Add to asset list
+                addToAssetList('farms', {
+                    id: farm.id,
+                    name: farm.name,
+                    type: farm.address || 'Location',
+                    icon: 'ri-bank-line'
+                });
+            }
+        });
     }
     
     // Load fields as polygons
@@ -453,6 +542,8 @@
                         <button onclick="setGeofenceAlert(${geofence.id})" class="bg-green-600 text-white px-2 py-1 rounded text-xs">Set Alert</button>
                     </div>
                 `);
+                
+                polygons[`geofence_${geofence.id}`] = fence;
             }
         });
     }
@@ -505,8 +596,10 @@
     // Add to asset list panel
     function addToAssetList(category, asset) {
         let containerId = `${category}List`;
-        // Handle categories with trailing 's' (crops, livestock, equipment, fields)
-        if (category === 'crops') {
+        // Handle categories with trailing 's' (crops, livestock, equipment, fields, farms)
+        if (category === 'farms') {
+            containerId = 'farmsList';
+        } else if (category === 'crops') {
             containerId = 'cropsList';
         } else if (category === 'livestock') {
             containerId = 'livestockList';
@@ -522,10 +615,11 @@
             div.className = 'asset-card flex items-center space-x-2 p-2 cursor-pointer hover:bg-gray-100 rounded';
             div.onclick = () => focusAsset(category, asset.id);
             let iconClass = 'ri-shape-line';
+            if (category === 'farms') iconClass = 'ri-bank-line';
             if (category === 'livestock') iconClass = 'ri-cow-line';
             if (category === 'equipment') iconClass = 'ri-tractor-line';
             div.innerHTML = `
-                <div class="asset-icon ${category === 'crops' ? 'crop' : category === 'livestock' ? 'livestock' : 'equipment'}">
+                <div class="asset-icon ${category === 'crops' ? 'crop' : category === 'livestock' ? 'livestock' : category === 'farms' ? 'farm' : 'equipment'}">
                     <i class="${iconClass}"></i>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -539,7 +633,12 @@
     
     // Focus on asset
     function focusAsset(category, id) {
-        if (category === 'crops') {
+        if (category === 'farms') {
+            if (markers[id]) {
+                map.setView(markers[id].getLatLng(), 14);
+                markers[id].openPopup();
+            }
+        } else if (category === 'crops') {
             const key = `crop_${id}`;
             if (polygons[key]) {
                 map.fitBounds(polygons[key].getBounds());
@@ -729,6 +828,116 @@
             }
         }
         return cookieValue;
+    }
+    
+    // Layer visibility tracking
+    const layerVisibility = {
+        farms: true,
+        fields: true,
+        livestock: true,
+        equipment: true,
+        crops: true,
+        geofences: true
+    };
+    
+    // Track elements by layer for easy toggling
+    const layerElements = {
+        farms: { markers: [], polygons: [] },
+        fields: { markers: [], polygons: [] },
+        livestock: { markers: [], polygons: [] },
+        equipment: { markers: [], polygons: [] },
+        crops: { markers: [], polygons: [] },
+        geofences: { markers: [], polygons: [] }
+    };
+    
+    // Toggle layer visibility
+    function toggleLayer(layer) {
+        layerVisibility[layer] = !layerVisibility[layer];
+        
+        // Update legend UI
+        const legendItem = document.querySelector(`[data-layer="${layer}"]`);
+        if (legendItem) {
+            if (layerVisibility[layer]) {
+                legendItem.classList.remove('inactive');
+                legendItem.classList.add('active');
+            } else {
+                legendItem.classList.remove('active');
+                legendItem.classList.add('inactive');
+            }
+        }
+        
+        // Toggle visibility of markers and polygons
+        if (layer === 'farms') {
+            Object.entries(markers).forEach(([key, marker]) => {
+                // Only toggle farm markers (id only, not livestock/equipment)
+                if (!key.toString().includes('livestock') && !key.toString().includes('equipment')) {
+                    if (layerVisibility.farms) {
+                        marker.addTo(map);
+                    } else {
+                        map.removeLayer(marker);
+                    }
+                }
+            });
+        } else if (layer === 'livestock') {
+            Object.entries(markers).forEach(([key, marker]) => {
+                // Livestock markers are identified by checking if they have livestock data
+                if (livestock.some(a => a.id == key)) {
+                    if (layerVisibility.livestock) {
+                        marker.addTo(map);
+                    } else {
+                        map.removeLayer(marker);
+                    }
+                }
+            });
+        } else if (layer === 'equipment') {
+            Object.entries(markers).forEach(([key, marker]) => {
+                // Equipment markers are identified by checking if they have equipment data
+                if (equipment.some(e => e.id == key)) {
+                    if (layerVisibility.equipment) {
+                        marker.addTo(map);
+                    } else {
+                        map.removeLayer(marker);
+                    }
+                }
+            });
+        } else if (layer === 'fields') {
+            Object.entries(polygons).forEach(([key, polygon]) => {
+                if (!key.startsWith('crop_') && !key.startsWith('geofence_')) {
+                    if (layerVisibility.fields) {
+                        polygon.addTo(map);
+                    } else {
+                        map.removeLayer(polygon);
+                    }
+                }
+            });
+        } else if (layer === 'crops') {
+            Object.entries(polygons).forEach(([key, polygon]) => {
+                if (key.startsWith('crop_')) {
+                    if (layerVisibility.crops) {
+                        polygon.addTo(map);
+                    } else {
+                        map.removeLayer(polygon);
+                    }
+                }
+            });
+        } else if (layer === 'geofences') {
+            Object.entries(polygons).forEach(([key, polygon]) => {
+                if (key.startsWith('geofence_')) {
+                    if (layerVisibility.geofences) {
+                        polygon.addTo(map);
+                    } else {
+                        map.removeLayer(polygon);
+                    }
+                }
+            });
+        }
+        
+        // Toggle asset list visibility
+        let listId = `${layer}List`;
+        const assetList = document.getElementById(listId);
+        if (assetList) {
+            assetList.style.display = layerVisibility[layer] ? 'block' : 'none';
+        }
     }
     
     // Search functionality

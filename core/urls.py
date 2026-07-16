@@ -2,8 +2,18 @@
 # All FarmWise application URLs
 
 from django.urls import path, include
+from django.views.generic import RedirectView
 from . import views
 from . import views_pest_verification
+from . import views_dashboards
+
+# API imports have been removed - using HTML templates instead
+# from .api import views_market
+# from .api import views_voice
+# from .api import views_chatbot
+# from .api import views_location
+# from .api import views_offline
+# from .api import views_disease
 
 app_name = 'core'
 
@@ -55,6 +65,7 @@ urlpatterns = [
     path('livestock/<int:pk>/edit/', views.animal_edit, name='animal_edit'),
     path('livestock/<int:pk>/delete/', views.animal_delete, name='animal_delete'),
     path('livestock/<int:animal_id>/health/add/', views.health_record_add, name='health_record_add'),
+    path('livestock/breeding/select/', views.breeding_record_select_animal, name='breeding_record_select_animal'),
     path('livestock/<int:animal_id>/breeding/add/', views.breeding_record_add, name='breeding_record_add'),
     path('livestock/<int:animal_id>/milk/add/', views.milk_production_add, name='milk_production_add'),
     
@@ -133,6 +144,7 @@ urlpatterns = [
     path('labor/workers/add/', views.add_worker, name='add_worker'),
     path('labor/workers/<int:pk>/edit/', views.edit_worker, name='edit_worker'),
     path('labor/workers/<int:worker_id>/hours/', views.log_hours, name='log_hours'),
+    path('labor/workers/select-hours/', views.log_hours_select_worker, name='log_hours_select_worker'),
     path('labor/payroll/', views.payroll_list, name='payroll_list'),
     path('labor/payroll/<int:pk>/process/', views.process_payroll, name='process_payroll'),
     path('labor/payroll/<int:pk>/edit/', views.payroll_edit, name='payroll_edit'),
@@ -247,17 +259,40 @@ urlpatterns = [
     path('analytics/', views.analytics_dashboard, name='analytics_dashboard'),
     path('analytics/report/', views.generate_analytics_report, name='generate_analytics_report'),
     
-    # ============================================================
-    # IoT DEVICE MANAGEMENT - Phase 5
-    # ============================================================
-    path('iot/devices/', views.iot_devices, name='iot_devices'),
-    path('iot/provisioning/', views.iot_provisioning, name='iot_provisioning'),
-    path('iot/monitoring/', views.iot_real_time_monitoring, name='iot_real_time_monitoring'),
+
     
     # ============================================================
-    # MACHINE LEARNING API ENDPOINTS
+    # HTML DASHBOARDS (Replaced JSON APIs)
     # ============================================================
-    path('api/ml/', include('core.ml.urls')),
+    # Offline Mode Dashboard
+    path('offline/dashboard/', views_dashboards.offline_dashboard, name='offline_dashboard'),
+    
+    # Market Dashboard
+    path('market/dashboard/', views_dashboards.market_dashboard, name='market_dashboard'),
+    
+    # Voice Assistant Dashboard
+    path('voice/dashboard/', views_dashboards.voice_dashboard, name='voice_dashboard'),
+    path('voice/commands/', views_dashboards.voice_commands, name='voice_commands'),
+    path('voice/history/', views_dashboards.voice_history, name='voice_history'),
+    path('voice/preferences/', views_dashboards.voice_preferences, name='voice_preferences'),
+    path('voice/interface/', views_dashboards.voice_interface, name='voice_interface'),
+    path('api/voice/process/', views_dashboards.api_voice_process, name='api_voice_process'),
+    
+    # Chatbot Dashboard
+    path('chat/', RedirectView.as_view(url='/chat/dashboard/', permanent=False), name='chat_redirect'),
+    path('chat/dashboard/', views_dashboards.chatbot_dashboard, name='chatbot_dashboard'),
+    path('chat/interface/', views_dashboards.chat_interface, name='chat_interface'),
+    
+    # Location/GPS Dashboard
+    path('location/dashboard/', views_dashboards.location_dashboard, name='location_dashboard'),
+    
+    # Disease Diagnosis Dashboard
+    path('disease/dashboard/', views_dashboards.disease_dashboard, name='disease_dashboard'),
+    
+    # ============================================================
+    # Disease Management (Web Interface)
+    # ============================================================
+    path('disease/', include(('core.urls_disease', 'disease'))),
     
     # ============================================================
     # SUPERMARKET MANAGEMENT
@@ -272,6 +307,7 @@ urlpatterns = [
     # ============================================================
     # LEGACY API ENDPOINTS (for AJAX/JavaScript)
     # ============================================================
+    path('api/chat/message/', views_dashboards.api_chat_message, name='api_chat_message'),
     path('api/farms/', views.api_farms, name='api_farms'),
     path('api/fields/<int:farm_id>/', views.api_fields, name='api_fields'),
     path('api/weather/<int:farm_id>/', views.api_weather, name='api_weather'),

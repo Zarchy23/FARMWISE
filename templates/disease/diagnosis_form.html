@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.id %}Edit{% else %}Create{% endif %} Diagnosis - FarmWise{% endblock %}
+
+{% block page_title %}{% if form.instance.id %}Edit{% else %}Create New{% endif %} Diagnosis{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <!-- Breadcrumb -->
+    <div class="mb-6 flex items-center space-x-2 text-sm text-gray-600">
+        <a href="/disease/" class="hover:text-green-600"><i class="ri-home-line"></i> Dashboard</a>
+        <i class="ri-arrow-right-s-line"></i>
+        <a href="/disease/diagnoses/" class="hover:text-green-600">Diagnoses</a>
+        <i class="ri-arrow-right-s-line"></i>
+        <span>{% if form.instance.id %}Edit{% else %}Create{% endif %}</span>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-8">
+        <!-- Form Title -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                {% if form.instance.id %}Edit Diagnosis{% else %}Create New Diagnosis{% endif %}
+            </h1>
+            <p class="text-gray-600">Document crop disease observations and create treatment plans</p>
+        </div>
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Basic Information -->
+            <div class="border-t pt-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Farm Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Farm</label>
+                        <select name="farm" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Select a farm...</option>
+                            {% for farm in farms %}
+                            <option value="{{ farm.id }}" {% if form.instance.farm.id == farm.id %}selected{% endif %}>{{ farm.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.farm.errors %}
+                        <p class="text-red-600 text-sm mt-1">{{ form.farm.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Crop Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Crop Type</label>
+                        <select name="crop" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Select a crop...</option>
+                            {% for crop in crops %}
+                            <option value="{{ crop.id }}" {% if form.instance.crop.id == crop.id %}selected{% endif %}>{{ crop.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.crop.errors %}
+                        <p class="text-red-600 text-sm mt-1">{{ form.crop.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Disease Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Disease</label>
+                        <select name="disease" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Select a disease...</option>
+                            {% for disease in diseases %}
+                            <option value="{{ disease.id }}" {% if form.instance.disease.id == disease.id %}selected{% endif %}>{{ disease.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.disease.errors %}
+                        <p class="text-red-600 text-sm mt-1">{{ form.disease.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Status -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <select name="status" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="pending" {% if form.instance.status == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="confirmed" {% if form.instance.status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                            <option value="cured" {% if form.instance.status == 'cured' %}selected{% endif %}>Cured</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagnosis Details -->
+            <div class="border-t pt-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Diagnosis Details</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Confidence Score -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Confidence Score (0-100)</label>
+                        <input type="number" name="confidence_score" min="0" max="100" 
+                               value="{{ form.instance.confidence_score|default:'' }}"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500"
+                               placeholder="80">
+                        <p class="text-xs text-gray-500 mt-1">How confident are you in this diagnosis?</p>
+                        {% if form.confidence_score.errors %}
+                        <p class="text-red-600 text-sm mt-1">{{ form.confidence_score.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Severity Level -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Severity Level</label>
+                        <select name="severity_level" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="mild" {% if form.instance.severity_level == 'mild' %}selected{% endif %}>Mild</option>
+                            <option value="moderate" {% if form.instance.severity_level == 'moderate' %}selected{% endif %}>Moderate</option>
+                            <option value="severe" {% if form.instance.severity_level == 'severe' %}selected{% endif %}>Severe</option>
+                            <option value="critical" {% if form.instance.severity_level == 'critical' %}selected{% endif %}>Critical</option>
+                        </select>
+                        {% if form.severity_level.errors %}
+                        <p class="text-red-600 text-sm mt-1">{{ form.severity_level.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="mt-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea name="description" rows="4" required
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500"
+                              placeholder="Describe the disease symptoms observed...">{{ form.instance.description|default:'' }}</textarea>
+                    <p class="text-xs text-gray-500 mt-1">Describe visible symptoms and affected areas</p>
+                    {% if form.description.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.description.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Environmental Factors -->
+            <div class="border-t pt-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Environmental Factors</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Temperature (°C)</label>
+                        <input type="number" name="environmental_factors_temperature" step="0.1"
+                               value="{% firstof form.instance.environmental_factors.temperature '' %}"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500"
+                               placeholder="25">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Humidity (%)</label>
+                        <input type="number" name="environmental_factors_humidity" min="0" max="100"
+                               value="{% firstof form.instance.environmental_factors.humidity '' %}"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500"
+                               placeholder="80">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Rainfall (mm)</label>
+                        <input type="number" name="environmental_factors_rainfall" step="0.1"
+                               value="{% firstof form.instance.environmental_factors.rainfall '' %}"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500"
+                               placeholder="10">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detected Symptoms -->
+            <div class="border-t pt-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Detected Symptoms</h2>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Symptoms (comma-separated)</label>
+                <textarea name="detected_symptoms" rows="2"
+                          class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500"
+                          placeholder="e.g., Yellowing leaves, Brown spots, Wilting">{{ form.instance.detected_symptoms|join:", "|default:'' }}</textarea>
+                <p class="text-xs text-gray-500 mt-1">List symptoms separated by commas</p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="border-t pt-6 flex gap-3">
+                <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition">
+                    <i class="ri-save-line mr-2"></i>
+                    {% if form.instance.id %}Update Diagnosis{% else %}Create Diagnosis{% endif %}
+                </button>
+                <a href="/disease/diagnoses/" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 rounded-lg transition text-center">
+                    <i class="ri-close-line mr-2"></i>
+                    Cancel
+                </a>
+            </div>
+
+            <!-- Form Errors -->
+            {% if form.non_field_errors %}
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p class="text-red-800 font-medium">Error</p>
+                {% for error in form.non_field_errors %}
+                <p class="text-red-700 text-sm">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}

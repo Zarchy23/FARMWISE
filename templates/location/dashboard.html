@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Location Dashboard - FarmWise{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 100%);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
+    }
+
+    .icon-badge {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        font-size: 28px;
+    }
+
+    .section-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card {
+        animation: slideInUp 0.5s ease-out;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+
+    .farm-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s;
+    }
+
+    .farm-card:hover {
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        transform: translateY(-4px);
+    }
+
+    .location-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
+    <div class="container mx-auto px-4">
+        <!-- Header -->
+        <div class="mb-12">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h1 class="section-title mb-2">📍 Location & GPS Dashboard</h1>
+                    <p class="text-gray-600 text-lg">View your farms and fields on the map</p>
+                </div>
+                <a href="{% url 'core:farm_map' %}" class="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                    <i class="ri-map-line"></i> Map View
+                </a>
+            </div>
+        </div>
+
+        <!-- Status Overview -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
+            <!-- Total Farms -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Total Farms</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ farms|length }}</p>
+                        <p class="text-xs text-gray-500 mt-2">Managed locations</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-orange-100 to-orange-50">
+                        <i class="ri-home-heart-line text-orange-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Fields -->
+            <div class="stat-card p-6 rounded-2xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Total Fields</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ total_fields }}</p>
+                        <p class="text-xs text-gray-500 mt-2">Mapped fields</p>
+                    </div>
+                    <div class="icon-badge bg-gradient-to-br from-green-100 to-green-50">
+                        <i class="ri-layout-grid-line text-green-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Your Farms -->
+        {% if farms %}
+        <div class="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="ri-map-pin-line mr-3 text-orange-600"></i>
+                Your Farms
+            </h2>
+            <div class="space-y-4">
+                {% for farm in farms %}
+                <div class="farm-card">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800">{{ farm.name }}</p>
+                            <p class="text-sm text-gray-600 mt-1">
+                                <i class="ri-map-pin-line"></i> {{ farm.location|default:"Location not set" }}
+                            </p>
+                            {% if farm.fields.all %}
+                            <p class="text-xs text-gray-500 mt-2">
+                                <i class="ri-layout-grid-line"></i> {{ farm.fields.count }} field(s)
+                            </p>
+                            {% endif %}
+                        </div>
+                        <span class="location-badge">
+                            <i class="ri-map-pin-line"></i>
+                            Active
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-8 text-center">
+            <i class="ri-information-line text-4xl text-blue-600 mb-3"></i>
+            <p class="text-gray-700">No farms added yet.</p>
+            <a href="{% url 'core:farm_create' %}" class="inline-block mt-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all">
+                Add Your First Farm
+            </a>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-8">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -73,7 +73,7 @@
 
             <!-- Wallboard (System Admins Only) -->
             {% if user.user_type == 'admin' or user.is_superuser %}
-            <a href="{% url 'core:wallboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-red-600 transition bg-red-500 text-white font-bold">
+            <a href="{% url 'core:wallboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition bg-green-600 text-white font-bold">
                 <i class="ri-dashboard-3-line"></i><span>Wallboard</span>
             </a>
             {% endif %}
@@ -145,7 +145,7 @@
                 </button>
                 <div x-show="expandedMenu === 'breeding'" x-transition class="ml-6 space-y-1 mt-1">
                     <a href="{% url 'core:animal_list' %}?filter=breeding" class="block px-3 py-2 text-sm rounded hover:bg-green-700">All Programs</a>
-                    <a href="#" onclick="alert('Select an animal to add breeding record')" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Record</a>
+                    <a href="{% url 'core:breeding_record_select_animal' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Record</a>
                 </div>
             </div>
 
@@ -157,9 +157,9 @@
                     <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'dosing' ? 'rotate-180' : ''"></i>
                 </button>
                 <div x-show="expandedMenu === 'dosing'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:animal_list' %}?filter=medication" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Schedules</a>
+                    <a href="{% url 'core:animal_list' %}?filter=treatment" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Schedules</a>
                     <a href="{% url 'core:animal_list' %}?filter=vaccination" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Vaccinations</a>
-                    <a href="{% url 'core:animal_list' %}?filter=treatments" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Treatments</a>
+                    <a href="{% url 'core:animal_list' %}?filter=treatment" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Treatments</a>
                 </div>
             </div>
 
@@ -292,8 +292,12 @@
                     <a href="{% url 'core:labor' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
                     {% if user|has_module_permission:"labor.create" %}
                     <a href="{% url 'core:add_worker' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Worker</a>
-                    <a href="{% url 'core:payroll_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Payroll</a>
-                    <a href="#" onclick="alert('Click on a payroll item to edit');" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Edit Payroll</a>
+                    <a href="{% url 'core:log_hours_select_worker' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Log Hours</a>
+                    {% endif %}
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:payroll_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Payroll Overview</a>
+                    {% if user|has_module_permission:"labor.create" %}
+                    <a href="{% url 'core:add_worker' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Process Payroll</a>
                     {% endif %}
                 </div>
             </div>
@@ -343,17 +347,87 @@
                 </div>
             </div>
 
-            <!-- PHASE 5 IoT Devices (Feature) - Device management -->
+            <!-- Market Price Intelligence (AI Feature) - Real-time commodity prices -->
             <div>
-                <button @click="expandedMenu = expandedMenu === 'iot' ? null : 'iot'" 
+                <button @click="expandedMenu = expandedMenu === 'market' ? null : 'market'" 
                         class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-wifi-line"></i><span>IoT Devices</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'iot' ? 'rotate-180' : ''"></i>
+                    <i class="ri-money-dollar-circle-line"></i><span>Market Prices</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'market' ? 'rotate-180' : ''"></i>
                 </button>
-                <div x-show="expandedMenu === 'iot'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:iot_devices' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Devices</a>
-                    <a href="{% url 'core:iot_provisioning' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Setup</a>
-                    <a href="{% url 'core:iot_real_time_monitoring' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Monitoring</a>
+                <div x-show="expandedMenu === 'market'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:market_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="{% url 'core:marketplace' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Marketplace</a>
+                    <a href="{% url 'core:my_listings' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Listings</a>
+                </div>
+            </div>
+
+            <!-- Voice Assistant (AI Feature) - Voice commands & automation -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'voice' ? null : 'voice'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-mic-line"></i><span>Voice Assistant</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'voice' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'voice'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:voice_interface' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">🎤 Start Assistant</a>
+                    <a href="{% url 'core:voice_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="{% url 'core:voice_commands' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Available Commands</a>
+                    <a href="{% url 'core:voice_history' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Command History</a>
+                    <a href="{% url 'core:voice_preferences' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Preferences</a>
+                </div>
+            </div>
+
+            <!-- AI Chatbot (AI Feature) - Agricultural guidance & Q&A -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'chatbot' ? null : 'chatbot'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-chat-4-line"></i><span>AI Chatbot</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'chatbot' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'chatbot'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:chatbot_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="{% url 'core:chat_interface' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Start Chat</a>
+                </div>
+            </div>
+
+            <!-- GPS Mapping & Location Intelligence (AI Feature) - PostGIS spatial data -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'mapping' ? null : 'mapping'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-map-2-line"></i><span>Field Mapping</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'mapping' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'mapping'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:location_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="{% url 'core:farm_map' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Farm Map</a>
+                </div>
+            </div>
+
+            <!-- Offline AI Capabilities (AI Feature) - Sync & caching -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'offline' ? null : 'offline'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-wifi-off-line"></i><span>Offline Mode</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'offline' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'offline'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:offline_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                </div>
+            </div>
+
+            <!-- Disease Diagnosis & Treatment (AI Feature) - AI-powered diagnosis -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'disease' ? null : 'disease'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-pulse-line"></i><span>Disease Diagnosis</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'disease' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'disease'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="/disease/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="/disease/diagnoses/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Diagnoses</a>
+                    <a href="/disease/diagnoses/create/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">New Diagnosis</a>
+                    <a href="/disease/library/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Disease Library</a>
+                    <a href="/disease/alerts/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Alerts</a>
                 </div>
             </div>
             

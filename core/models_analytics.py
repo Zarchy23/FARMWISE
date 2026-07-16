@@ -3,12 +3,10 @@
 # Tracks farm performance, yield predictions, and real-time metrics
 
 from django.db import models
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.utils import timezone
 from decimal import Decimal
 import statistics
-
-User = get_user_model()
 
 
 # ============================================================
@@ -39,7 +37,7 @@ class DashboardMetric(models.Model):
         ('critical', 'Critical - Action needed'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='dashboard_metrics')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dashboard_metrics')
     farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='dashboard_metrics')
     field = models.ForeignKey('Field', on_delete=models.SET_NULL, null=True, blank=True, related_name='dashboard_metrics')
     
@@ -76,7 +74,7 @@ class DashboardMetric(models.Model):
 class MetricHistory(models.Model):
     """Historical data for metric trends and analysis"""
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='metric_history')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='metric_history')
     farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='metric_history')
     field = models.ForeignKey('Field', on_delete=models.SET_NULL, null=True, blank=True)
     
@@ -127,7 +125,7 @@ class YieldPrediction(models.Model):
         ('failed', 'Failed'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='yield_predictions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='yield_predictions')
     farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='yield_predictions')
     field = models.ForeignKey('Field', on_delete=models.CASCADE, related_name='yield_predictions')
     crop = models.ForeignKey('CropSeason', on_delete=models.CASCADE, related_name='yield_predictions')
@@ -181,7 +179,7 @@ class ResourceUsageAnalytics(models.Model):
         ('seed', 'Seed (kg)'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='resource_usage')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='resource_usage')
     farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='resource_usage')
     field = models.ForeignKey('Field', on_delete=models.CASCADE, null=True, blank=True)
     crop = models.ForeignKey('CropSeason', on_delete=models.SET_NULL, null=True, blank=True)
@@ -221,7 +219,7 @@ class FarmPerformanceScore(models.Model):
         ('yearly', 'Yearly'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='performance_scores')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='performance_scores')
     farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='performance_scores')
     
     # Overall health score (0-100)
@@ -293,7 +291,7 @@ class AlertTrigger(models.Model):
         ('critical', 'Critical'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alerts')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='alerts')
     farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='alerts')
     
     alert_type = models.CharField(max_length=30, choices=ALERT_TYPES)
@@ -332,7 +330,7 @@ class AlertTrigger(models.Model):
 class BenchmarkComparison(models.Model):
     """Compare farm performance against regional/national benchmarks"""
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='benchmarks')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='benchmarks')
     farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='benchmarks')
     crop = models.ForeignKey('CropSeason', on_delete=models.SET_NULL, null=True, blank=True)
     
@@ -381,7 +379,7 @@ class AnalyticsReport(models.Model):
         ('comparison', 'Benchmark Comparison'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='analytics_reports')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='analytics_reports')
     farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='analytics_reports')
     
     report_type = models.CharField(max_length=30, choices=REPORT_TYPES)
@@ -427,7 +425,7 @@ class NotificationQueue(models.Model):
         ('market', 'Market Info'),
     ]
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notification_queue')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notification_queue')
     farm = models.ForeignKey('Farm', on_delete=models.SET_NULL, null=True, blank=True)
     
     notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
