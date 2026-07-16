@@ -2,36 +2,14 @@
 set -e
 
 echo "Running migrations (ensure database schema is up to date)..."
-python manage.py migrate --noinput || echo "Migrations may have already run"
+python manage.py migrate --run-syncdb --noinput || echo "Migrations may have already run"
 
 echo "Collecting static files..."
 python manage.py collectstatic --noinput --clear || true
 
-# Load initial data fixture once per machine (skip if already loaded)
-MARKER="/tmp/.farmwise_data_loaded"
-if [ ! -f "$MARKER" ]; then
-    echo "Checking for initial data fixtures..."
-    
-    # Load production data if it exists (contains local to production migration data)
-    if [ -f "production_data.json" ]; then
-        echo "Loading production data fixture..."
-        python manage.py loaddata production_data.json || echo "Production data loaddata skipped/failed (continuing)"
-    fi
-    
-    # Load data.json if it exists (contains system data)
-    if [ -f "data.json" ]; then
-        echo "Loading initial data fixture..."
-        python manage.py loaddata data.json || echo "Loaddata skipped/failed (continuing)"
-    fi
-    
-    # Load user accounts fixture if it exists (contains user accounts)
-    if [ -f "users_data.json" ]; then
-        echo "Loading user accounts fixture..."
-        python manage.py loaddata users_data.json || echo "User accounts loaddata skipped/failed (continuing)"
-    fi
-    
-    touch "$MARKER"
-fi
+# Skip data loading on initial deployment to ensure schema is created first
+# Data loading will be done manually after successful deployment
+echo "Skipping automatic data loading on initial deployment..."
 
 echo "Starting FarmWise..."
 python -m gunicorn farmwise.wsgi:application \
