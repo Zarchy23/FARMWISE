@@ -307,7 +307,7 @@ urlpatterns = [
     # ============================================================
     # FARMER ADVISORY SYSTEM
     # ============================================================
-    path('advisory/', include('core.urls_advisory')),
+    path('advisory/', include('core.urls_advisory', namespace='advisory')),
     
     # ============================================================
     # LEGACY API ENDPOINTS (for AJAX/JavaScript)
