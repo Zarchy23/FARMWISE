@@ -149,36 +149,16 @@
                     <a href="{% url 'core:animal_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add</a>
                     {% endif %}
                     <a href="{% url 'core:animal_list' %}?filter=health" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Health Records</a>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Breeding Programs -->
-            <div>
-                <button @click="expandedMenu = expandedMenu === 'breeding' ? null : 'breeding'" 
-                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-dna-line"></i><span>Breeding Programs</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'breeding' ? 'rotate-180' : ''"></i>
-                </button>
-                <div x-show="expandedMenu === 'breeding'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:animal_list' %}?filter=breeding" class="block px-3 py-2 text-sm rounded hover:bg-green-700">All Programs</a>
-                    <a href="{% url 'core:breeding_record_select_animal' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Record</a>
-                </div>
-            </div>
-
-            <!-- Dosing Programs -->
-            <div>
-                <button @click="expandedMenu = expandedMenu === 'dosing' ? null : 'dosing'" 
-                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-capsule-line"></i><span>Dosing Programs</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'dosing' ? 'rotate-180' : ''"></i>
-                </button>
-                <div x-show="expandedMenu === 'dosing'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:animal_list' %}?filter=treatment" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Schedules</a>
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:animal_list' %}?filter=breeding" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Breeding Programs</a>
+                    <a href="{% url 'core:breeding_record_select_animal' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Breeding Record</a>
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:animal_list' %}?filter=treatment" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dosing Schedules</a>
                     <a href="{% url 'core:animal_list' %}?filter=vaccination" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Vaccinations</a>
                     <a href="{% url 'core:animal_list' %}?filter=treatment" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Treatments</a>
                 </div>
             </div>
+            {% endif %}
 
             <!-- Reminders -->
             <div>
@@ -229,6 +209,7 @@
                     <a href="{% url 'core:my_listings' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Listings</a>
                     {% endif %}
                     <a href="{% url 'core:my_orders' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Orders</a>
+                    <a href="{% url 'core:market_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Market Dashboard</a>
                 </div>
             </div>
             {% endif %}
@@ -247,8 +228,15 @@
                     <a href="{% url 'core:pest_upload' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Upload</a>
                     {% endif %}
                     <a href="{% url 'core:pest_history' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">History</a>
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="/disease/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Disease Dashboard</a>
+                    <a href="/disease/diagnoses/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Diagnoses</a>
+                    <a href="/disease/diagnoses/create/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">New Diagnosis</a>
+                    <a href="/disease/library/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Disease Library</a>
+                    <a href="/disease/alerts/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Disease Alerts</a>
                     <!-- Agronomist Verification Dashboard (AGRONOMIST ONLY) -->
                     {% if user.user_type == 'agronomist' %}
+                    <div class="border-t border-green-600 my-2"></div>
                     <a href="{% url 'core:agronomist_pest_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold border-l-2 border-yellow-400 pl-2">
                         <i class="ri-check-double-line"></i> Verification Dashboard
                     </a>
@@ -335,6 +323,8 @@
                     <a href="{% url 'core:crop_yield_report' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Crop Yield</a>
                     <a href="{% url 'core:livestock_report' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Livestock</a>
                     {% endif %}
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:analytics_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Analytics Dashboard</a>
                 </div>
             </div>
             {% endif %}
@@ -352,31 +342,6 @@
                 </div>
             </div>
 
-            <!-- PHASE 5 Analytics (Feature) - Real-time metrics -->
-            <div>
-                <button @click="expandedMenu = expandedMenu === 'analytics' ? null : 'analytics'" 
-                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-chart-line-fill"></i><span>Analytics</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'analytics' ? 'rotate-180' : ''"></i>
-                </button>
-                <div x-show="expandedMenu === 'analytics'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:analytics_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
-                </div>
-            </div>
-
-            <!-- Market Price Intelligence (AI Feature) - Real-time commodity prices -->
-            <div>
-                <button @click="expandedMenu = expandedMenu === 'market' ? null : 'market'" 
-                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-money-dollar-circle-line"></i><span>Market Prices</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'market' ? 'rotate-180' : ''"></i>
-                </button>
-                <div x-show="expandedMenu === 'market'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:market_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
-                    <a href="{% url 'core:marketplace' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Marketplace</a>
-                    <a href="{% url 'core:my_listings' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Listings</a>
-                </div>
-            </div>
 
             <!-- Voice Assistant (AI Feature) - Voice commands & automation -->
             <div>
@@ -417,6 +382,8 @@
                 <div x-show="expandedMenu === 'mapping'" x-transition class="ml-6 space-y-1 mt-1">
                     <a href="{% url 'core:location_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
                     <a href="{% url 'core:farm_map' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Farm Map</a>
+                    <a href="{% url 'core:geofence_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Geofences</a>
+                    <a href="{% url 'core:livestock_tracking' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Livestock GPS</a>
                 </div>
             </div>
 
@@ -432,22 +399,6 @@
                 </div>
             </div>
 
-            <!-- Disease Diagnosis & Treatment (AI Feature) - AI-powered diagnosis -->
-            <div>
-                <button @click="expandedMenu = expandedMenu === 'disease' ? null : 'disease'" 
-                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-pulse-line"></i><span>Disease Diagnosis</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'disease' ? 'rotate-180' : ''"></i>
-                </button>
-                <div x-show="expandedMenu === 'disease'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="/disease/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
-                    <a href="/disease/diagnoses/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Diagnoses</a>
-                    <a href="/disease/diagnoses/create/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">New Diagnosis</a>
-                    <a href="/disease/library/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Disease Library</a>
-                    <a href="/disease/alerts/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Alerts</a>
-                </div>
-            </div>
-            
             <!-- Carbon Footprint (Feature 11) - Environmental Tracking -->
             <div>
                 <button @click="expandedMenu = expandedMenu === 'carbon' ? null : 'carbon'" 
@@ -458,20 +409,6 @@
                 <div x-show="expandedMenu === 'carbon'" x-transition class="ml-6 space-y-1 mt-1">
                     <a href="{% url 'core:carbon_tracker' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Tracker</a>
                     <a href="{% url 'core:carbon_report' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Reports</a>
-                </div>
-            </div>
-
-            <!-- Farm Mapping & Geofencing (Feature 12) - Location Services -->
-            <div>
-                <button @click="expandedMenu = expandedMenu === 'maps' ? null : 'maps'" 
-                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-map-pin-line"></i><span>Farm Mapping</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'maps' ? 'rotate-180' : ''"></i>
-                </button>
-                <div x-show="expandedMenu === 'maps'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:farm_map' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Farm Map</a>
-                    <a href="{% url 'core:geofence_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Geofences</a>
-                    <a href="{% url 'core:livestock_tracking' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Livestock GPS</a>
                 </div>
             </div>
 
