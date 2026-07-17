@@ -28,9 +28,6 @@ urlpatterns = [
     path('wallboard/', views.wallboard, name='wallboard'),
     path('api-keys-debug/', views.api_keys_debug, name='api_keys_debug'),
     path('register/', views.register, name='register'),
-    
-    # TEMPORARY: Password reset for production - REMOVE AFTER USE
-    path('reset-password-prod/', views.reset_production_password, name='reset_production_password'),
     path('profile/', views.profile, name='profile'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
     path('settings/', views.settings, name='settings'),

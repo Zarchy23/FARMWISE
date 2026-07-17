@@ -35,35 +35,6 @@ from .services.payroll_automation_service import PayrollAutomationService
 # HOME & DASHBOARD
 # ============================================================
 
-def reset_production_password(request):
-    """TEMPORARY: Reset admin password in production - REMOVE AFTER USE"""
-    from django.utils import timezone
-    
-    try:
-        user = User.objects.get(username='munashe')
-        user.set_password('Farmwise2024!')
-        user.is_superuser = True
-        user.is_staff = True
-        user.is_active = True
-        user.user_type = 'admin'
-        user.save()
-        return HttpResponse(f'Password reset for existing user {user.username}. New password: Farmwise2024!')
-    except User.DoesNotExist:
-        # Create the admin user if it doesn't exist
-        user = User.objects.create_user(
-            username='munashe',
-            email='tungwararamunashe@gmail.com',
-            password='Farmwise2024!',
-            user_type='admin',
-            is_superuser=True,
-            is_staff=True,
-            is_active=True,
-            phone_number='+254712345678'
-        )
-        return HttpResponse(f'Created new admin user {user.username}. Password: Farmwise2024!')
-    except Exception as e:
-        return HttpResponse(f'Error: {str(e)}', status=500)
-
 def home(request):
     """Landing page"""
     return render(request, 'home.html')
