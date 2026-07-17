@@ -167,14 +167,17 @@
             <div class="col-12">
                 <div class="population-card">
                     <h3 class="mb-4"><i class="ri-settings-3-line"></i> Data Actions</h3>
-                    <div class="text-center">
-                        <button class="action-btn primary" onclick="populateData()">
-                            <i class="ri-add-circle-line"></i> Populate Sample Data
-                        </button>
-                        <button class="action-btn danger" onclick="clearData()">
-                            <i class="ri-delete-bin-line"></i> Clear All Data
-                        </button>
-                    </div>
+                    <form id="dataForm">
+                        {% csrf_token %}
+                        <div class="text-center">
+                            <button type="button" class="action-btn primary" onclick="populateData()">
+                                <i class="ri-add-circle-line"></i> Populate Sample Data
+                            </button>
+                            <button type="button" class="action-btn danger" onclick="clearData()">
+                                <i class="ri-delete-bin-line"></i> Clear All Data
+                            </button>
+                        </div>
+                    </form>
                     <div id="alertBox" class="alert-box"></div>
                 </div>
             </div>
@@ -235,13 +238,14 @@ function populateData() {
         return;
     }
     
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     const formData = new FormData();
-    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    formData.append('csrfmiddlewaretoken', csrfToken);
     
     fetch('/admin/populate-data/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCookie('csrftoken')
+            'X-CSRFToken': csrfToken
         },
         body: formData
     })
@@ -272,13 +276,14 @@ function clearData() {
         return;
     }
     
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     const formData = new FormData();
-    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    formData.append('csrfmiddlewaretoken', csrfToken);
     
     fetch('/admin/clear-data/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCookie('csrftoken')
+            'X-CSRFToken': csrfToken
         },
         body: formData
     })
