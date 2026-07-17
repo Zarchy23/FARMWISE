@@ -235,11 +235,15 @@ function populateData() {
         return;
     }
     
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    
     fetch('/admin/populate-data/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCookie('csrftoken')
-        }
+        },
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
@@ -268,11 +272,15 @@ function clearData() {
         return;
     }
     
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+    
     fetch('/admin/clear-data/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCookie('csrftoken')
-        }
+        },
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
