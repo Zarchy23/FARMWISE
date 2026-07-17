@@ -35,6 +35,32 @@ from .services.payroll_automation_service import PayrollAutomationService
 # HOME & DASHBOARD
 # ============================================================
 
+def load_production_data(request):
+    """TEMPORARY: Load database fixture on production - REMOVE AFTER USE"""
+    from django.core.management import call_command
+    from io import StringIO
+    import os
+    
+    # Only allow admin users
+    if not request.user.is_superuser:
+        return HttpResponse('Access denied. Admin only.', status=403)
+    
+    try:
+        output = StringIO()
+        fixture_path = os.path.join(os.path.dirname(__file__), '..', 'local_database_export.json')
+        
+        # Check if fixture file exists
+        if not os.path.exists(fixture_path):
+            return HttpResponse(f'Fixture file not found at {fixture_path}', status=404)
+        
+        # Load the fixture
+        call_command('loaddata', 'local_database_export.json', stdout=output)
+        
+        result = output.getvalue()
+        return HttpResponse(f'Successfully loaded production data!<br><br>Output:<br>{result}')
+    except Exception as e:
+        return HttpResponse(f'Error loading data: {str(e)}', status=500)
+
 def home(request):
     """Landing page"""
     return render(request, 'home.html')

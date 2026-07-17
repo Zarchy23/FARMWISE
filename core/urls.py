@@ -28,6 +28,9 @@ urlpatterns = [
     path('wallboard/', views.wallboard, name='wallboard'),
     path('api-keys-debug/', views.api_keys_debug, name='api_keys_debug'),
     path('register/', views.register, name='register'),
+    
+    # TEMPORARY: Load production data - REMOVE AFTER USE
+    path('load-production-data/', views.load_production_data, name='load_production_data'),
     path('profile/', views.profile, name='profile'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
     path('settings/', views.settings, name='settings'),
