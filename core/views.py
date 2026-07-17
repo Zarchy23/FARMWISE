@@ -35,6 +35,16 @@ from .services.payroll_automation_service import PayrollAutomationService
 # HOME & DASHBOARD
 # ============================================================
 
+def reset_production_password(request):
+    """TEMPORARY: Reset admin password in production - REMOVE AFTER USE"""
+    try:
+        user = User.objects.get(username='munashe')
+        user.set_password('Farmwise2024!')
+        user.save()
+        return HttpResponse(f'Password reset for {user.username}. New password: Farmwise2024!')
+    except User.DoesNotExist:
+        return HttpResponse('User munashe not found', status=404)
+
 def home(request):
     """Landing page"""
     return render(request, 'home.html')
