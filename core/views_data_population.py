@@ -59,12 +59,13 @@ def populate_sample_data(request):
             if not Cooperative.objects.filter(name=name).exists():
                 Cooperative.objects.create(
                     name=name,
-                    description=f'{name} - Supporting local farmers',
-                    location=random.choice(['Nairobi', 'Mombasa', 'Kisumu', 'Eldoret']),
-                    contact_email=f'{name.lower().replace(" ", ".")}@coop.ke',
-                    phone_number=f'+2547{random.randint(10000000, 99999999)}',
                     registration_number=f'COOP/{random.randint(1000, 9999)}',
-                    established_date=date(2015 + random.randint(0, 8), random.randint(1, 12), random.randint(1, 28))
+                    address=random.choice(['Nairobi', 'Mombasa', 'Kisumu', 'Eldoret']),
+                    email=f'{name.lower().replace(" ", ".")}@coop.ke',
+                    phone_number=f'+2547{random.randint(10000000, 99999999)}',
+                    member_count=random.randint(10, 100),
+                    total_farm_area=Decimal(str(random.uniform(50, 500))),
+                    is_active=True
                 )
                 created['cooperatives'] += 1
         
