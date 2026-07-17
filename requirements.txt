@@ -9,6 +9,7 @@ celery==5.6.3
 redis==8.0.0
 django-celery-beat==2.9.0
 twilio==9.10.9
+django-sendgrid==1.0.1
 sendgrid==6.12.5
 stripe==15.2.1
 django-import-export==4.4.1
