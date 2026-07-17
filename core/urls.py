@@ -7,6 +7,7 @@ from . import views
 from . import views_pest_verification
 from . import views_dashboards
 from . import views_ml_dashboard
+from . import views_data_population
 
 # API imports have been removed - using HTML templates instead
 # from .api import views_market
@@ -323,6 +324,13 @@ urlpatterns = [
     path('ml/train-model/', views_ml_dashboard.train_ml_model, name='ml_train_model'),
     path('ml/export-data/', views_ml_dashboard.export_ml_data, name='ml_export_data'),
     path('ml/compare-models/', views_ml_dashboard.compare_models, name='ml_compare_models'),
+    
+    # ============================================================
+    # DATA POPULATION (for environments without shell access)
+    # ============================================================
+    path('admin/populate-data/', views_data_population.populate_sample_data, name='populate_sample_data'),
+    path('admin/clear-data/', views_data_population.clear_sample_data, name='clear_sample_data'),
+    path('admin/data-population/', views_data_population.data_population_dashboard, name='data_population_dashboard'),
     
     # ============================================================
     # LEGACY API ENDPOINTS (for AJAX/JavaScript)
