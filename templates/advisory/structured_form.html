@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Get Agricultural Advisory{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="mb-6">
+        <a href="/advisory/structured/history/" class="text-green-600 hover:text-green-700 font-semibold">
+            ← View Advisory History
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-green-500 to-teal-600 p-6 text-white">
+            <h1 class="text-2xl font-bold">Get Agricultural Advisory</h1>
+            <p class="opacity-90">Fill in the details below to get AI-powered agricultural guidance</p>
+        </div>
+
+        <div class="p-6">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="space-y-6">
+                    <!-- Advisory Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Advisory Type *</label>
+                        <select name="advisory_type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">Select advisory type</option>
+                            {% for value, label in advisory_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Soil Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Soil Type</label>
+                        <select name="soil_type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">Select soil type</option>
+                            {% for value, label in soil_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Crop Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Crop Type</label>
+                        <select name="crop_type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">Select crop type</option>
+                            {% for value, label in crop_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Livestock Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Livestock Type</label>
+                        <select name="livestock_type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">Select livestock type</option>
+                            {% for value, label in livestock_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Field Area -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Field Area (Hectares)</label>
+                        <input type="number" name="field_area_hectares" step="0.1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="e.g., 2.5">
+                    </div>
+
+                    <!-- Irrigation Method -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Irrigation Method</label>
+                        <select name="irrigation_method" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">Select irrigation method</option>
+                            {% for value, label in irrigation_methods %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Season -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Season</label>
+                        <select name="season" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">Select season</option>
+                            {% for value, label in seasons %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Specific Question -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Your Specific Question *</label>
+                        <textarea name="specific_question" rows="4" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Describe your specific question or problem in detail"></textarea>
+                    </div>
+
+                    <!-- Current Practices -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Practices</label>
+                        <textarea name="current_practices" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Describe your current farming practices (optional)"></textarea>
+                    </div>
+
+                    <!-- Challenges -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Challenges Faced</label>
+                        <textarea name="challenges" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Describe any challenges you're facing (optional)"></textarea>
+                    </div>
+
+                    <!-- Image Upload -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload Image (Optional)</label>
+                        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg">
+                            <div class="space-y-1 text-center">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                                <div class="flex text-sm text-gray-600">
+                                    <label for="image" class="relative cursor-pointer bg-white rounded-md font-medium text-green-600 hover:text-green-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-green-500">
+                                        <span>Upload a file</span>
+                                        <input id="image" name="image" type="file" class="sr-only" accept="image/*">
+                                    </label>
+                                    <p class="pl-1">or drag and drop</p>
+                                </div>
+                                <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                                <p class="text-xs text-gray-500 mt-1">Upload images of crops, pests, soil, or livestock for better analysis</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4 mt-8">
+                    <a href="/advisory/structured/history/" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                        Cancel
+                    </a>
+                    <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                        Get Advisory
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

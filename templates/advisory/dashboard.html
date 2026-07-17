@@ -18,7 +18,7 @@
                 <p class="opacity-90">{{ farm_profile.get_farm_type_display }} | {{ farm_profile.location }}</p>
                 <p class="opacity-90 text-sm mt-1">Agro-ecological Zone: {{ farm_profile.get_agro_ecological_zone_display }}</p>
             </div>
-            <a href="{% url 'advisory:setup_farm_profile' %}" class="bg-white text-green-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition">
+            <a href="/advisory/setup-profile/" class="bg-white text-green-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition">
                 Edit Profile
             </a>
         </div>
@@ -34,7 +34,7 @@
             <div class="ml-3">
                 <p class="text-yellow-700">
                     <strong>Setup Required:</strong> Please complete your farm profile to receive personalized advisory services.
-                    <a href="{% url 'advisory:setup_farm_profile' %}" class="underline font-semibold">Setup Profile</a>
+                    <a href="/advisory/setup-profile/" class="underline font-semibold">Setup Profile</a>
                 </p>
             </div>
         </div>
@@ -43,7 +43,7 @@
 
     <!-- Quick Actions -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <a href="{% url 'advisory:land_guides' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-green-500">
+        <a href="/advisory/land-guides/" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-green-500">
             <div class="flex items-center mb-4">
                 <div class="bg-green-100 p-3 rounded-full">
                     <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,7 +55,7 @@
             <p class="text-gray-600 text-sm">Get guidance on land preparation methods and planting techniques</p>
         </a>
 
-        <a href="{% url 'advisory:pest_guides' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-red-500">
+        <a href="/advisory/pest-guides/" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-red-500">
             <div class="flex items-center mb-4">
                 <div class="bg-red-100 p-3 rounded-full">
                     <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +67,7 @@
             <p class="text-gray-600 text-sm">Integrated pest management and pesticide guidance</p>
         </a>
 
-        <a href="{% url 'advisory:dosage_calculator' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-blue-500">
+        <a href="/advisory/dosage-calculator/" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-blue-500">
             <div class="flex items-center mb-4">
                 <div class="bg-blue-100 p-3 rounded-full">
                     <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +79,7 @@
             <p class="text-gray-600 text-sm">Calculate precise pesticide and veterinary drug dosages</p>
         </a>
 
-        <a href="{% url 'advisory:veterinary_database' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-purple-500">
+        <a href="/advisory/veterinary/" class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-purple-500">
             <div class="flex items-center mb-4">
                 <div class="bg-purple-100 p-3 rounded-full">
                     <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +96,7 @@
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-bold text-gray-800">Recent Advisory Requests</h2>
-            <a href="{% url 'advisory:my_requests' %}" class="text-green-600 hover:text-green-700 font-semibold">View All</a>
+            <a href="/advisory/requests/" class="text-green-600 hover:text-green-700 font-semibold">View All</a>
         </div>
         
         {% if recent_requests %}
@@ -121,7 +121,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-gray-500 text-center py-4">No advisory requests yet. <a href="{% url 'advisory:submit_request' %}" class="text-green-600 hover:underline">Submit your first request</a></p>
+        <p class="text-gray-500 text-center py-4">No advisory requests yet. <a href="/advisory/submit-request/" class="text-green-600 hover:underline">Submit your first request</a></p>
         {% endif %}
     </div>
 
@@ -131,13 +131,13 @@
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-800">Land Preparation Guides</h2>
-                <a href="{% url 'advisory:land_guides' %}" class="text-green-600 hover:text-green-700 font-semibold">View All</a>
+                <a href="/advisory/land-guides/" class="text-green-600 hover:text-green-700 font-semibold">View All</a>
             </div>
             
             {% if land_guides %}
             <div class="space-y-3">
                 {% for guide in land_guides %}
-                <a href="{% url 'advisory:land_detail' guide.id %}" class="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                <a href="/advisory/land-guides/{{ guide.id }}/" class="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
                     <h3 class="font-semibold text-gray-800">{{ guide.title }}</h3>
                     <p class="text-sm text-gray-600">{{ guide.crop_type|title }} | {{ guide.get_agro_ecological_zone_display }}</p>
                 </a>
@@ -152,13 +152,13 @@
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-800">Pest Management Guides</h2>
-                <a href="{% url 'advisory:pest_guides' %}" class="text-green-600 hover:text-green-700 font-semibold">View All</a>
+                <a href="/advisory/pest-guides/" class="text-green-600 hover:text-green-700 font-semibold">View All</a>
             </div>
             
             {% if pest_guides %}
             <div class="space-y-3">
                 {% for guide in pest_guides %}
-                <a href="{% url 'advisory:pest_detail' guide.id %}" class="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                <a href="/advisory/pest-guides/{{ guide.id }}/" class="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
                     <h3 class="font-semibold text-gray-800">{{ guide.pest_name }}</h3>
                     <p class="text-sm text-gray-600">{{ guide.affected_crops }}</p>
                 </a>
@@ -172,7 +172,7 @@
 
     <!-- Submit New Request Button -->
     <div class="mt-8 text-center">
-        <a href="{% url 'advisory:submit_request' %}" class="bg-green-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-700 transition inline-flex items-center">
+        <a href="/advisory/submit-request/" class="bg-green-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-700 transition inline-flex items-center">
             <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>

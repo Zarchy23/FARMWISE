@@ -79,12 +79,10 @@
                     <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'advisory' ? 'rotate-180' : ''"></i>
                 </button>
                 <div x-show="expandedMenu === 'advisory'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'advisory:dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
-                    <a href="{% url 'advisory:land_guides' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Land Preparation</a>
-                    <a href="{% url 'advisory:pest_guides' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Pest Management</a>
-                    <a href="{% url 'advisory:dosage_calculator' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dosage Calculator</a>
-                    <a href="{% url 'advisory:veterinary_database' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Veterinary Guide</a>
-                    <a href="{% url 'advisory:submit_request' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Ask Expert</a>
+                    <a href="/advisory/structured/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Get Advisory</a>
+                    <a href="/advisory/structured/history/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Advisory History</a>
+                    <a href="/advisory/dosage-calculator/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dosage Calculator</a>
+                    <a href="/advisory/animal-dosage/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Animal Dosage</a>
                 </div>
             </div>
 

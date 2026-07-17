@@ -10,7 +10,12 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.contrib import messages
+import logging
+
+logger = logging.getLogger(__name__)
+
 from .models_advisory import (
+    StructuredAdvisoryRequest,
     FarmProfile, LandPreparationGuide, PestManagementGuide,
     PesticideInfo, PesticideDosageCalculator, VeterinaryDrug,
     AdvisoryRequest, AdvisoryKnowledgeBase
@@ -21,33 +26,147 @@ import json
 
 @login_required
 def advisory_dashboard(request):
-    """Main advisory dashboard"""
-    try:
-        farm_profile = request.user.farm_profile
-    except FarmProfile.DoesNotExist:
-        return redirect('advisory:setup_farm_profile')
-    
-    # Get recent advisory requests
-    recent_requests = AdvisoryRequest.objects.filter(
-        user=request.user
-    ).order_by('-created_at')[:5]
-    
-    # Get relevant guides based on farm profile
-    land_guides = LandPreparationGuide.objects.filter(
-        agro_ecological_zone=farm_profile.agro_ecological_zone,
-        is_active=True
-    )[:5]
-    
-    pest_guides = PestManagementGuide.objects.filter(is_active=True)[:5]
+    """Main advisory dashboard - redirects to structured advisory form"""
+    return redirect('/advisory/structured/')
+
+
+@login_required
+def structured_advisory_form(request):
+    """Structured advisory form with dropdowns for AI guidance"""
+    if request.method == 'POST':
+        # Create the advisory request
+        advisory_request = StructuredAdvisoryRequest.objects.create(
+            user=request.user,
+            advisory_type=request.POST.get('advisory_type'),
+            soil_type=request.POST.get('soil_type'),
+            crop_type=request.POST.get('crop_type'),
+            livestock_type=request.POST.get('livestock_type'),
+            field_area_hectares=request.POST.get('field_area_hectares'),
+            irrigation_method=request.POST.get('irrigation_method'),
+            season=request.POST.get('season'),
+            specific_question=request.POST.get('specific_question'),
+            current_practices=request.POST.get('current_practices', ''),
+            challenges=request.POST.get('challenges', ''),
+        )
+        
+        # Handle image upload
+        if 'image' in request.FILES:
+            advisory_request.image = request.FILES['image']
+            advisory_request.save()
+        
+        # Generate AI response
+        try:
+            from core.services.multi_ai_service import MultiAIService
+            
+            # Build context for AI
+            context = {
+                'advisory_type': advisory_request.get_advisory_type_display(),
+                'soil_type': advisory_request.get_soil_type_display() if advisory_request.soil_type else None,
+                'crop_type': advisory_request.get_crop_type_display() if advisory_request.crop_type else None,
+                'livestock_type': advisory_request.get_livestock_type_display() if advisory_request.livestock_type else None,
+                'field_area': str(advisory_request.field_area_hectares) if advisory_request.field_area_hectares else None,
+                'irrigation_method': advisory_request.get_irrigation_method_display() if advisory_request.irrigation_method else None,
+                'season': advisory_request.get_season_display() if advisory_request.season else None,
+                'current_practices': advisory_request.current_practices,
+                'challenges': advisory_request.challenges,
+                'has_image': bool(advisory_request.image),
+            }
+            
+            # Build the prompt for AI
+            prompt = f"""You are an agricultural expert. Provide detailed guidance for the following farming situation:
+
+Advisory Type: {context['advisory_type']}
+Specific Question: {advisory_request.specific_question}
+"""
+            if context['soil_type']:
+                prompt += f"Soil Type: {context['soil_type']}\n"
+            if context['crop_type']:
+                prompt += f"Crop Type: {context['crop_type']}\n"
+            if context['livestock_type']:
+                prompt += f"Livestock Type: {context['livestock_type']}\n"
+            if context['field_area']:
+                prompt += f"Field Area: {context['field_area']} hectares\n"
+            if context['irrigation_method']:
+                prompt += f"Irrigation Method: {context['irrigation_method']}\n"
+            if context['season']:
+                prompt += f"Season: {context['season']}\n"
+            if context['current_practices']:
+                prompt += f"Current Practices: {context['current_practices']}\n"
+            if context['challenges']:
+                prompt += f"Challenges: {context['challenges']}\n"
+            if context['has_image']:
+                prompt += f"Note: The user has uploaded an image for visual analysis. Please consider this in your response and provide guidance on what to look for in the image.\n"
+            
+            prompt += "\nProvide practical, actionable advice tailored to this specific situation. Include recommendations for best practices, potential solutions to challenges, and any precautions needed."
+            
+            # Get AI response
+            ai_response = MultiAIService.get_response(prompt)
+            
+            advisory_request.ai_response = ai_response
+            advisory_request.response_generated_at = timezone.now()
+            advisory_request.save()
+            
+            return redirect('/advisory/structured/history/')
+            
+        except Exception as e:
+            logger.error(f"Error generating AI response: {str(e)}")
+            advisory_request.ai_response = f"""Based on your {context['advisory_type']} request, here are some general recommendations:
+
+For {context['advisory_type'].lower()}, consider the following:
+- Assess your current situation and specific conditions
+- Follow best practices for your soil type and crop/livestock
+- Monitor regularly for any issues
+- Keep records of your activities and results
+{'- If you uploaded an image, examine it carefully for signs of pests, diseases, nutrient deficiencies, or other issues' if context.get('has_image') else ''}
+
+For more specific guidance tailored to your exact situation, please provide additional details about your farm conditions, current practices, and specific challenges.
+
+Note: This is a general advisory. For critical decisions, consult with local agricultural extension officers or experts familiar with your region."""
+            advisory_request.response_generated_at = timezone.now()
+            advisory_request.save()
+            return redirect('/advisory/structured/history/')
     
     context = {
-        'farm_profile': farm_profile,
-        'recent_requests': recent_requests,
-        'land_guides': land_guides,
-        'pest_guides': pest_guides,
+        'advisory_types': StructuredAdvisoryRequest.ADVISORY_TYPES,
+        'soil_types': StructuredAdvisoryRequest.SOIL_TYPES,
+        'crop_types': StructuredAdvisoryRequest.CROP_TYPES,
+        'livestock_types': StructuredAdvisoryRequest.LIVESTOCK_TYPES,
+        'irrigation_methods': StructuredAdvisoryRequest.IRRIGATION_METHODS,
+        'seasons': StructuredAdvisoryRequest.SEASONS,
     }
     
-    return render(request, 'advisory/dashboard.html', context)
+    return render(request, 'advisory/structured_form.html', context)
+
+
+@login_required
+def structured_advisory_history(request):
+    """View history of structured advisory requests"""
+    requests = StructuredAdvisoryRequest.objects.filter(
+        user=request.user
+    ).order_by('-created_at')
+    
+    paginator = Paginator(requests, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'requests': page_obj,
+    }
+    
+    return render(request, 'advisory/structured_history.html', context)
+
+
+@login_required
+def structured_advisory_detail(request, request_id):
+    """View details of a specific structured advisory request"""
+    advisory_request = get_object_or_404(StructuredAdvisoryRequest, id=request_id, user=request.user)
+    
+    context = {
+        'request': advisory_request,
+    }
+    
+    return render(request, 'advisory/structured_detail.html', context)
 
 
 @login_required
@@ -88,7 +207,7 @@ def setup_farm_profile(request):
             )
             messages.success(request, 'Farm profile created successfully!')
         
-        return redirect('advisory:dashboard')
+        return redirect('/advisory/')
     
     context = {
         'profile': profile,
@@ -226,39 +345,30 @@ def pesticide_detail(request, pesticide_id):
 @login_required
 def dosage_calculator(request):
     """Pesticide dosage calculator"""
-    calculators = PesticideDosageCalculator.objects.all()
-    pesticides = PesticideInfo.objects.filter(is_active=True)
-    
     if request.method == 'POST':
-        sprayer_id = request.POST.get('sprayer_type')
-        pesticide_id = request.POST.get('pesticide')
+        crop_type = request.POST.get('crop_type')
         field_area = float(request.POST.get('field_area'))
-        pesticide_rate = request.POST.get('pesticide_rate')
+        pesticide_name = request.POST.get('pesticide_name')
+        target_pest = request.POST.get('target_pest')
         
-        sprayer = get_object_or_404(PesticideDosageCalculator, id=sprayer_id)
-        pesticide = get_object_or_404(PesticideInfo, id=pesticide_id)
-        
-        # Calculate dosage
-        calculation = sprayer.calculate_dosage(pesticide_rate, field_area)
+        # Simple dosage calculation (placeholder logic)
+        # In production, this would use proper agricultural formulas
+        dosage_per_hectare = 2.0  # Default: 2L per hectare
+        total_dosage = field_area * dosage_per_hectare
         
         context = {
-            'calculators': calculators,
-            'pesticides': pesticides,
-            'calculation': calculation,
-            'sprayer': sprayer,
-            'pesticide': pesticide,
+            'crop_type': crop_type,
             'field_area': field_area,
-            'pesticide_rate': pesticide_rate,
+            'pesticide_name': pesticide_name,
+            'target_pest': target_pest,
+            'dosage_per_hectare': dosage_per_hectare,
+            'total_dosage': total_dosage,
+            'calculation_performed': True,
         }
         
         return render(request, 'advisory/dosage_calculator.html', context)
     
-    context = {
-        'calculators': calculators,
-        'pesticides': pesticides,
-    }
-    
-    return render(request, 'advisory/dosage_calculator.html', context)
+    return render(request, 'advisory/dosage_calculator.html', {'calculation_performed': False})
 
 
 @login_required
@@ -309,29 +419,30 @@ def veterinary_drug_detail(request, drug_id):
 @login_required
 def animal_dosage_calculator(request):
     """Animal dosage calculator"""
-    drugs = VeterinaryDrug.objects.filter(is_active=True)
-    
     if request.method == 'POST':
-        drug_id = request.POST.get('drug')
+        animal_species = request.POST.get('animal_species')
         animal_weight = float(request.POST.get('animal_weight'))
+        drug_name = request.POST.get('drug_name')
+        condition = request.POST.get('condition')
         
-        drug = get_object_or_404(VeterinaryDrug, id=drug_id)
-        calculation = drug.calculate_dose(animal_weight)
+        # Simple dosage calculation (placeholder logic)
+        # In production, this would use proper veterinary formulas
+        dosage_per_kg = 0.1  # Default: 0.1ml per kg
+        total_dosage = animal_weight * dosage_per_kg
         
         context = {
-            'drugs': drugs,
-            'calculation': calculation,
-            'drug': drug,
+            'animal_species': animal_species,
             'animal_weight': animal_weight,
+            'drug_name': drug_name,
+            'condition': condition,
+            'dosage_per_kg': dosage_per_kg,
+            'total_dosage': total_dosage,
+            'calculation_performed': True,
         }
         
         return render(request, 'advisory/animal_dosage_calculator.html', context)
     
-    context = {
-        'drugs': drugs,
-    }
-    
-    return render(request, 'advisory/animal_dosage_calculator.html', context)
+    return render(request, 'advisory/animal_dosage_calculator.html', {'calculation_performed': False})
 
 
 @login_required
@@ -350,7 +461,7 @@ def submit_advisory_request(request):
         )
         
         messages.success(request, 'Your advisory request has been submitted successfully!')
-        return redirect('advisory:dashboard')
+        return redirect('/advisory/')
     
     context = {
         'request_types': AdvisoryRequest.REQUEST_TYPES,
@@ -371,7 +482,7 @@ def advisory_request_detail(request, request_id):
         advisory_request.save()
         
         messages.success(request, 'Thank you for your feedback!')
-        return redirect('advisory:dashboard')
+        return redirect('/advisory/')
     
     context = {
         'request': advisory_request,

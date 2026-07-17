@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Advisory History{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-6xl">
+    <div class="mb-6 flex justify-between items-center">
+        <a href="/advisory/" class="text-green-600 hover:text-green-700 font-semibold">
+            ← Back to Advisory
+        </a>
+        <a href="/advisory/structured/" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+            + New Advisory Request
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Advisory History</h1>
+        <p class="text-gray-600">View your past advisory requests and AI-generated recommendations</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        {% if requests %}
+        <div class="space-y-4">
+            {% for request in requests %}
+            <div class="border-b pb-4 last:border-b-0">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">
+                                {{ request.get_advisory_type_display }}
+                            </span>
+                            <span class="text-sm text-gray-500">{{ request.created_at|date:"F d, Y H:i" }}</span>
+                        </div>
+                        <h3 class="font-semibold text-gray-800 mb-1">{{ request.specific_question|truncatewords:15 }}</h3>
+                        <div class="flex items-center space-x-4 text-sm text-gray-600">
+                            {% if request.crop_type %}
+                            <span>Crop: {{ request.get_crop_type_display }}</span>
+                            {% endif %}
+                            {% if request.livestock_type %}
+                            <span>Livestock: {{ request.get_livestock_type_display }}</span>
+                            {% endif %}
+                            {% if request.soil_type %}
+                            <span>Soil: {{ request.get_soil_type_display }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <a href="/advisory/structured/{{ request.id }}/" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12 text-gray-500">
+            <p>No advisory requests yet.</p>
+            <a href="/advisory/structured/" class="inline-block mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                Submit Your First Advisory Request
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex justify-center mt-8 space-x-2">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Previous</a>
+        {% endif %}
+        <span class="px-4 py-2 bg-green-600 text-white rounded-lg">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -8,6 +8,111 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 
 
+class StructuredAdvisoryRequest(models.Model):
+    """Structured advisory request with AI-generated responses"""
+    
+    ADVISORY_TYPES = [
+        ('land_preparation', 'Land Preparation'),
+        ('planting', 'Planting & Sowing'),
+        ('crop_management', 'Crop Management'),
+        ('pest_management', 'Pest Management'),
+        ('harvest', 'Harvest & Post-Harvest'),
+        ('livestock_feeding', 'Livestock Feeding'),
+        ('livestock_health', 'Livestock Health'),
+        ('livestock_breeding', 'Livestock Breeding'),
+        ('irrigation', 'Irrigation & Water Management'),
+        ('soil_management', 'Soil Management'),
+        ('fertilizer', 'Fertilizer Application'),
+        ('general', 'General Advisory'),
+    ]
+    
+    SOIL_TYPES = [
+        ('sandy', 'Sandy Soil'),
+        ('loamy', 'Loamy Soil'),
+        ('clay', 'Clay Soil'),
+        ('silty', 'Silty Soil'),
+        ('peaty', 'Peaty Soil'),
+        ('chalky', 'Chalky Soil'),
+    ]
+    
+    CROP_TYPES = [
+        ('maize', 'Maize'),
+        ('wheat', 'Wheat'),
+        ('sorghum', 'Sorghum'),
+        ('millet', 'Millet'),
+        ('rice', 'Rice'),
+        ('soybeans', 'Soybeans'),
+        ('groundnuts', 'Groundnuts'),
+        ('beans', 'Beans'),
+        ('tobacco', 'Tobacco'),
+        ('cotton', 'Cotton'),
+        ('vegetables', 'Vegetables'),
+        ('fruits', 'Fruits'),
+        ('other', 'Other'),
+    ]
+    
+    LIVESTOCK_TYPES = [
+        ('cattle', 'Cattle'),
+        ('goats', 'Goats'),
+        ('sheep', 'Sheep'),
+        ('pigs', 'Pigs'),
+        ('poultry', 'Poultry'),
+        ('rabbits', 'Rabbits'),
+        ('other', 'Other'),
+    ]
+    
+    IRRIGATION_METHODS = [
+        ('rainfed', 'Rainfed'),
+        ('drip', 'Drip Irrigation'),
+        ('sprinkler', 'Sprinkler Irrigation'),
+        ('flood', 'Flood Irrigation'),
+        ('furrow', 'Furrow Irrigation'),
+        ('center_pivot', 'Center Pivot'),
+    ]
+    
+    SEASONS = [
+        ('summer', 'Summer Season'),
+        ('winter', 'Winter Season'),
+        ('rainy', 'Rainy Season'),
+        ('dry', 'Dry Season'),
+    ]
+    
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='structured_advisory_requests')
+    advisory_type = models.CharField(max_length=30, choices=ADVISORY_TYPES)
+    
+    # Farm Context
+    soil_type = models.CharField(max_length=20, choices=SOIL_TYPES, blank=True, null=True)
+    crop_type = models.CharField(max_length=20, choices=CROP_TYPES, blank=True, null=True)
+    livestock_type = models.CharField(max_length=20, choices=LIVESTOCK_TYPES, blank=True, null=True)
+    field_area_hectares = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    irrigation_method = models.CharField(max_length=30, choices=IRRIGATION_METHODS, blank=True, null=True)
+    season = models.CharField(max_length=20, choices=SEASONS, blank=True, null=True)
+    
+    # Specific Details
+    specific_question = models.TextField(help_text="Describe your specific question or problem")
+    current_practices = models.TextField(blank=True, help_text="Describe your current practices")
+    challenges = models.TextField(blank=True, help_text="Describe any challenges you're facing")
+    
+    # Image Upload for Analysis
+    image = models.ImageField(upload_to='advisory_images/', blank=True, null=True, help_text="Upload an image for better analysis (e.g., crop, pest, soil, livestock)")
+    
+    # AI Response
+    ai_response = models.TextField(blank=True)
+    response_generated_at = models.DateTimeField(null=True, blank=True)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Structured Advisory Request'
+        verbose_name_plural = 'Structured Advisory Requests'
+    
+    def __str__(self):
+        return f"{self.get_advisory_type_display()} - {self.user.username} - {self.created_at.strftime('%Y-%m-%d')}"
+
+
 class FarmProfile(models.Model):
     """Comprehensive farm profile for context-specific advisory"""
     

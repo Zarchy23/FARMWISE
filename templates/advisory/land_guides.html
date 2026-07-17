@@ -27,7 +27,7 @@
     <!-- Guides List -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for guide in page_obj %}
-        <a href="{% url 'advisory:land_detail' guide.id %}" class="bg-white rounded-lg shadow-md hover:shadow-lg transition border-l-4 border-green-500">
+        <a href="/advisory/land-guides/{{ guide.id }}/" class="bg-white rounded-lg shadow-md hover:shadow-lg transition border-l-4 border-green-500">
             <div class="p-6">
                 <div class="flex items-center mb-3">
                     <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">{{ guide.crop_type|title }}</span>

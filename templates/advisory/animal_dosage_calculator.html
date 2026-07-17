@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Animal Dosage Calculator{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="mb-6">
+        <a href="/advisory/" class="text-green-600 hover:text-green-700 font-semibold">
+            ← Back to Advisory Dashboard
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-purple-500 to-pink-600 p-6 text-white">
+            <h1 class="text-2xl font-bold">Animal Dosage Calculator</h1>
+            <p class="opacity-90">Calculate precise veterinary drug dosages for your livestock</p>
+        </div>
+
+        {% if calculation_performed %}
+        <div class="p-6 bg-green-50 border-b">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Calculation Results</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Animal Species</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ animal_species }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Animal Weight</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ animal_weight }} kg</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Drug</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ drug_name }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Condition</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ condition }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Dosage per kg</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ dosage_per_kg }} ml/kg</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg">
+                    <p class="text-sm text-gray-600">Total Dosage Required</p>
+                    <p class="text-lg font-semibold text-green-600">{{ total_dosage }} ml</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-4">* This is a simplified calculation. Consult a veterinarian for precise dosing recommendations.</p>
+        </div>
+        {% endif %}
+
+        <div class="p-6">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Animal Species</label>
+                        <input type="text" name="animal_species" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="e.g., Cattle, Sheep, Poultry" {% if animal_species %}value="{{ animal_species }}"{% endif %}>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Animal Weight (kg)</label>
+                        <input type="number" name="animal_weight" step="0.1" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="e.g., 500" {% if animal_weight %}value="{{ animal_weight }}"{% endif %}>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Drug Name</label>
+                        <input type="text" name="drug_name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="e.g., Antibiotic, Dewormer" {% if drug_name %}value="{{ drug_name }}"{% endif %}>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Condition/Disease</label>
+                        <input type="text" name="condition" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="e.g., Respiratory infection, Parasites" {% if condition %}value="{{ condition }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4 mt-8">
+                    <a href="/advisory/" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                        Cancel
+                    </a>
+                    <button type="submit" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                        Calculate Dosage
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

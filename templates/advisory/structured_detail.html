@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Advisory Details{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="mb-6">
+        <a href="/advisory/structured/history/" class="text-green-600 hover:text-green-700 font-semibold">
+            ← Back to Advisory History
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-green-500 to-teal-600 p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="bg-white text-green-600 text-sm font-semibold px-3 py-1 rounded-full">
+                        {{ request.get_advisory_type_display }}
+                    </span>
+                    <h1 class="text-2xl font-bold mt-2">Advisory Request</h1>
+                    <p class="opacity-90">{{ request.created_at|date:"F d, Y H:i" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <!-- Farm Context -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">Farm Context</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    {% if request.soil_type %}
+                    <div>
+                        <p class="text-sm text-gray-600">Soil Type</p>
+                        <p class="font-semibold text-gray-800">{{ request.get_soil_type_display }}</p>
+                    </div>
+                    {% endif %}
+                    {% if request.crop_type %}
+                    <div>
+                        <p class="text-sm text-gray-600">Crop Type</p>
+                        <p class="font-semibold text-gray-800">{{ request.get_crop_type_display }}</p>
+                    </div>
+                    {% endif %}
+                    {% if request.livestock_type %}
+                    <div>
+                        <p class="text-sm text-gray-600">Livestock Type</p>
+                        <p class="font-semibold text-gray-800">{{ request.get_livestock_type_display }}</p>
+                    </div>
+                    {% endif %}
+                    {% if request.field_area_hectares %}
+                    <div>
+                        <p class="text-sm text-gray-600">Field Area</p>
+                        <p class="font-semibold text-gray-800">{{ request.field_area_hectares }} hectares</p>
+                    </div>
+                    {% endif %}
+                    {% if request.irrigation_method %}
+                    <div>
+                        <p class="text-sm text-gray-600">Irrigation Method</p>
+                        <p class="font-semibold text-gray-800">{{ request.get_irrigation_method_display }}</p>
+                    </div>
+                    {% endif %}
+                    {% if request.season %}
+                    <div>
+                        <p class="text-sm text-gray-600">Season</p>
+                        <p class="font-semibold text-gray-800">{{ request.get_season_display }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Specific Question -->
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-2">Your Question</h2>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <p class="text-gray-700">{{ request.specific_question }}</p>
+                </div>
+            </div>
+
+            {% if request.current_practices %}
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-2">Current Practices</h2>
+                <p class="text-gray-600">{{ request.current_practices }}</p>
+            </div>
+            {% endif %}
+
+            {% if request.challenges %}
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-2">Challenges Faced</h2>
+                <p class="text-gray-600">{{ request.challenges }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Uploaded Image -->
+            {% if request.image %}
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-2">Uploaded Image</h2>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <img src="{{ request.image.url }}" alt="Uploaded image for advisory" class="max-w-full h-auto rounded-lg border">
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- AI Response -->
+            {% if request.ai_response %}
+            <div class="border-t pt-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-2">AI Advisory Response</h2>
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <div class="prose max-w-none text-gray-700">
+                        {{ request.ai_response|linebreaks }}
+                    </div>
+                </div>
+                {% if request.response_generated_at %}
+                <p class="text-sm text-gray-500 mt-2">Generated: {{ request.response_generated_at|date:"F d, Y H:i" }}</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="border-t pt-6">
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+                    <p class="text-yellow-700">AI response is being generated. Please check back later.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
