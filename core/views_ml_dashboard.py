@@ -13,11 +13,6 @@ from core.models import User, Farm, CropSeason, Animal, Equipment, Cooperative
 from core.models_analytics import DashboardMetric, YieldPrediction, FarmPerformanceScore
 from core.ml.data_pipeline import DataPipeline
 import logging
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import json
 
 logger = logging.getLogger(__name__)
@@ -191,6 +186,13 @@ def train_ml_model(request):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
     
     try:
+        # Import ML libraries only when needed
+        import pandas as pd
+        import numpy as np
+        from sklearn.ensemble import RandomForestRegressor
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+        
         # Get crop yield data
         crop_data = DataPipeline.get_crop_yield_data()
         
@@ -361,9 +363,14 @@ def compare_models(request):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
     
     try:
+        # Import ML libraries only when needed
+        import pandas as pd
+        import numpy as np
         from sklearn.linear_model import LinearRegression
         from sklearn.tree import DecisionTreeRegressor
         from sklearn.ensemble import GradientBoostingRegressor
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
         
         # Get crop yield data
         crop_data = DataPipeline.get_crop_yield_data()
