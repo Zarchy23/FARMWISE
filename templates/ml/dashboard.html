@@ -1,0 +1,1003 @@
+{% extends "base.html" %}
+
+{% block title %}ML & Data Training Dashboard{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+.ml-dashboard {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #11998e, #38ef7d);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card .icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+
+.stat-card .icon.users { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+.stat-card .icon.farms { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+.stat-card .icon.cooperatives { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+.stat-card .icon.crops { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+.stat-card .icon.animals { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+.stat-card .icon.equipment { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+
+.stat-card h3 {
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card .value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.action-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.action-btn {
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+}
+
+.action-btn.success {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+}
+
+.action-btn.info {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+}
+
+.action-btn.warning {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+}
+
+.chart-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    height: 400px;
+}
+
+.chart-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.chart-card .card-header h5 {
+    margin: 0;
+    font-weight: 700;
+    color: #333;
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.data-table-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.data-table-card .card-header {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.data-table-card .card-header h5 {
+    margin: 0;
+    font-weight: 700;
+    color: #333;
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.data-table-card .table {
+    margin: 0;
+}
+
+.data-table-card .table thead th {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+    border: none;
+    font-weight: 600;
+    padding: 1rem;
+}
+
+.data-table-card .table tbody tr {
+    transition: all 0.3s ease;
+}
+
+.data-table-card .table tbody tr:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.data-table-card .table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.quality-metric {
+    text-align: center;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(17, 153, 142, 0.1), rgba(56, 239, 125, 0.1));
+    border-radius: 15px;
+    transition: all 0.3s ease;
+}
+
+.quality-metric:hover {
+    transform: scale(1.05);
+    background: linear-gradient(135deg, rgba(17, 153, 142, 0.2), rgba(56, 239, 125, 0.2));
+}
+
+.quality-metric h4 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #11998e;
+    margin-bottom: 0.5rem;
+}
+
+.quality-metric p {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.pipeline-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.pipeline-status.available {
+    background: linear-gradient(135deg, rgba(17, 153, 142, 0.2), rgba(56, 239, 125, 0.2));
+    color: #11998e;
+}
+
+.pipeline-status.unavailable {
+    background: linear-gradient(135deg, rgba(17, 153, 142, 0.2), rgba(56, 239, 125, 0.2));
+    color: #11998e;
+}
+
+.realtime-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.realtime-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.realtime-card .card-header h5 {
+    margin: 0;
+    font-weight: 700;
+    color: #333;
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.modal-content {
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+    border-radius: 20px 20px 0 0;
+    border: none;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3em;
+}
+
+.dashboard-title {
+    color: white;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-subtitle {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 2rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="ml-dashboard" x-data="{ trainingModalOpen: false, comparisonModalOpen: false, trainingResult: null, comparisonResult: null }">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="dashboard-title">ML & Data Training Dashboard</h1>
+                <p class="dashboard-subtitle">Advanced analytics, model training, and system scalability monitoring</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="action-card">
+                    <div class="d-flex flex-wrap gap-3">
+                        <button class="action-btn primary" @click="trainModel()">
+                            <i class="ri-play-circle-line"></i> Train Model
+                        </button>
+                        <button class="action-btn success" @click="compareModels()">
+                            <i class="ri-bar-chart-grouped-line"></i> Compare Models
+                        </button>
+                        <button class="action-btn info" onclick="exportData('crop_yield')">
+                            <i class="ri-download-line"></i> Export Crop Data
+                        </button>
+                        <button class="action-btn info" onclick="exportData('equipment')">
+                            <i class="ri-download-line"></i> Export Equipment Data
+                        </button>
+                        <button class="action-btn warning" onclick="showFeatureImportance()">
+                            <i class="ri-pie-chart-line"></i> Feature Importance
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overall Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-2">
+                <div class="stat-card">
+                    <div class="icon users">
+                        <i class="ri-user-line"></i>
+                    </div>
+                    <h3>Total Users</h3>
+                    <div class="value">{{ stats.users }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-card">
+                    <div class="icon farms">
+                        <i class="ri-plant-line"></i>
+                    </div>
+                    <h3>Farms</h3>
+                    <div class="value">{{ stats.farms }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-card">
+                    <div class="icon cooperatives">
+                        <i class="ri-team-line"></i>
+                    </div>
+                    <h3>Cooperatives</h3>
+                    <div class="value">{{ stats.cooperatives }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-card">
+                    <div class="icon crops">
+                        <i class="ri-seedling-line"></i>
+                    </div>
+                    <h3>Crop Seasons</h3>
+                    <div class="value">{{ stats.crop_seasons }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-card">
+                    <div class="icon animals">
+                        <i class="ri-cow-line"></i>
+                    </div>
+                    <h3>Animals</h3>
+                    <div class="value">{{ stats.animals }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-card">
+                    <div class="icon equipment">
+                        <i class="ri-truck-line"></i>
+                    </div>
+                    <h3>Equipment</h3>
+                    <div class="value">{{ stats.equipment }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Model Performance Charts -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <div class="card-header">
+                        <h5><i class="ri-line-chart-line"></i> Model Accuracy Trends</h5>
+                        <span class="badge bg-primary">Live</span>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="accuracyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <div class="card-header">
+                        <h5><i class="ri-bar-chart-2-line"></i> Feature Importance</h5>
+                        <span class="badge bg-success">Updated</span>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="featureImportanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Type Breakdown -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="data-table-card">
+                    <div class="card-header">
+                        <h5><i class="ri-user-settings-line"></i> User Type Breakdown</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User Type</th>
+                                    <th>Count</th>
+                                    <th>Percentage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in user_types %}
+                                <tr>
+                                    <td><strong>{{ item.user_type|title }}</strong></td>
+                                    <td>{{ item.count }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar" role="progressbar" style="width: {{ item.count }}%; background: linear-gradient(90deg, #11998e, #38ef7d);" aria-valuenow="{{ item.count }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small>{{ item.count }}%</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="data-table-card">
+                    <div class="card-header">
+                        <h5><i class="ri-plant-line"></i> Farm Type Breakdown</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Farm Type</th>
+                                    <th>Count</th>
+                                    <th>Percentage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in farm_types %}
+                                <tr>
+                                    <td><strong>{{ item.farm_type|title }}</strong></td>
+                                    <td>{{ item.count }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar" role="progressbar" style="width: {{ item.count }}%; background: linear-gradient(90deg, #11998e, #38ef7d);" aria-valuenow="{{ item.count }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small>{{ item.count }}%</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Quality Metrics -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="data-table-card">
+                    <div class="card-header">
+                        <h5><i class="ri-shield-check-line"></i> Data Quality Metrics</h5>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ data_quality.farms_with_location }}</h4>
+                                <p>Farms with Location Data</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ data_quality.farms_without_location }}</h4>
+                                <p>Farms without Location Data</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ data_quality.animals_with_tag }}</h4>
+                                <p>Animals with Tag Numbers</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ data_quality.crop_seasons_with_harvest }}</h4>
+                                <p>Crop Seasons with Harvest Data</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ML Model Training Status -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="data-table-card">
+                    <div class="card-header">
+                        <h5><i class="ri-brain-line"></i> ML Model Training Status</h5>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ ml_status.yield_predictions }}</h4>
+                                <p>Total Yield Predictions</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ ml_status.active_predictions }}</h4>
+                                <p>Active Predictions</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ ml_status.predictions_with_accuracy }}</h4>
+                                <p>Predictions with Accuracy Data</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ ml_status.avg_accuracy|floatformat:2 }}%</h4>
+                                <p>Average Prediction Accuracy</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Scalability -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="data-table-card">
+                    <div class="card-header">
+                        <h5><i class="ri-server-line"></i> System Scalability Metrics</h5>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ scalability.recent_users }}</h4>
+                                <p>New Users (Last 30 Days)</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ scalability.recent_farms }}</h4>
+                                <p>New Farms (Last 30 Days)</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ scalability.total_area_hectares|floatformat:2 }}</h4>
+                                <p>Total Farm Area (Hectares)</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="quality-metric">
+                                <h4>{{ scalability.avg_farm_size|floatformat:2 }}</h4>
+                                <p>Average Farm Size (Hectares)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Pipeline Status -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="data-table-card">
+                    <div class="card-header">
+                        <h5><i class="ri-pipeline-line"></i> Data Pipeline Availability</h5>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <span class="pipeline-status {% if pipeline_status.crop_yield_data %}available{% else %}unavailable{% endif %}">
+                                    <i class="ri-checkbox-circle-line"></i>
+                                    {% if pipeline_status.crop_yield_data %}Available{% else %}Unavailable{% endif %}
+                                </span>
+                                <p class="text-muted mt-2">Crop Yield Data</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <span class="pipeline-status {% if pipeline_status.equipment_maintenance_data %}available{% else %}unavailable{% endif %}">
+                                    <i class="ri-checkbox-circle-line"></i>
+                                    {% if pipeline_status.equipment_maintenance_data %}Available{% else %}Unavailable{% endif %}
+                                </span>
+                                <p class="text-muted mt-2">Equipment Maintenance Data</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <span class="pipeline-status {% if pipeline_status.financial_data %}available{% else %}unavailable{% endif %}">
+                                    <i class="ri-checkbox-circle-line"></i>
+                                    {% if pipeline_status.financial_data %}Available{% else %}Unavailable{% endif %}
+                                </span>
+                                <p class="text-muted mt-2">Financial Data</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <span class="pipeline-status {% if pipeline_status.livestock_health_data %}available{% else %}unavailable{% endif %}">
+                                    <i class="ri-checkbox-circle-line"></i>
+                                    {% if pipeline_status.livestock_health_data %}Available{% else %}Unavailable{% endif %}
+                                </span>
+                                <p class="text-muted mt-2">Livestock Health Data</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <span class="pipeline-status {% if pipeline_status.pest_detection_data %}available{% else %}unavailable{% endif %}">
+                                    <i class="ri-checkbox-circle-line"></i>
+                                    {% if pipeline_status.pest_detection_data %}Available{% else %}Unavailable{% endif %}
+                                </span>
+                                <p class="text-muted mt-2">Pest Detection Data</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Updates -->
+        <div class="row">
+            <div class="col-12">
+                <div class="realtime-card">
+                    <div class="card-header">
+                        <h5><i class="ri-refresh-line"></i> Real-time Data Capture</h5>
+                        <button class="action-btn primary" onclick="refreshData()">
+                            <i class="ri-refresh-line"></i> Refresh Data
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="realtime-data" class="text-center">
+                            <p class="text-muted">Click "Refresh Data" to get real-time statistics</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Training Results Modal -->
+    <div class="modal-overlay" x-show="trainingModalOpen" x-cloak>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ri-brain-line"></i> Model Training Results</h5>
+                <button @click="trainingModalOpen = false" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div x-show="!trainingResult" class="text-center">
+                    <div class="spinner-border" style="margin: 0 auto;"></div>
+                    <p class="mt-3">Training model...</p>
+                </div>
+                <div x-show="trainingResult" x-html="trainingResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Comparison Modal -->
+    <div class="modal-overlay" x-show="comparisonModalOpen" x-cloak>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ri-bar-chart-grouped-line"></i> Model Comparison Results</h5>
+                <button @click="comparisonModalOpen = false" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div x-show="!comparisonResult" class="text-center">
+                    <div class="spinner-border" style="margin: 0 auto;"></div>
+                    <p class="mt-3">Comparing models...</p>
+                </div>
+                <div x-show="comparisonResult" x-html="comparisonResult"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let accuracyChart = null;
+let featureImportanceChart = null;
+
+function initCharts() {
+    // Accuracy Chart
+    const accuracyCtx = document.getElementById('accuracyChart').getContext('2d');
+    accuracyChart = new Chart(accuracyCtx, {
+        type: 'line',
+        data: {
+            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            datasets: [{
+                label: 'Model Accuracy (%)',
+                data: [75, 78, 82, 85],
+                borderColor: '#11998e',
+                backgroundColor: 'rgba(17, 153, 142, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#11998e',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Feature Importance Chart
+    const featureCtx = document.getElementById('featureImportanceChart').getContext('2d');
+    featureImportanceChart = new Chart(featureCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Area', 'Growing Days', 'Fertilizer', 'Soil Type', 'Irrigation'],
+            datasets: [{
+                label: 'Importance',
+                data: [0.35, 0.25, 0.20, 0.12, 0.08],
+                backgroundColor: [
+                    'rgba(17, 153, 142, 0.8)',
+                    'rgba(56, 239, 125, 0.8)',
+                    'rgba(17, 153, 142, 0.6)',
+                    'rgba(56, 239, 125, 0.6)',
+                    'rgba(17, 153, 142, 0.4)'
+                ],
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+function trainModel() {
+    const alpineData = document.querySelector('.ml-dashboard')._x_dataStack[0];
+    alpineData.trainingModalOpen = true;
+    alpineData.trainingResult = null;
+    
+    fetch('/ml/train-model/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alpineData.trainingResult = `
+                <div class="alert alert-success">
+                    <h6><i class="ri-checkbox-circle-line"></i> Model Trained Successfully!</h6>
+                    <p><strong>Accuracy:</strong> ${data.metrics.accuracy.toFixed(2)}%</p>
+                    <p><strong>MAE:</strong> ${data.metrics.mae.toFixed(2)}</p>
+                    <p><strong>MSE:</strong> ${data.metrics.mse.toFixed(2)}</p>
+                    <p><strong>R²:</strong> ${data.metrics.r2.toFixed(2)}</p>
+                    <p><strong>Confidence Interval (95%):</strong> ${data.metrics.confidence_interval.lower_bound.toFixed(2)} - ${data.metrics.confidence_interval.upper_bound.toFixed(2)} kg/ha</p>
+                    <p><strong>Avg CI Width:</strong> ${data.metrics.confidence_interval.avg_width.toFixed(2)} kg/ha</p>
+                    <h6 class="mt-3"><i class="ri-bar-chart-line"></i> Feature Importance:</h6>
+                    <ul>
+                        ${Object.entries(data.feature_importance).map(([k, v]) => `<li>${k}: ${(v * 100).toFixed(1)}%</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        } else {
+            alpineData.trainingResult = `
+                <div class="alert alert-danger">
+                    <h6><i class="ri-error-warning-line"></i> Training Failed</h6>
+                    <p>${data.message}</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        alpineData.trainingResult = `
+            <div class="alert alert-danger">
+                <h6><i class="ri-error-warning-line"></i> Error</h6>
+                <p>${error.message}</p>
+            </div>
+        `;
+    });
+}
+
+function compareModels() {
+    const alpineData = document.querySelector('.ml-dashboard')._x_dataStack[0];
+    alpineData.comparisonModalOpen = true;
+    alpineData.comparisonResult = null;
+    
+    fetch('/ml/compare-models/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let resultsHtml = `
+                <div class="alert alert-success">
+                    <h6><i class="ri-checkbox-circle-line"></i> Model Comparison Complete</h6>
+                    <p><strong>Best Model:</strong> ${data.best_model}</p>
+                </div>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>MAE</th>
+                            <th>MSE</th>
+                            <th>R²</th>
+                            <th>Accuracy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            for (const [model, metrics] of Object.entries(data.results)) {
+                if (metrics.error) {
+                    resultsHtml += `<tr><td colspan="5">${model}: ${metrics.error}</td></tr>`;
+                } else {
+                    resultsHtml += `
+                        <tr>
+                            <td><strong>${model}</strong></td>
+                            <td>${metrics.mae.toFixed(2)}</td>
+                            <td>${metrics.mse.toFixed(2)}</td>
+                            <td>${metrics.r2.toFixed(2)}</td>
+                            <td><span class="badge bg-success">${metrics.accuracy.toFixed(2)}%</span></td>
+                        </tr>
+                    `;
+                }
+            }
+            
+            resultsHtml += '</tbody></table>';
+            alpineData.comparisonResult = resultsHtml;
+        } else {
+            alpineData.comparisonResult = `
+                <div class="alert alert-danger">
+                    <h6><i class="ri-error-warning-line"></i> Comparison Failed</h6>
+                    <p>${data.message}</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        alpineData.comparisonResult = `
+            <div class="alert alert-danger">
+                <h6><i class="ri-error-warning-line"></i> Error</h6>
+                <p>${error.message}</p>
+            </div>
+        `;
+    });
+}
+
+function exportData(type) {
+    window.location.href = `/ml/export-data/?type=${type}`;
+}
+
+function showFeatureImportance() {
+    document.getElementById('featureImportanceChart').scrollIntoView({ behavior: 'smooth' });
+}
+
+function refreshData() {
+    fetch('/ml/api/data-capture/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('realtime-data').innerHTML = `
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="quality-metric">
+                            <h4>${data.users.total}</h4>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="quality-metric">
+                            <h4>${data.farms.total}</h4>
+                            <p>Total Farms</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="quality-metric">
+                            <h4>${data.crop_seasons.total}</h4>
+                            <p>Total Crop Seasons</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="quality-metric">
+                            <h4>${data.animals}</h4>
+                            <p>Total Animals</p>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-muted mt-3 text-center"><i class="ri-time-line"></i> Last updated: ${new Date(data.timestamp).toLocaleString()}</p>
+            `;
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+            document.getElementById('realtime-data').innerHTML = '<p class="text-danger"><i class="ri-error-warning-line"></i> Error loading data</p>';
+        });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', initCharts);
+setInterval(refreshData, 30000);
+</script>
+{% endblock %}

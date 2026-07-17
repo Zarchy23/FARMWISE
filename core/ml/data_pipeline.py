@@ -31,29 +31,30 @@ class DataPipeline:
         
         data = []
         for crop in queryset:
-            # Get harvest data if available
-            harvest = Harvest.objects.filter(crop_season=crop).first()
-            yield_kg = harvest.quantity_kg if harvest else 0
+            # Get harvest data if available - use actual_yield_kg instead of harvest
+            yield_kg = crop.actual_yield_kg if hasattr(crop, 'actual_yield_kg') else 0
             
             # Calculate growing season length
             growing_days = 0
-            if crop.harvest_date and crop.planting_date:
-                growing_days = (crop.harvest_date - crop.planting_date).days
+            if crop.expected_harvest_date and crop.planting_date:
+                growing_days = (crop.expected_harvest_date - crop.planting_date).days
             
-            # Get weather data (simplified - would integrate with weather API)
-            # For now, use seasonal averages
+            # Get field data
+            soil_type = crop.field.soil_type if hasattr(crop.field, 'soil_type') else 'unknown'
+            irrigation_type = crop.field.irrigation_type if hasattr(crop.field, 'irrigation_type') else 'unknown'
+            area_hectares = crop.field.area_hectares if hasattr(crop.field, 'area_hectares') else 0
             
             feature = {
                 'crop_type': crop.crop_type.name if crop.crop_type else 'unknown',
-                'area_hectares': crop.area_hectares or 0,
+                'area_hectares': float(area_hectares),
                 'planting_month': crop.planting_date.month if crop.planting_date else 0,
                 'growing_days': growing_days,
-                'soil_type': crop.field.soil_type if crop.field else 'unknown',
-                'irrigation_type': crop.field.irrigation_type if crop.field else 'unknown',
-                'fertilizer_amount': crop.fertilizer_amount or 0,
-                'water_usage': crop.water_usage or 0,
+                'soil_type': soil_type,
+                'irrigation_type': irrigation_type,
+                'fertilizer_amount': crop.fertilizer_amount if hasattr(crop, 'fertilizer_amount') else 0,
+                'water_usage': crop.water_usage if hasattr(crop, 'water_usage') else 0,
                 'target_yield': yield_kg,
-                'yield_per_hectare': yield_kg / (crop.area_hectares or 1),
+                'yield_per_hectare': yield_kg / max(area_hectares, 1),
             }
             data.append(feature)
         
@@ -70,7 +71,7 @@ class DataPipeline:
         
         equipment = Equipment.objects.filter(
             created_at__gte=cutoff_date
-        ).select_related('equipment_type')
+        )
         
         if farm_id:
             equipment = equipment.filter(farm_id=farm_id)
@@ -89,17 +90,19 @@ class DataPipeline:
             
             # Calculate days since last maintenance
             days_since_maintenance = 0
-            if eq.last_maintenance_date:
+            if hasattr(eq, 'last_maintenance_date') and eq.last_maintenance_date:
                 days_since_maintenance = (timezone.now().date() - eq.last_maintenance_date).days
             
+            maintenance_interval = eq.maintenance_interval if hasattr(eq, 'maintenance_interval') else 90
+            
             feature = {
-                'equipment_type': eq.equipment_type.name if eq.equipment_type else 'unknown',
-                'age_days': (timezone.now().date() - eq.purchase_date.date()).days if eq.purchase_date else 0,
+                'equipment_type': eq.equipment_type.name if hasattr(eq, 'equipment_type') and eq.equipment_type else 'unknown',
+                'age_days': (timezone.now().date() - eq.purchase_date.date()).days if hasattr(eq, 'purchase_date') and eq.purchase_date else 0,
                 'total_usage_hours': total_usage_hours,
                 'days_since_maintenance': days_since_maintenance,
-                'maintenance_interval_days': eq.maintenance_interval or 90,
-                'status': eq.status,
-                'needs_maintenance': 1 if eq.status == 'maintenance_due' else 0,
+                'maintenance_interval_days': maintenance_interval,
+                'status': eq.status if hasattr(eq, 'status') else 'unknown',
+                'needs_maintenance': 1 if hasattr(eq, 'status') and eq.status == 'maintenance_due' else 0,
             }
             data.append(feature)
         

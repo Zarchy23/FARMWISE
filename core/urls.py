@@ -6,6 +6,7 @@ from django.views.generic import RedirectView
 from . import views
 from . import views_pest_verification
 from . import views_dashboards
+from . import views_ml_dashboard
 
 # API imports have been removed - using HTML templates instead
 # from .api import views_market
@@ -311,6 +312,17 @@ urlpatterns = [
     # FARMER ADVISORY SYSTEM
     # ============================================================
     path('advisory/', include('core.urls_advisory')),
+    
+    # ============================================================
+    # ML & DATA TRAINING DASHBOARD
+    # ============================================================
+    path('ml/dashboard/', views_ml_dashboard.ml_training_dashboard, name='ml_dashboard'),
+    path('ml/api/data-capture/', views_ml_dashboard.ml_data_capture_api, name='ml_data_capture_api'),
+    path('ml/api/training-status/', views_ml_dashboard.ml_training_status_api, name='ml_training_status_api'),
+    path('ml/api/scalability/', views_ml_dashboard.system_scalability_api, name='ml_scalability_api'),
+    path('ml/train-model/', views_ml_dashboard.train_ml_model, name='ml_train_model'),
+    path('ml/export-data/', views_ml_dashboard.export_ml_data, name='ml_export_data'),
+    path('ml/compare-models/', views_ml_dashboard.compare_models, name='ml_compare_models'),
     
     # ============================================================
     # LEGACY API ENDPOINTS (for AJAX/JavaScript)
