@@ -1,1 +1,1 @@
-web: python manage.py migrate --run-syncdb --noinput && python manage.py collectstatic --noinput --clear && gunicorn farmwise.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 120
+web: gunicorn farmwise.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 120
