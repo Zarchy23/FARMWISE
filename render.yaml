@@ -2,8 +2,8 @@ services:
   - type: web
     name: farmwise
     runtime: python
-    buildCommand: "pip install -r requirements.txt && python manage.py migrate --run-syncdb --noinput && python manage.py collectstatic --noinput --clear"
-    startCommand: "bash start.sh"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn farmwise.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 120"
     plan: free
     envVars:
       - key: DEBUG
