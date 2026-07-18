@@ -962,6 +962,8 @@ class Equipment(models.Model):
     monthly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     location = models.CharField(max_length=255)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     images = models.JSONField(default=list, blank=True)
     specifications = models.JSONField(default=dict, blank=True)
     status = models.CharField(max_length=20, choices=STATUS, default='available')
@@ -1025,6 +1027,79 @@ class EquipmentBooking(models.Model):
     
     def __str__(self):
         return f"{self.equipment.name} - {self.renter.username} ({self.start_date} to {self.end_date})"
+
+
+class Asset(models.Model):
+    """Personal asset tracking for farmers"""
+
+    ASSET_TYPES = [
+        ('tractor', 'Tractor'),
+        ('harvester', 'Harvester'),
+        ('planter', 'Planter'),
+        ('sprayer', 'Sprayer'),
+        ('plow', 'Plow'),
+        ('cultivator', 'Cultivator'),
+        ('trailer', 'Trailer'),
+        ('irrigation', 'Irrigation Equipment'),
+        ('vehicle', 'Vehicle'),
+        ('tool', 'Tool'),
+        ('machinery', 'Machinery'),
+        ('other', 'Other'),
+    ]
+
+    CONDITION = [
+        ('excellent', 'Excellent'),
+        ('good', 'Good'),
+        ('fair', 'Fair'),
+        ('poor', 'Poor'),
+        ('broken', 'Broken'),
+    ]
+
+    STATUS = [
+        ('active', 'Active'),
+        ('maintenance', 'Under Maintenance'),
+        ('repair', 'Needs Repair'),
+        ('sale', 'For Sale'),
+        ('retired', 'Retired'),
+        ('lost', 'Lost'),
+    ]
+
+    owner = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='assets')
+    name = models.CharField(max_length=255)
+    asset_type = models.CharField(max_length=20, choices=ASSET_TYPES)
+    description = models.TextField(blank=True)
+    serial_number = models.CharField(max_length=100, blank=True)
+    purchase_date = models.DateField(null=True, blank=True)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    current_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    condition = models.CharField(max_length=20, choices=CONDITION, default='good')
+    status = models.CharField(max_length=20, choices=STATUS, default='active')
+    location = models.CharField(max_length=255, blank=True)
+    last_maintenance_date = models.DateField(null=True, blank=True)
+    next_maintenance_date = models.DateField(null=True, blank=True)
+    maintenance_notes = models.TextField(blank=True)
+    images = models.JSONField(default=list, blank=True)
+    specifications = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'assets'
+        indexes = [
+            models.Index(fields=['owner', 'status']),
+            models.Index(fields=['asset_type']),
+            models.Index(fields=['next_maintenance_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.get_asset_type_display()})"
+
+    @property
+    def needs_maintenance(self):
+        """Check if asset needs maintenance"""
+        if self.next_maintenance_date:
+            return self.next_maintenance_date <= timezone.now().date()
+        return False
 
 
 # ============================================================

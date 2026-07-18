@@ -6,8 +6,8 @@ from django.views.generic import RedirectView
 from . import views
 from . import views_pest_verification
 from . import views_dashboards
-from . import views_ml_dashboard
 from . import views_data_population
+from . import views_yield_prediction
 
 # API imports have been removed - using HTML templates instead
 # from .api import views_market
@@ -60,6 +60,13 @@ urlpatterns = [
     path('crops/<int:pk>/delete/', views.crop_delete, name='crop_delete'),
     path('crops/<int:crop_id>/harvest/', views.crop_harvest, name='crop_harvest'),
     path('crops/<int:crop_id>/input/add/', views.input_add, name='input_add'),
+    path('crops/yield-prediction/', views_yield_prediction.yield_prediction_image, name='yield_prediction'),
+    path('crops/yield-prediction/view/<int:prediction_id>/', views_yield_prediction.view_prediction_detail, name='view_prediction'),
+    path('crops/yield-prediction/analyze/', views_yield_prediction.analyze_crop_image, name='yield_prediction_analyze'),
+    path('crops/yield-prediction/dashboard/', views_yield_prediction.yield_prediction_dashboard, name='yield_prediction_dashboard'),
+    path('crops/yield-prediction/update/<int:prediction_id>/', views_yield_prediction.update_actual_yield, name='update_actual_yield'),
+    path('crops/yield-prediction/calculate-accuracy/<int:prediction_id>/', views_yield_prediction.calculate_accuracy_view, name='calculate_accuracy'),
+    path('crops/yield-prediction/mark-completed/<int:prediction_id>/', views_yield_prediction.mark_as_completed, name='mark_completed'),
     
     # ============================================================
     # LIVESTOCK MANAGEMENT
@@ -84,6 +91,13 @@ urlpatterns = [
     path('equipment/<int:pk>/book/', views.equipment_book, name='equipment_book'),
     path('equipment/my-bookings/', views.my_bookings, name='my_bookings'),
     path('equipment/booking/<int:pk>/cancel/', views.cancel_booking, name='cancel_booking'),
+
+    # Asset Management
+    path('assets/', views.asset_list, name='asset_list'),
+    path('assets/add/', views.asset_add, name='asset_add'),
+    path('assets/<int:pk>/', views.asset_detail, name='asset_detail'),
+    path('assets/<int:pk>/edit/', views.asset_edit, name='asset_edit'),
+    path('assets/<int:pk>/delete/', views.asset_delete, name='asset_delete'),
     
     # ============================================================
     # MARKETPLACE
@@ -161,6 +175,9 @@ urlpatterns = [
     path('reports/financial/', views.financial_report, name='financial_report'),
     path('reports/crop-yield/', views.crop_yield_report, name='crop_yield_report'),
     path('reports/livestock/', views.livestock_report, name='livestock_report'),
+    path('reports/scheduled/', views.scheduled_reports, name='scheduled_reports'),
+    path('reports/custom-builder/', views.custom_report_builder, name='custom_report_builder'),
+    path('reports/templates/', views.report_templates, name='report_templates'),
     path('reports/export/<str:report_type>/', views.export_report, name='export_report'),
     
     # ============================================================
@@ -315,15 +332,12 @@ urlpatterns = [
     path('advisory/', include('core.urls_advisory')),
     
     # ============================================================
-    # ML & DATA TRAINING DASHBOARD
+    # ML MODEL PREDICTION ENDPOINTS
     # ============================================================
-    path('ml/dashboard/', views_ml_dashboard.ml_training_dashboard, name='ml_dashboard'),
-    path('ml/api/data-capture/', views_ml_dashboard.ml_data_capture_api, name='ml_data_capture_api'),
-    path('ml/api/training-status/', views_ml_dashboard.ml_training_status_api, name='ml_training_status_api'),
-    path('ml/api/scalability/', views_ml_dashboard.system_scalability_api, name='ml_scalability_api'),
-    path('ml/train-model/', views_ml_dashboard.train_ml_model, name='ml_train_model'),
-    path('ml/export-data/', views_ml_dashboard.export_ml_data, name='ml_export_data'),
-    path('ml/compare-models/', views_ml_dashboard.compare_models, name='ml_compare_models'),
+    path('ml/predict/disease/', views.ml_predict_disease, name='ml_predict_disease'),
+    path('ml/predict/pest/', views.ml_predict_pest, name='ml_predict_pest'),
+    path('ml/predict/yield/', views.ml_predict_yield, name='ml_predict_yield'),
+    path('ml/status/', views.ml_model_status, name='ml_model_status'),
     
     # ============================================================
     # DATA POPULATION (for environments without shell access)

@@ -566,62 +566,94 @@ class MilkProductionForm(forms.ModelForm):
 
 class EquipmentForm(forms.ModelForm):
     """Form for listing equipment for rent"""
-    
+
+    images = forms.ImageField(
+        required=True,
+        widget=forms.FileInput(attrs={
+            'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+            'accept': 'image/*'
+        }),
+        help_text='Upload at least one image of the equipment (required)'
+    )
+
     class Meta:
         model = Equipment
-        fields = ['name', 'category', 'description', 'hourly_rate', 'daily_rate', 
+        fields = ['name', 'category', 'description', 'hourly_rate', 'daily_rate',
                   'weekly_rate', 'monthly_rate', 'deposit_amount', 'location', 'specifications']
+
+
+class AssetForm(forms.ModelForm):
+    """Form for managing personal assets"""
+
+    images = forms.ImageField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+            'accept': 'image/*'
+        }),
+        help_text='Upload images of the asset (optional)'
+    )
+
+    class Meta:
+        model = Asset
+        fields = ['name', 'asset_type', 'description', 'serial_number', 'purchase_date',
+                  'purchase_price', 'current_value', 'condition', 'status', 'location',
+                  'last_maintenance_date', 'next_maintenance_date', 'maintenance_notes', 'specifications']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
-                'placeholder': 'Equipment name'
+                'placeholder': 'Asset name'
             }),
-            'category': forms.Select(attrs={
+            'asset_type': forms.Select(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
             }),
             'description': forms.Textarea(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'rows': 3,
-                'placeholder': 'Describe the equipment, its condition, features...'
+                'placeholder': 'Describe the asset, its condition, features...'
             }),
-            'hourly_rate': forms.NumberInput(attrs={
+            'serial_number': forms.TextInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'placeholder': 'Serial number (optional)'
+            }),
+            'purchase_date': forms.DateInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'type': 'date'
+            }),
+            'purchase_price': forms.NumberInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'step': '0.01',
                 'min': '0',
-                'placeholder': 'Hourly rental rate'
+                'placeholder': 'Purchase price'
             }),
-            'daily_rate': forms.NumberInput(attrs={
+            'current_value': forms.NumberInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'step': '0.01',
                 'min': '0',
-                'placeholder': 'Daily rental rate'
+                'placeholder': 'Current value'
             }),
-            'weekly_rate': forms.NumberInput(attrs={
-                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
-                'step': '0.01',
-                'min': '0',
-                'placeholder': 'Weekly rental rate (optional)'
+            'condition': forms.Select(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
             }),
-            'monthly_rate': forms.NumberInput(attrs={
-                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
-                'step': '0.01',
-                'min': '0',
-                'placeholder': 'Monthly rental rate (optional)'
-            }),
-            'deposit_amount': forms.NumberInput(attrs={
-                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
-                'step': '0.01',
-                'min': '0',
-                'placeholder': 'Security deposit amount'
+            'status': forms.Select(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
             }),
             'location': forms.TextInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
-                'placeholder': 'Equipment location'
+                'placeholder': 'Location where asset is stored'
             }),
-            'specifications': forms.Textarea(attrs={
+            'last_maintenance_date': forms.DateInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'type': 'date'
+            }),
+            'next_maintenance_date': forms.DateInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'type': 'date'
+            }),
+            'maintenance_notes': forms.Textarea(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'rows': 2,
-                'placeholder': 'Engine details, horsepower, year, etc.'
+                'placeholder': 'Maintenance notes or history'
             }),
         }
 

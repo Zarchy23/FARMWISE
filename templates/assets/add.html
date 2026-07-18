@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}Add Asset{% endblock %}
+{% block page_title %}Add New Asset{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Add New Asset</h1>
+
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="p-4 rounded-lg {% if message.tags %}bg-{{ message.tags }}-100 text-{{ message.tags }}-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Asset Name <span class="text-red-500">*</span></label>
+                <input type="text" name="name" required value="{{ form.name.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., John Deere Tractor">
+                {% if form.name.errors %}<p class="text-red-600 text-sm mt-1">{{ form.name.errors }}</p>{% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Asset Type <span class="text-red-500">*</span></label>
+                <select name="asset_type" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Type --</option>
+                    <option value="tractor" {% if form.asset_type.value == "tractor" %}selected{% endif %}>Tractor</option>
+                    <option value="harvester" {% if form.asset_type.value == "harvester" %}selected{% endif %}>Harvester</option>
+                    <option value="planter" {% if form.asset_type.value == "planter" %}selected{% endif %}>Planter</option>
+                    <option value="sprayer" {% if form.asset_type.value == "sprayer" %}selected{% endif %}>Sprayer</option>
+                    <option value="plow" {% if form.asset_type.value == "plow" %}selected{% endif %}>Plow</option>
+                    <option value="cultivator" {% if form.asset_type.value == "cultivator" %}selected{% endif %}>Cultivator</option>
+                    <option value="trailer" {% if form.asset_type.value == "trailer" %}selected{% endif %}>Trailer</option>
+                    <option value="irrigation" {% if form.asset_type.value == "irrigation" %}selected{% endif %}>Irrigation Equipment</option>
+                    <option value="vehicle" {% if form.asset_type.value == "vehicle" %}selected{% endif %}>Vehicle</option>
+                    <option value="tool" {% if form.asset_type.value == "tool" %}selected{% endif %}>Tool</option>
+                    <option value="machinery" {% if form.asset_type.value == "machinery" %}selected{% endif %}>Machinery</option>
+                    <option value="other" {% if form.asset_type.value == "other" %}selected{% endif %}>Other</option>
+                </select>
+                {% if form.asset_type.errors %}<p class="text-red-600 text-sm mt-1">{{ form.asset_type.errors }}</p>{% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Description</label>
+                <textarea name="description" rows="3" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Describe the asset, its condition, features...">{{ form.description.value|default:'' }}</textarea>
+                {% if form.description.errors %}<p class="text-red-600 text-sm mt-1">{{ form.description.errors }}</p>{% endif %}
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Serial Number</label>
+                    <input type="text" name="serial_number" value="{{ form.serial_number.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+                    {% if form.serial_number.errors %}<p class="text-red-600 text-sm mt-1">{{ form.serial_number.errors }}</p>{% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Condition</label>
+                    <select name="condition" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="excellent" {% if form.condition.value == "excellent" %}selected{% endif %}>Excellent</option>
+                        <option value="good" {% if form.condition.value == "good" %}selected{% endif %}>Good</option>
+                        <option value="fair" {% if form.condition.value == "fair" %}selected{% endif %}>Fair</option>
+                        <option value="poor" {% if form.condition.value == "poor" %}selected{% endif %}>Poor</option>
+                        <option value="broken" {% if form.condition.value == "broken" %}selected{% endif %}>Broken</option>
+                    </select>
+                    {% if form.condition.errors %}<p class="text-red-600 text-sm mt-1">{{ form.condition.errors }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Purchase Date</label>
+                    <input type="date" name="purchase_date" value="{{ form.purchase_date.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    {% if form.purchase_date.errors %}<p class="text-red-600 text-sm mt-1">{{ form.purchase_date.errors }}</p>{% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Purchase Price ($)</label>
+                    <input type="number" step="0.01" min="0" name="purchase_price" value="{{ form.purchase_price.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+                    {% if form.purchase_price.errors %}<p class="text-red-600 text-sm mt-1">{{ form.purchase_price.errors }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Current Value ($)</label>
+                    <input type="number" step="0.01" min="0" name="current_value" value="{{ form.current_value.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Optional">
+                    {% if form.current_value.errors %}<p class="text-red-600 text-sm mt-1">{{ form.current_value.errors }}</p>{% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Status</label>
+                    <select name="status" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="active" {% if form.status.value == "active" %}selected{% endif %}>Active</option>
+                        <option value="maintenance" {% if form.status.value == "maintenance" %}selected{% endif %}>Under Maintenance</option>
+                        <option value="repair" {% if form.status.value == "repair" %}selected{% endif %}>Needs Repair</option>
+                        <option value="sale" {% if form.status.value == "sale" %}selected{% endif %}>For Sale</option>
+                        <option value="retired" {% if form.status.value == "retired" %}selected{% endif %}>Retired</option>
+                        <option value="lost" {% if form.status.value == "lost" %}selected{% endif %}>Lost</option>
+                    </select>
+                    {% if form.status.errors %}<p class="text-red-600 text-sm mt-1">{{ form.status.errors }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Location</label>
+                <input type="text" name="location" value="{{ form.location.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Where is the asset stored?">
+                {% if form.location.errors %}<p class="text-red-600 text-sm mt-1">{{ form.location.errors }}</p>{% endif %}
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Last Maintenance Date</label>
+                    <input type="date" name="last_maintenance_date" value="{{ form.last_maintenance_date.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    {% if form.last_maintenance_date.errors %}<p class="text-red-600 text-sm mt-1">{{ form.last_maintenance_date.errors }}</p>{% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">Next Maintenance Date</label>
+                    <input type="date" name="next_maintenance_date" value="{{ form.next_maintenance_date.value|default:'' }}" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    {% if form.next_maintenance_date.errors %}<p class="text-red-600 text-sm mt-1">{{ form.next_maintenance_date.errors }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Maintenance Notes</label>
+                <textarea name="maintenance_notes" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Maintenance history or notes">{{ form.maintenance_notes.value|default:'' }}</textarea>
+                {% if form.maintenance_notes.errors %}<p class="text-red-600 text-sm mt-1">{{ form.maintenance_notes.errors }}</p>{% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Asset Images</label>
+                <input type="file" name="images" accept="image/*" multiple class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-sm text-gray-500 mt-1">Upload images of the asset (optional)</p>
+                {% if form.images.errors %}<p class="text-red-600 text-sm mt-1">{{ form.images.errors }}</p>{% endif %}
+            </div>
+
+            <div class="flex space-x-3 mt-6">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition font-bold">Add Asset</button>
+                <a href="{% url 'core:asset_list' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

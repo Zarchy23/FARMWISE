@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.core.paginator import Paginator
+from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
 from decimal import Decimal
 import json
@@ -30,6 +31,8 @@ from .services.crop_automation_service import CropAutomationService
 from .services.livestock_automation_service import LivestockAutomationService
 from .services.insurance_automation_service import InsuranceAutomationService
 from .services.payroll_automation_service import PayrollAutomationService
+from .services.ml_model_service import ml_service
+from .services.hybrid_prediction_service import hybrid_service
 
 # ============================================================
 # HOME & DASHBOARD
@@ -83,21 +86,17 @@ def register(request):
 @login_required
 def dashboard(request):
     """Main user dashboard - Role-based content"""
-    
+
     # Regular user dashboard
     farms = Farm.objects.filter(owner=request.user)
-    
-    # Get counts based on user type
-    if request.user.user_type in ['farmer', 'large_farmer']:
-        active_crops = CropSeason.objects.filter(
-            field__farm__owner=request.user,
-            status__in=['planted', 'growing']
-        ).count()
-        
-        total_animals = Animal.objects.filter(farm__owner=request.user, status='alive').count()
-    else:
-        active_crops = 0
-        total_animals = 0
+
+    # Get counts - show for any user with farms, not just farmers
+    active_crops = CropSeason.objects.filter(
+        field__farm__owner=request.user,
+        status__in=['planted', 'growing']
+    ).count()
+
+    total_animals = Animal.objects.filter(farm__owner=request.user, status='alive').count()
     
     # Monthly revenue
     monthly_revenue = Transaction.objects.filter(
@@ -567,28 +566,45 @@ def field_delete(request, pk):
 def crop_list(request):
     """List all crops"""
     from .services.crop_automation_service import CropAutomationService
-    
+
     # Run automation checks (status updates + reminders)
     try:
         CropAutomationService.run_automation_checks(user=request.user)
     except Exception as e:
         import logging
         logging.error(f"Error running crop automation: {str(e)}")
-    
+
     crops = CropSeason.objects.filter(field__farm__owner=request.user)
-    
+
+    # Calculate statistics
+    total_crops = crops.count()
+    growing_crops = crops.filter(status__in=['planted', 'growing']).count()
+    harvested_crops = crops.filter(status='harvested').count()
+    total_harvest_kg = crops.filter(status='harvested').aggregate(
+        total=Sum('actual_yield_kg')
+    )['total'] or 0
+    total_revenue = crops.filter(status='harvested').aggregate(
+        total=Sum('actual_revenue')
+    )['total'] or 0
+
     # Filter by status
     status_filter = request.GET.get('status')
     if status_filter:
         crops = crops.filter(status=status_filter)
-    
+
     paginator = Paginator(crops, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     return render(request, 'crops/list.html', {
         'crops': page_obj,
         'export_url': reverse('core:export_crops'),
+        'total_crops': total_crops,
+        'growing_crops': growing_crops,
+        'harvested_crops': harvested_crops,
+        'total_harvest_kg': total_harvest_kg,
+        'total_revenue': total_revenue,
+        'is_paginated': page_obj.has_other_pages(),
     })
 
 
@@ -725,14 +741,30 @@ def animal_list(request):
     """List all animals"""
     # Run livestock automation checks
     LivestockAutomationService.run_automation_checks(user=request.user)
-    
+
     animals = Animal.objects.filter(farm__owner=request.user)
-    
+
+    # Calculate statistics
+    total_animals = animals.count()
+    alive_animals = animals.filter(status='alive').count()
+    male_animals = animals.filter(gender='male').count()
+    female_animals = animals.filter(gender='female').count()
+
+    # Count by species
+    species_counts = animals.values('animal_type__species').annotate(
+        count=Count('id')
+    ).order_by('-count')
+
+    # Count by status
+    status_counts = animals.values('status').annotate(
+        count=Count('id')
+    ).order_by('-count')
+
     # Filter by species
     species_filter = request.GET.get('species')
     if species_filter:
         animals = animals.filter(animal_type__species=species_filter)
-    
+
     # Filter by dosing program type
     filter_type = request.GET.get('filter')
     if filter_type in ['medication', 'vaccination', 'treatments']:
@@ -751,11 +783,17 @@ def animal_list(request):
             breeding_records__isnull=False
         ).distinct()
         animals = animals_with_breeding
-    
+
     return render(request, 'livestock/list.html', {
         'animals': animals,
         'export_url': reverse('core:export_livestock'),
         'filter_type': filter_type,
+        'total_animals': total_animals,
+        'alive_animals': alive_animals,
+        'male_animals': male_animals,
+        'female_animals': female_animals,
+        'species_counts': species_counts,
+        'status_counts': status_counts,
     })
 
 
@@ -909,24 +947,38 @@ def milk_production_add(request, animal_id):
 # EQUIPMENT RENTAL
 # ============================================================
 
-@login_required
 def equipment_list(request):
     """List all available equipment"""
-    equipment = Equipment.objects.filter(is_verified=True, status='available')
-    
+    equipment = Equipment.objects.filter(status='available')
+
+    # Calculate statistics
+    total_equipment = equipment.count()
+    total_categories = equipment.values('category').distinct().count()
+    avg_daily_rate = equipment.aggregate(
+        avg=Avg('daily_rate')
+    )['avg'] or 0
+
+    # Count by category
+    category_counts = equipment.values('category').annotate(
+        count=Count('id')
+    ).order_by('-count')
+
     # Filter by category
     category_filter = request.GET.get('category')
     if category_filter:
         equipment = equipment.filter(category=category_filter)
-    
+
     context = {
         'equipment': equipment,
         'export_url': reverse('core:export_equipment'),
+        'total_equipment': total_equipment,
+        'total_categories': total_categories,
+        'avg_daily_rate': avg_daily_rate,
+        'category_counts': category_counts,
     }
     return render(request, 'equipment/list.html', context)
 
 
-@login_required
 @login_required
 def equipment_add(request):
     """Add equipment for rent"""
@@ -935,6 +987,22 @@ def equipment_add(request):
         if form.is_valid():
             equipment = form.save(commit=False)
             equipment.owner = request.user
+
+            # Handle image uploads
+            uploaded_files = request.FILES.getlist('images')
+            if uploaded_files:
+                from django.core.files.storage import default_storage
+                image_urls = []
+                for file in uploaded_files:
+                    # Save file and get the path
+                    path = default_storage.save(f'equipment/{file.name}', file)
+                    image_urls.append(default_storage.url(path))
+                equipment.images = image_urls
+
+            # Auto-verify if images are provided
+            if equipment.images:
+                equipment.is_verified = True
+
             equipment.save()
             messages.success(request, 'Equipment listed for rent successfully!')
             return redirect('core:equipment_detail', pk=equipment.pk)
@@ -944,7 +1012,7 @@ def equipment_add(request):
                 messages.error(request, f'{field}: {", ".join(errors)}')
     else:
         form = EquipmentForm()
-    
+
     return render(request, 'equipment/add.html', {'form': form})
 
 
@@ -968,6 +1036,124 @@ def equipment_edit(request, pk):
     else:
         form = EquipmentForm(instance=equipment)
     return render(request, 'equipment/edit.html', {'form': form, 'equipment': equipment})
+
+
+# ============================================================
+# ASSET MANAGEMENT
+# ============================================================
+
+@login_required
+def asset_list(request):
+    """List all assets for the current user"""
+    assets = Asset.objects.filter(owner=request.user)
+
+    # Calculate statistics
+    total_assets = assets.count()
+    active_assets = assets.filter(status='active').count()
+    maintenance_needed = assets.filter(next_maintenance_date__lte=timezone.now().date()).count()
+    for_sale = assets.filter(status='sale').count()
+
+    # Filter by status
+    status_filter = request.GET.get('status')
+    if status_filter:
+        assets = assets.filter(status=status_filter)
+
+    # Filter by type
+    type_filter = request.GET.get('type')
+    if type_filter:
+        assets = assets.filter(asset_type=type_filter)
+
+    context = {
+        'assets': assets,
+        'total_assets': total_assets,
+        'active_assets': active_assets,
+        'maintenance_needed': maintenance_needed,
+        'for_sale': for_sale,
+    }
+    return render(request, 'assets/list.html', context)
+
+
+@login_required
+def asset_add(request):
+    """Add a new asset"""
+    if request.method == 'POST':
+        form = AssetForm(request.POST, request.FILES)
+        if form.is_valid():
+            asset = form.save(commit=False)
+            asset.owner = request.user
+
+            # Handle image uploads
+            uploaded_files = request.FILES.getlist('images')
+            if uploaded_files:
+                from django.core.files.storage import default_storage
+                image_urls = []
+                for file in uploaded_files:
+                    # Save file and get the path
+                    path = default_storage.save(f'assets/{file.name}', file)
+                    image_urls.append(default_storage.url(path))
+                asset.images = image_urls
+
+            asset.save()
+            messages.success(request, 'Asset added successfully!')
+            return redirect('core:asset_list')
+        else:
+            for field, errors in form.errors.items():
+                messages.error(request, f'{field}: {", ".join(errors)}')
+    else:
+        form = AssetForm()
+
+    return render(request, 'assets/add.html', {'form': form})
+
+
+@login_required
+def asset_detail(request, pk):
+    """View asset details"""
+    asset = get_object_or_404(Asset, pk=pk, owner=request.user)
+    return render(request, 'assets/detail.html', {'asset': asset})
+
+
+@login_required
+def asset_edit(request, pk):
+    """Edit asset"""
+    asset = get_object_or_404(Asset, pk=pk, owner=request.user)
+    if request.method == 'POST':
+        # Check if this is a quick status change
+        if 'status' in request.POST and len(request.POST) == 2:  # Only status and csrf
+            asset.status = request.POST['status']
+            asset.save()
+            messages.success(request, f'Asset status updated to {asset.get_status_display()}')
+            return redirect('core:asset_detail', pk=asset.pk)
+
+        form = AssetForm(request.POST, request.FILES, instance=asset)
+        if form.is_valid():
+            # Handle image uploads
+            uploaded_files = request.FILES.getlist('images')
+            if uploaded_files:
+                from django.core.files.storage import default_storage
+                image_urls = []
+                for file in uploaded_files:
+                    # Save file and get the path
+                    path = default_storage.save(f'assets/{file.name}', file)
+                    image_urls.append(default_storage.url(path))
+                form.instance.images = image_urls
+
+            form.save()
+            messages.success(request, 'Asset updated successfully!')
+            return redirect('core:asset_detail', pk=asset.pk)
+    else:
+        form = AssetForm(instance=asset)
+    return render(request, 'assets/edit.html', {'form': form, 'asset': asset})
+
+
+@login_required
+def asset_delete(request, pk):
+    """Delete asset"""
+    asset = get_object_or_404(Asset, pk=pk, owner=request.user)
+    if request.method == 'POST':
+        asset.delete()
+        messages.success(request, 'Asset deleted successfully!')
+        return redirect('core:asset_list')
+    return render(request, 'assets/delete.html', {'asset': asset})
 
 
 @login_required
@@ -1381,65 +1567,82 @@ def encode_image_to_base64(image_file):
 
 def analyze_pest_with_ai(image_file, image_name):
     """
-    Use AI Vision API to analyze pest image - NEW VERSION
+    Use hybrid AI (local model + external APIs) to analyze pest image
     
-    Priority Order (all FREE for Render):
-    1. Google Gemini (free tier - 60 req/min) - RECOMMENDED
-    2. Groq (free tier) - fast alternative
-    3. Together.ai (free tier) - another alternative
-    4. Rule-based detection (completely free) - fallback
-    5. OpenAI (DEPRECATED - too expensive for Render free tier)
+    Priority Order:
+    1. Local PyTorch model (fast, free, no API limits)
+    2. Google Gemini (free tier - 60 req/min) - fallback
+    3. Groq (free tier) - fallback
+    4. OpenAI (fallback if available)
     """
     import logging
+    import tempfile
+    import os
     logger = logging.getLogger(__name__)
     
     try:
-        from django.conf import settings
-        from core.services.pest_detection import PestDetectionService
+        # Save image to temp file for local model
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+            for chunk in image_file.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
         
-        # Use new unified pest detection service with 3-AI fallback
-        gemini_api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        groq_api_key = getattr(settings, 'GROQ_API_KEY', None)
-        openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        
-        # Debug logging
-        logger.info(f'GEMINI_API_KEY present: {bool(gemini_api_key) and len(str(gemini_api_key)) > 0}')
-        logger.info(f'GROQ_API_KEY present: {bool(groq_api_key) and len(str(groq_api_key)) > 0}')
-        logger.info(f'OPENAI_API_KEY present: {bool(openai_api_key) and len(str(openai_api_key)) > 0}')
-        
-        pest_service = PestDetectionService(gemini_api_key, groq_api_key, openai_api_key)
-        
-        logger.info(f'Starting pest detection analysis for {image_name}')
-        
-        # Analyze image using service
-        logger.info(f'[VIEWS] Calling pest_service.detect_from_image() for {image_name}')
-        result = pest_service.detect_from_image(image_file)
-        logger.info(f'[VIEWS] Result received: {result}')
-        logger.info(f'[VIEWS] Result has error_fallback: {result.get("error_fallback")}')
-        
-        # Normalize result to match expected format
-        normalized = {
-            'pest_detected': result.get('detected_issue', '').lower() != 'healthy crop' and not result.get('error_fallback'),
-            'pest_name': result.get('detected_issue', 'Unable to analyze'),
-            'confidence': result.get('confidence', 0),
-            'severity': result.get('severity', 'low'),
-            'affected_area': 0,
-            'explanation': result.get('description', 'Analysis attempted'),
-            'identification_details': result.get('description', ''),
-            'immediate_action': 'Monitor closely' if result.get('severity') in ['high', 'severe'] else 'Continue normal care',
-            'treatment': result.get('treatment', 'Consult local expert'),
-            'organic_treatment': result.get('organic_options', 'Contact extension office'),
-            'prevention': result.get('prevention', 'Regular field scouting'),
-            'disease_cycle': '',
-            'environmental_factors': '',
-            'top_suggestions': result.get('top_suggestions', []),
-            'possible_diseases': result.get('possible_diseases', []),
-            'detected_indicators': result.get('detected_indicators', [])
-        }
-        
-        logger.info(f'[VIEWS] Normalized: pest_detected={normalized["pest_detected"]}, pest_name={normalized["pest_name"]}, confidence={normalized["confidence"]}')
-        logger.info(f'Pest analysis completed: {normalized["pest_name"]}')
-        return normalized
+        try:
+            # Use hybrid service (local model + external AI)
+            logger.info(f'Starting hybrid pest detection analysis for {image_name}')
+            result = hybrid_service.predict_pest_hybrid(tmp_path, use_api_fallback=True)
+            logger.info(f'Hybrid pest result: {result}')
+            
+            # Normalize result to match expected format
+            if 'error' in result:
+                # Fallback to external AI only
+                logger.warning(f'Hybrid service failed, using external AI only: {result["error"]}')
+                from django.conf import settings
+                from core.services.pest_detection import PestDetectionService
+                
+                gemini_api_key = getattr(settings, 'GEMINI_API_KEY', None)
+                groq_api_key = getattr(settings, 'GROQ_API_KEY', None)
+                openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
+                
+                pest_service = PestDetectionService(gemini_api_key, groq_api_key, openai_api_key)
+                result = pest_service.detect_from_image(image_file)
+                
+                normalized = {
+                    'pest_detected': result.get('detected_issue', '').lower() != 'healthy crop' and not result.get('error_fallback'),
+                    'pest_name': result.get('detected_issue', 'Unable to analyze'),
+                    'confidence': result.get('confidence', 0),
+                    'severity': result.get('severity', 'low'),
+                    'affected_area': 0,
+                    'explanation': result.get('description', 'Analysis attempted'),
+                    'identification_details': result.get('description', ''),
+                    'immediate_action': 'Monitor closely' if result.get('severity') in ['high', 'severe'] else 'Continue normal care',
+                    'treatment': result.get('treatment', 'Consult local expert'),
+                    'method': 'external_ai_fallback'
+                }
+            else:
+                # Use hybrid result
+                normalized = {
+                    'pest_detected': result.get('pest_detected', False),
+                    'pest_name': result.get('pest_name', 'Unknown'),
+                    'confidence': result.get('confidence', 0),
+                    'severity': 'high' if result.get('confidence', 0) > 0.8 else 'medium' if result.get('confidence', 0) > 0.5 else 'low',
+                    'affected_area': 0,
+                    'explanation': f'Hybrid AI analysis using {result.get("method", "unknown")}',
+                    'identification_details': f'Class index: {result.get("class_index", -1)}',
+                    'immediate_action': 'Monitor closely' if result.get('confidence', 0) > 0.7 else 'Continue normal care',
+                    'treatment': 'Consult local expert for treatment recommendations',
+                    'method': result.get('method', 'hybrid')
+                }
+            
+            logger.info(f'Normalized result: {normalized}')
+            return normalized
+            
+        finally:
+            # Clean up temp file
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
     
     except Exception as e:
         logger.error(f'Pest analysis error: {str(e)}')
@@ -2835,31 +3038,124 @@ def financial_report(request):
 def crop_yield_report(request):
     """Crop yield report"""
     crops = CropSeason.objects.filter(field__farm__owner=request.user)
-    
-    # Group by crop type
-    crop_summary = crops.values('crop_type__name').annotate(
-        total_planted_area=Sum('field__area_hectares'),
-        total_harvested_kg=Sum('harvests__quantity_kg'),
-        avg_yield_kg_per_ha=Avg('harvests__quantity_kg') / Sum('field__area_hectares')
-    )
-    
-    return render(request, 'reports/crop_yield.html', {'crop_summary': crop_summary})
+
+    # Summary statistics
+    total_crops = crops.count()
+    total_harvested = crops.filter(status='harvested').aggregate(
+        total=Sum('actual_yield_kg')
+    )['total'] or 0
+    total_revenue = crops.filter(status='harvested').aggregate(
+        total=Sum('actual_revenue')
+    )['total'] or 0
+
+    # Average yield per hectare
+    total_area = crops.aggregate(total=Sum('field__area_hectares'))['total'] or 1
+    avg_yield = total_harvested / total_area if total_area > 0 else 0
+
+    # Detailed crop data
+    crop_data = []
+    for crop_type in crops.values('crop_type__name').distinct():
+        crop_name = crop_type['crop_type__name'] or 'Unknown'
+        crop_seasons = crops.filter(crop_type__name=crop_name)
+
+        area = crop_seasons.aggregate(total=Sum('field__area_hectares'))['total'] or 0
+        harvest = crop_seasons.filter(status='harvested').aggregate(
+            total=Sum('actual_yield_kg')
+        )['total'] or 0
+        revenue = crop_seasons.filter(status='harvested').aggregate(
+            total=Sum('actual_revenue')
+        )['total'] or 0
+        yield_per_ha = harvest / area if area > 0 else 0
+
+        # Get most common status
+        status_counts = crop_seasons.values('status').annotate(
+            count=Count('id')
+        ).order_by('-count')
+        status = status_counts[0]['status'] if status_counts else 'unknown'
+
+        crop_data.append({
+            'name': crop_name,
+            'area': area,
+            'harvest': harvest,
+            'yield': yield_per_ha,
+            'revenue': revenue,
+            'status': status
+        })
+
+    return render(request, 'reports/crop_yield.html', {
+        'total_crops': total_crops,
+        'total_harvested': total_harvested,
+        'avg_yield': avg_yield,
+        'total_revenue': total_revenue,
+        'crop_data': crop_data,
+    })
 
 
 @login_required
 def livestock_report(request):
     """Livestock report"""
     animals = Animal.objects.filter(farm__owner=request.user)
-    
-    # Summary by species
-    species_summary = animals.values('animal_type__species').annotate(
-        total_count=Count('id'),
-        male_count=Count('id', filter=Q(gender='male')),
-        female_count=Count('id', filter=Q(gender='female')),
-        alive_count=Count('id', filter=Q(status='alive'))
-    )
-    
-    return render(request, 'reports/livestock.html', {'species_summary': species_summary})
+
+    # Summary statistics
+    total_animals = animals.count()
+    total_species = animals.values('animal_type__species').distinct().count()
+
+    # Total milk production
+    from .models import MilkProduction
+    total_milk = MilkProduction.objects.filter(
+        animal__farm__owner=request.user
+    ).aggregate(total=Sum('total_kg'))['total'] or 0
+
+    # Total health records
+    from .models import HealthRecord
+    total_health_records = HealthRecord.objects.filter(
+        animal__farm__owner=request.user
+    ).count()
+
+    # Species breakdown with detailed data
+    species_data = []
+    for species in animals.values('animal_type__species').distinct():
+        species_name = species['animal_type__species'] or 'Unknown'
+        species_animals = animals.filter(animal_type__species=species_name)
+
+        total = species_animals.count()
+        male = species_animals.filter(gender='male').count()
+        female = species_animals.filter(gender='female').count()
+        alive = species_animals.filter(status='alive').count()
+        avg_weight = species_animals.aggregate(
+            avg=Avg('weight_kg')
+        )['avg'] or 0
+
+        species_data.append({
+            'name': species_name,
+            'total': total,
+            'male': male,
+            'female': female,
+            'alive': alive,
+            'avg_weight': avg_weight
+        })
+
+    # Health records by type
+    health_types = []
+    for record_type in ['vaccination', 'medication', 'treatment', 'checkup']:
+        count = HealthRecord.objects.filter(
+            animal__farm__owner=request.user,
+            record_type=record_type
+        ).count()
+        if count > 0:
+            health_types.append({
+                'type': record_type.capitalize(),
+                'count': count
+            })
+
+    return render(request, 'reports/livestock.html', {
+        'total_animals': total_animals,
+        'total_species': total_species,
+        'total_milk': total_milk,
+        'total_health_records': total_health_records,
+        'species_data': species_data,
+        'health_types': health_types,
+    })
 
 
 @login_required
@@ -2867,25 +3163,49 @@ def export_report(request, report_type):
     """Export report as CSV"""
     import csv
     from django.http import HttpResponse
-    
+
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{report_type}_report.csv"'
-    
+
     writer = csv.writer(response)
-    
+
     if report_type == 'financial':
         writer.writerow(['Date', 'Type', 'Category', 'Amount', 'Description'])
         transactions = Transaction.objects.filter(farm__owner=request.user)
         for t in transactions:
             writer.writerow([t.date, t.transaction_type, t.category, t.amount, t.description])
-    
+
     elif report_type == 'crop':
         writer.writerow(['Crop', 'Field', 'Planting Date', 'Harvest Date', 'Yield (kg)', 'Revenue'])
         crops = CropSeason.objects.filter(field__farm__owner=request.user)
         for c in crops:
             writer.writerow([c.crop_type.name, c.field.name, c.planting_date, c.actual_harvest_date, c.actual_yield_kg, c.actual_revenue])
-    
+
     return response
+
+
+@login_required
+def scheduled_reports(request):
+    """Scheduled reports management"""
+    return render(request, 'reports/scheduled.html', {
+        'title': 'Scheduled Reports'
+    })
+
+
+@login_required
+def custom_report_builder(request):
+    """Custom report builder"""
+    return render(request, 'reports/custom_builder.html', {
+        'title': 'Custom Report Builder'
+    })
+
+
+@login_required
+def report_templates(request):
+    """Report templates"""
+    return render(request, 'reports/templates.html', {
+        'title': 'Report Templates'
+    })
 
 
 # ============================================================
@@ -4956,7 +5276,96 @@ def generate_analytics_report(request):
         except Exception as e:
             messages.error(request, f'Error generating CSV report: {str(e)}')
             return redirect('core:analytics_dashboard')
+
+
+# ============================================================
+# ML MODEL PREDICTION ENDPOINTS
+# ============================================================
+
+@csrf_exempt
+def ml_predict_disease(request):
+    """Predict disease from uploaded image"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
     
-    else:
-        messages.error(request, 'Invalid report type')
-        return redirect('core:analytics_dashboard')
+    if 'image' not in request.FILES:
+        return JsonResponse({'error': 'No image provided'}, status=400)
+    
+    try:
+        image_file = request.FILES['image']
+        
+        # Save to temp file
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+            for chunk in image_file.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+        
+        try:
+            result = ml_service.predict_disease(tmp_path)
+            return JsonResponse(result)
+        finally:
+            # Clean up temp file
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
+                
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def ml_predict_pest(request):
+    """Predict pest from uploaded image"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    if 'image' not in request.FILES:
+        return JsonResponse({'error': 'No image provided'}, status=400)
+    
+    try:
+        image_file = request.FILES['image']
+        
+        # Save to temp file
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+            for chunk in image_file.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+        
+        try:
+            result = ml_service.predict_pest(tmp_path)
+            return JsonResponse(result)
+        finally:
+            # Clean up temp file
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
+                
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def ml_predict_yield(request):
+    """Predict yield from features"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    try:
+        import json
+        features = json.loads(request.body)
+        result = ml_service.predict_yield(features)
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def ml_model_status(request):
+    """Get status of all ML models"""
+    status = ml_service.get_model_status()
+    return JsonResponse(status)

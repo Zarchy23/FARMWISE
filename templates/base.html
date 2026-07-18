@@ -50,29 +50,81 @@
     </div>
 
     <!-- Mobile Sidebar Overlay -->
-    <div x-show="sidebarOpen" x-cloak class="fixed inset-0 bg-black bg-opacity-50 z-20" @click="sidebarOpen = false"></div>
+    <div x-show="sidebarOpen" x-cloak class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" @click="sidebarOpen = false"></div>
 
     {% block sidebar %}
     <!-- Sidebar -->
     <aside class="fixed left-0 top-0 z-30 h-screen w-64 bg-green-800 text-white transform transition-transform duration-300 ease-in-out overflow-y-auto" 
            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
-           x-data="{ expandedMenu: null }">
+           x-data="{ expandedMenu: null }"
+           id="mainSidebar">
         <div class="p-5 border-b border-green-700">
             <div class="flex items-center space-x-2">
                 <i class="ri-leaf-line text-2xl"></i>
                 <span class="font-bold text-xl">FarmWise</span>
             </div>
         </div>
-        <nav class="p-4 space-y-1">
+        
+        <!-- Search Bar -->
+        <div class="px-4 py-2">
+            <div class="relative">
+                <input type="text" 
+                       x-model="searchQuery" 
+                       @input="if(searchQuery.length > 2) document.querySelectorAll('.nav-item').forEach(el => el.style.display = el.textContent.toLowerCase().includes(searchQuery.toLowerCase()) ? '' : 'none'); else document.querySelectorAll('.nav-item').forEach(el => el.style.display = '')"
+                       placeholder="Search features..." 
+                       class="w-full bg-green-700 text-white placeholder-green-300 rounded-lg px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                <i class="ri-search-line absolute left-3 top-1/2 transform -translate-y-1/2 text-green-300"></i>
+            </div>
+        </div>
+        
+        <!-- Quick Access Shortcuts -->
+        <div class="px-4 py-2 border-t border-green-700">
+            <p class="text-xs text-green-300 font-semibold mb-2">Quick Access</p>
+            <div class="grid grid-cols-2 gap-2">
+                <a href="{% url 'core:dashboard' %}" class="nav-item flex flex-col items-center p-2 rounded-lg bg-green-700 hover:bg-green-600 transition text-center">
+                    <i class="ri-dashboard-line text-lg"></i>
+                    <span class="text-xs mt-1">Dashboard</span>
+                </a>
+                <a href="{% url 'core:farm_list' %}" class="nav-item flex flex-col items-center p-2 rounded-lg bg-green-700 hover:bg-green-600 transition text-center">
+                    <i class="ri-farm-line text-lg"></i>
+                    <span class="text-xs mt-1">Farms</span>
+                </a>
+                <a href="{% url 'core:crop_list' %}" class="nav-item flex flex-col items-center p-2 rounded-lg bg-green-700 hover:bg-green-600 transition text-center">
+                    <i class="ri-seedling-line text-lg"></i>
+                    <span class="text-xs mt-1">Crops</span>
+                </a>
+                <a href="{% url 'core:weather' %}" class="nav-item flex flex-col items-center p-2 rounded-lg bg-green-700 hover:bg-green-600 transition text-center">
+                    <i class="ri-cloud-line text-lg"></i>
+                    <span class="text-xs mt-1">Weather</span>
+                </a>
+            </div>
+        </div>
+        
+        <nav class="p-4 space-y-1" x-data="{ searchQuery: '' }">
             {% load permissions %}
             
+            <!-- Role-Based Section -->
+            {% if user.user_type == 'farmer' or user.user_type == 'large_farmer' %}
+            <div class="mb-4">
+                <p class="text-xs text-green-300 font-semibold mb-2">🌾 Farmer Tools</p>
+            </div>
+            {% elif user.user_type == 'agronomist' %}
+            <div class="mb-4">
+                <p class="text-xs text-green-300 font-semibold mb-2">🔬 Agronomist Tools</p>
+            </div>
+            {% elif user.user_type == 'admin' or user.is_superuser %}
+            <div class="mb-4">
+                <p class="text-xs text-green-300 font-semibold mb-2">⚙️ Admin Tools</p>
+            </div>
+            {% endif %}
+            
             <!-- Dashboard (All Users) -->
-            <a href="{% url 'core:dashboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+            <a href="{% url 'core:dashboard' %}" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
                 <i class="ri-dashboard-line"></i><span>Dashboard</span>
             </a>
 
             <!-- Farmer Advisory (All Users) -->
-            <div>
+            <div class="nav-item">
                 <button @click="expandedMenu = expandedMenu === 'advisory' ? null : 'advisory'" 
                         class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
                     <i class="ri-lightbulb-line"></i><span>Advisory</span>
@@ -88,20 +140,21 @@
 
             <!-- Wallboard (System Admins Only) -->
             {% if user.user_type == 'admin' or user.is_superuser %}
-            <a href="{% url 'core:wallboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition bg-green-600 text-white font-bold">
+            <a href="{% url 'core:wallboard' %}" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition bg-green-600 text-white font-bold">
                 <i class="ri-dashboard-3-line"></i><span>Wallboard</span>
             </a>
-            <a href="{% url 'core:ml_dashboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                <i class="ri-brain-line"></i><span>ML Dashboard</span>
-            </a>
-            <a href="{% url 'core:data_population_dashboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+            <a href="{% url 'core:data_population_dashboard' %}" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
                 <i class="ri-database-2-line"></i><span>Data Population</span>
             </a>
+            
+            <!-- ML Features (System Admins Only) -->
+            <div>
+            </div>
             {% endif %}
 
             <!-- My Farms (if user has farm access) -->
             {% if user|has_module_permission:"farms.view_own" or user|has_module_permission:"farms.view_coop" or user|has_module_permission:"farms.view_assigned" %}
-            <a href="{% url 'core:farm_list' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+            <a href="{% url 'core:farm_list' %}" class="nav-item flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
                 <i class="ri-farm-line"></i><span>My Farms</span>
             </a>
             {% endif %}
@@ -135,6 +188,7 @@
                     {% if user|has_module_permission:"crops.create" %}
                     <a href="{% url 'core:crop_plant' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Plant</a>
                     {% endif %}
+                    <a href="{% url 'core:yield_prediction' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Yield Prediction</a>
                 </div>
             </div>
             {% endif %}
@@ -160,6 +214,8 @@
                     <a href="{% url 'core:animal_list' %}?filter=treatment" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dosing Schedules</a>
                     <a href="{% url 'core:animal_list' %}?filter=vaccination" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Vaccinations</a>
                     <a href="{% url 'core:animal_list' %}?filter=treatment" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Treatments</a>
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:animal_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">🥛 Milk Production</a>
                 </div>
             </div>
             {% endif %}
@@ -187,13 +243,16 @@
                     <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'equipment' ? 'rotate-180' : ''"></i>
                 </button>
                 <div x-show="expandedMenu === 'equipment'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:equipment_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">List</a>
+                    <a href="{% url 'core:equipment_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Equipment Rental</a>
                     {% if user|has_module_permission:"equipment.create" %}
-                    <a href="{% url 'core:equipment_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add</a>
+                    <a href="{% url 'core:equipment_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">List Equipment</a>
                     {% endif %}
                     {% if user|has_module_permission:"equipment.book" %}
                     <a href="{% url 'core:my_bookings' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">My Bookings</a>
                     {% endif %}
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:asset_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">� Asset Management</a>
+                    <a href="{% url 'core:asset_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Asset</a>
                 </div>
             </div>
             {% endif %}
@@ -271,6 +330,19 @@
             </div>
             {% endif %}
 
+            <!-- Irrigation (if user has irrigation access) -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'irrigation' ? null : 'irrigation'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-drop-line"></i><span>Irrigation</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'irrigation' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'irrigation'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="{% url 'core:irrigation' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="{% url 'core:irrigation_schedule' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Schedule</a>
+                </div>
+            </div>
+
             <!-- Insurance (if user has insurance access) -->
             {% if user|has_module_permission:"insurance.view_own" or user|has_module_permission:"insurance.view_all" or user|has_module_permission:"insurance.view_coop" %}
             <div>
@@ -328,6 +400,10 @@
                     <a href="{% url 'core:livestock_report' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Livestock</a>
                     {% endif %}
                     <div class="border-t border-green-600 my-2"></div>
+                    <a href="/reports/custom-builder/" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">📊 Custom Report Builder</a>
+                    <a href="/reports/scheduled/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Scheduled Reports</a>
+                    <a href="/reports/templates/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Report Templates</a>
+                    <div class="border-t border-green-600 my-2"></div>
                     <a href="{% url 'core:analytics_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Analytics Dashboard</a>
                 </div>
             </div>
@@ -347,59 +423,35 @@
             </div>
 
 
-            <!-- Voice Assistant (AI Feature) - Voice commands & automation -->
+            <!-- AI & Smart Features Group -->
             <div>
-                <button @click="expandedMenu = expandedMenu === 'voice' ? null : 'voice'" 
+                <button @click="expandedMenu = expandedMenu === 'ai_features' ? null : 'ai_features'" 
                         class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-mic-line"></i><span>Voice Assistant</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'voice' ? 'rotate-180' : ''"></i>
+                    <i class="ri-brain-line"></i><span>AI & Smart Features</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'ai_features' ? 'rotate-180' : ''"></i>
                 </button>
-                <div x-show="expandedMenu === 'voice'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:voice_interface' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">🎤 Start Assistant</a>
-                    <a href="{% url 'core:voice_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
-                    <a href="{% url 'core:voice_commands' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Available Commands</a>
-                    <a href="{% url 'core:voice_history' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Command History</a>
-                    <a href="{% url 'core:voice_preferences' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Preferences</a>
-                </div>
-            </div>
-
-            <!-- AI Chatbot (AI Feature) - Agricultural guidance & Q&A -->
-            <div>
-                <button @click="expandedMenu = expandedMenu === 'chatbot' ? null : 'chatbot'" 
-                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-chat-4-line"></i><span>AI Chatbot</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'chatbot' ? 'rotate-180' : ''"></i>
-                </button>
-                <div x-show="expandedMenu === 'chatbot'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:chatbot_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
-                    <a href="{% url 'core:chat_interface' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Start Chat</a>
-                </div>
-            </div>
-
-            <!-- GPS Mapping & Location Intelligence (AI Feature) - PostGIS spatial data -->
-            <div>
-                <button @click="expandedMenu = expandedMenu === 'mapping' ? null : 'mapping'" 
-                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-map-2-line"></i><span>Field Mapping</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'mapping' ? 'rotate-180' : ''"></i>
-                </button>
-                <div x-show="expandedMenu === 'mapping'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:location_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
-                    <a href="{% url 'core:farm_map' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Farm Map</a>
+                <div x-show="expandedMenu === 'ai_features'" x-transition class="ml-6 space-y-1 mt-1">
+                    <!-- Voice Assistant -->
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:voice_interface' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">🎤 Voice Assistant</a>
+                    <a href="{% url 'core:voice_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Voice Dashboard</a>
+                    <a href="{% url 'core:voice_commands' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Voice Commands</a>
+                    
+                    <!-- AI Chatbot -->
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:chat_interface' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">💬 AI Chatbot</a>
+                    <a href="{% url 'core:chatbot_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Chatbot Dashboard</a>
+                    
+                    <!-- Field Mapping -->
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:farm_map' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">🗺️ Field Mapping</a>
+                    <a href="{% url 'core:location_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Mapping Dashboard</a>
                     <a href="{% url 'core:geofence_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Geofences</a>
                     <a href="{% url 'core:livestock_tracking' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Livestock GPS</a>
-                </div>
-            </div>
-
-            <!-- Offline AI Capabilities (AI Feature) - Sync & caching -->
-            <div>
-                <button @click="expandedMenu = expandedMenu === 'offline' ? null : 'offline'" 
-                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
-                    <i class="ri-wifi-off-line"></i><span>Offline Mode</span>
-                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'offline' ? 'rotate-180' : ''"></i>
-                </button>
-                <div x-show="expandedMenu === 'offline'" x-transition class="ml-6 space-y-1 mt-1">
-                    <a href="{% url 'core:offline_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    
+                    <!-- Offline Mode -->
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:offline_dashboard' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">📴 Offline Mode</a>
                 </div>
             </div>
 
@@ -413,6 +465,32 @@
                 <div x-show="expandedMenu === 'carbon'" x-transition class="ml-6 space-y-1 mt-1">
                     <a href="{% url 'core:carbon_tracker' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Tracker</a>
                     <a href="{% url 'core:carbon_report' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Reports</a>
+                </div>
+            </div>
+
+            <!-- Supermarket Management -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'supermarket' ? null : 'supermarket'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-store-2-line"></i><span>Supermarket</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition" :class="expandedMenu === 'supermarket' ? 'rotate-180' : ''"></i>
+                </button>
+                <div x-show="expandedMenu === 'supermarket'" x-transition class="ml-6 space-y-1 mt-1">
+                    <a href="/supermarket/dashboard/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Dashboard</a>
+                    <a href="/supermarket/profile/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Profile</a>
+                    <a href="/supermarket/products/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Products</a>
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="/supermarket/export/products/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Export Products</a>
+                    <a href="/supermarket/export/sales/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Export Sales</a>
+                    
+                    <!-- Admin Monitoring Section -->
+                    {% if user.user_type == 'admin' or user.is_superuser %}
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="/supermarket/admin/monitor/" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">📊 Admin Monitor</a>
+                    <a href="/supermarket/admin/all-supermarkets/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">All Supermarkets</a>
+                    <a href="/supermarket/admin/sales-analytics/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Sales Analytics</a>
+                    <a href="/supermarket/admin/inventory-alerts/" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Inventory Alerts</a>
+                    {% endif %}
                 </div>
             </div>
 
@@ -440,15 +518,15 @@
     {% endblock %}
 
     <!-- Main Content -->
-    <div class="{% block main_content_class %}md:ml-64{% endblock %} min-h-screen">
+    <div class="{% block main_content_class %}md:ml-64{% endblock %} min-h-screen transition-all duration-300">
         <!-- Top Navigation -->
         <nav class="bg-white shadow-sm sticky top-0 z-10">
             <div class="px-4 py-3 flex justify-between items-center">
                 <div class="flex items-center space-x-4">
-                    <button @click="sidebarOpen = !sidebarOpen" class="md:hidden text-gray-600">
+                    <button @click="sidebarOpen = !sidebarOpen" class="md:hidden text-gray-600 p-2 rounded-lg hover:bg-gray-100">
                         <i class="ri-menu-line text-2xl"></i>
                     </button>
-                    <h1 class="text-xl font-semibold text-gray-800">{% block page_title %}Dashboard{% endblock %}</h1>
+                    <h1 class="text-xl font-semibold text-gray-800 truncate">{% block page_title %}Dashboard{% endblock %}</h1>
                 </div>
                 <div class="flex items-center space-x-4">
                     <!-- Notifications -->

@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}{{ equipment.name }}{% endblock %}
 {% block page_title %}Equipment Details{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
 
 {% block content %}
 <div class="grid md:grid-cols-2 gap-6">
@@ -11,18 +16,35 @@
                 <h1 class="text-2xl font-bold">{{ equipment.name }}</h1>
                 <p class="text-gray-500">{{ equipment.get_category_display }}</p>
             </div>
-            <span class="px-3 py-1 rounded-full text-sm font-semibold 
-                {% if equipment.status == 'available' %}bg-green-100 text-green-700
-                {% elif equipment.status == 'rented' %}bg-yellow-100 text-yellow-700
-                {% else %}bg-red-100 text-red-700{% endif %}">
-                {{ equipment.get_status_display }}
-            </span>
+            <div class="flex items-center gap-2">
+                {% if equipment.is_verified %}
+                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">✓ Verified</span>
+                {% endif %}
+                <span class="px-3 py-1 rounded-full text-sm font-semibold
+                    {% if equipment.status == 'available' %}bg-green-100 text-green-700
+                    {% elif equipment.status == 'rented' %}bg-yellow-100 text-yellow-700
+                    {% else %}bg-red-100 text-red-700{% endif %}">
+                    {{ equipment.get_status_display }}
+                </span>
+            </div>
         </div>
-        
+
+        <!-- Equipment Images -->
+        {% if equipment.images %}
+        <div class="mt-4">
+            <h3 class="text-sm font-semibold text-gray-700 mb-2">Equipment Images</h3>
+            <div class="grid grid-cols-2 gap-2">
+                {% for image in equipment.images %}
+                <img src="{{ image }}" alt="{{ equipment.name }}" class="w-full h-32 object-cover rounded-lg">
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <div class="mt-4">
             <p class="text-gray-700">{{ equipment.description|default:"No description provided." }}</p>
         </div>
-        
+
         <div class="mt-4 space-y-2">
             <div class="flex justify-between border-b py-2">
                 <span class="text-gray-500">Daily Rate:</span>
@@ -49,21 +71,21 @@
                 <span>{{ equipment.owner.get_full_name }}</span>
             </div>
         </div>
-        
+
         <div class="mt-6">
             <a href="{% url 'core:equipment_book' equipment.id %}" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-center block">
                 Book This Equipment
             </a>
         </div>
     </div>
-    
+
     <!-- Map & Specifications -->
     <div class="space-y-6">
         <div class="bg-white rounded-xl shadow p-6">
             <h2 class="text-xl font-bold mb-4">Location</h2>
-            <div id="equipmentMap" class="map-container w-full h-64 rounded-lg"></div>
+            <div id="equipmentMap" style="height: 300px; width: 100%; border-radius: 0.5rem;"></div>
         </div>
-        
+
         {% if equipment.specifications %}
         <div class="bg-white rounded-xl shadow p-6">
             <h2 class="text-xl font-bold mb-4">Specifications</h2>
@@ -80,9 +102,21 @@
     </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    var map = L.map('equipmentMap').setView([{{ equipment.location_lat|default:"-1.286389" }}, {{ equipment.location_lng|default:"36.817223" }}], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    L.marker([{{ equipment.location_lat|default:"-1.286389" }}, {{ equipment.location_lng|default:"36.817223" }}]).addTo(map);
+    // Default to Zimbabwe coordinates if not set
+    const defaultLat = -19.0154;
+    const defaultLng = 29.1549;
+    const lat = {{ equipment.latitude|default:"defaultLat" }};
+    const lng = {{ equipment.longitude|default:"defaultLng" }};
+
+    var map = L.map('equipmentMap').setView([lat, lng], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    L.marker([lat, lng]).addTo(map)
+        .bindPopup('<b>{{ equipment.name }}</b><br>{{ equipment.location }}')
+        .openPopup();
 </script>
 {% endblock %}

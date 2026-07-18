@@ -67,3 +67,55 @@ yarn-error.log
 
 # Render
 .render/
+
+# Django specific
+/staticfiles
+/static_root
+/media/*
+!/media/.gitkeep
+*.sqlite3
+*.db
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+*.pid
+
+# ML Models and datasets
+ml/datasets/*
+!/ml/datasets/.gitkeep
+ml/cache/
+
+# Data directories (large datasets)
+data/
+
+
+# Redis dump
+dump.rdb
+
+# Session and cache files
+*.session
+*.cache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# PyTorch
+*.pth
+*.pt
+
+# TensorFlow
+*.h5
+
+# Scikit-learn
+*.pkl
+*.joblib
+
+# Uploaded files
+uploads/

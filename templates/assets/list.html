@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}My Assets{% endblock %}
+{% block page_title %}Asset Management{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">My Assets</h1>
+            <p class="text-gray-600">Track and manage your farm assets</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'core:asset_add' %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+                <i class="ri-add-line"></i>
+                <span>Add Asset</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ total_assets|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Total Assets</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ active_assets|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Active</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-orange-600">{{ maintenance_needed|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Needs Maintenance</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">{{ for_sale|default:"0" }}</div>
+            <div class="text-xs text-gray-500">For Sale</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div class="flex gap-4">
+            <div class="flex-1">
+                <label class="text-sm text-gray-600 mb-1 block">Filter by Status</label>
+                <select name="status" onchange="location.href='?status='+this.value" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">All Statuses</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="maintenance" {% if request.GET.status == 'maintenance' %}selected{% endif %}>Under Maintenance</option>
+                    <option value="repair" {% if request.GET.status == 'repair' %}selected{% endif %}>Needs Repair</option>
+                    <option value="sale" {% if request.GET.status == 'sale' %}selected{% endif %}>For Sale</option>
+                    <option value="retired" {% if request.GET.status == 'retired' %}selected{% endif %}>Retired</option>
+                </select>
+            </div>
+            <div class="flex-1">
+                <label class="text-sm text-gray-600 mb-1 block">Filter by Type</label>
+                <select name="type" onchange="location.href='?type='+this.value" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">All Types</option>
+                    <option value="tractor" {% if request.GET.type == 'tractor' %}selected{% endif %}>Tractor</option>
+                    <option value="harvester" {% if request.GET.type == 'harvester' %}selected{% endif %}>Harvester</option>
+                    <option value="planter" {% if request.GET.type == 'planter' %}selected{% endif %}>Planter</option>
+                    <option value="sprayer" {% if request.GET.type == 'sprayer' %}selected{% endif %}>Sprayer</option>
+                    <option value="vehicle" {% if request.GET.type == 'vehicle' %}selected{% endif %}>Vehicle</option>
+                    <option value="tool" {% if request.GET.type == 'tool' %}selected{% endif %}>Tool</option>
+                    <option value="other" {% if request.GET.type == 'other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assets Grid -->
+    {% if assets %}
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for asset in assets %}
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden card-hover">
+            {% if asset.images %}
+            <div class="h-48 bg-gray-200 relative">
+                <img src="{{ asset.images.0 }}" alt="{{ asset.name }}" class="w-full h-full object-cover">
+                {% if asset.needs_maintenance %}
+                <span class="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">⚠️ Maintenance Due</span>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="h-48 bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center">
+                <i class="ri-tools-line text-5xl text-white"></i>
+            </div>
+            {% endif %}
+
+            <div class="p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h3 class="font-bold text-lg">{{ asset.name }}</h3>
+                        <p class="text-sm text-gray-600">{{ asset.get_asset_type_display }}</p>
+                    </div>
+                    <span class="text-xs px-2 py-1 rounded-full
+                        {% if asset.status == 'active' %}bg-green-100 text-green-700
+                        {% elif asset.status == 'maintenance' %}bg-yellow-100 text-yellow-700
+                        {% elif asset.status == 'repair' %}bg-red-100 text-red-700
+                        {% elif asset.status == 'sale' %}bg-purple-100 text-purple-700
+                        {% else %}bg-gray-100 text-gray-700{% endif %}">
+                        {{ asset.get_status_display }}
+                    </span>
+                </div>
+
+                <div class="bg-gray-50 p-3 rounded mb-4">
+                    <p class="text-sm text-gray-600">Condition: {{ asset.get_condition_display }}</p>
+                    {% if asset.next_maintenance_date %}
+                    <p class="text-sm {% if asset.needs_maintenance %}text-red-600 font-semibold{% else %}text-gray-600{% endif %}">
+                        Next Maintenance: {{ asset.next_maintenance_date }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="flex space-x-2">
+                    <a href="{% url 'core:asset_detail' asset.pk %}" class="flex-1 text-center bg-green-50 text-green-600 py-2 rounded hover:bg-green-100 transition text-sm font-medium">View</a>
+                    <a href="{% url 'core:asset_edit' asset.pk %}" class="flex-1 text-center bg-blue-50 text-blue-600 py-2 rounded hover:bg-blue-100 transition text-sm font-medium">Edit</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+        <i class="ri-tools-line text-6xl text-gray-300 mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-500 mb-2">No Assets Yet</h2>
+        <p class="text-gray-400 mb-6">Start tracking your farm assets</p>
+        <a href="{% url 'core:asset_add' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition inline-block">Add Your First Asset</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

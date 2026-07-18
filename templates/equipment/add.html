@@ -93,7 +93,14 @@
                 <textarea name="specifications" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Engine capacity, horsepower, year of make, etc.">{{ form.specifications.value|default:'' }}</textarea>
                 {% if form.specifications.errors %}<p class="text-red-600 text-sm mt-1">{{ form.specifications.errors }}</p>{% endif %}
             </div>
-            
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Equipment Images <span class="text-red-500">*</span></label>
+                <input type="file" name="images" required accept="image/*" multiple class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-sm text-gray-500 mt-1">Upload at least one image of the equipment (required for verification)</p>
+                {% if form.images.errors %}<p class="text-red-600 text-sm mt-1">{{ form.images.errors }}</p>{% endif %}
+            </div>
+
             <div class="flex space-x-3 mt-6">
                 <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition font-bold">List Equipment</button>
                 <a href="{% url 'core:equipment_list' %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition">Cancel</a>
