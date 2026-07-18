@@ -1,0 +1,30 @@
+{
+  "model_metrics": {
+    "mae": 0.10111273037166128,
+    "mse": 0.20976397111291717,
+    "rmse": 0.4579999684638823,
+    "r2": 0.8780494265605078,
+    "mape": 0.32153655995774594,
+    "samples": 200
+  },
+  "predictions_analysis": {
+    "prediction_analysis": {
+      "mean_residual": -0.00022697351709754176,
+      "std_residual": 0.45799991222263325,
+      "min_residual": -1.6931205802924774,
+      "max_residual": 5.3949139858300565,
+      "mean_actual": 0.09976518427518247,
+      "mean_predicted": 0.09999215779228,
+      "std_actual": 1.3115157931666859,
+      "std_predicted": 1.1089448286148336
+    },
+    "percentile_analysis": {
+      "p10_residual": -0.03514300454452527,
+      "p25_residual": -0.01100891429049726,
+      "p50_residual": -0.0014086485219079181,
+      "p75_residual": 0.004993754588237982,
+      "p90_residual": 0.02109529270396402
+    }
+  },
+  "evaluation_date": "2026-07-17T17:36:19.731416"
+}

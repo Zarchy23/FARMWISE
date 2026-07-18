@@ -126,9 +126,9 @@ class YieldPrediction(models.Model):
     ]
     
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='yield_predictions')
-    farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='yield_predictions')
-    field = models.ForeignKey('Field', on_delete=models.CASCADE, related_name='yield_predictions')
-    crop = models.ForeignKey('CropSeason', on_delete=models.CASCADE, related_name='yield_predictions')
+    farm = models.ForeignKey('Farm', on_delete=models.CASCADE, related_name='yield_predictions', null=True, blank=True)
+    field = models.ForeignKey('Field', on_delete=models.CASCADE, related_name='yield_predictions', null=True, blank=True)
+    crop = models.ForeignKey('CropSeason', on_delete=models.CASCADE, related_name='yield_predictions', null=True, blank=True)
     
     # Prediction data
     predicted_yield_kg_ha = models.DecimalField(max_digits=10, decimal_places=2)
@@ -157,12 +157,42 @@ class YieldPrediction(models.Model):
     
     def calculate_accuracy(self):
         """Calculate prediction accuracy after harvest"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"=== MODEL CALCULATE_ACCURACY START ===")
+        logger.info(f"Actual yield: {self.actual_yield_kg_ha} (type: {type(self.actual_yield_kg_ha)})")
+        logger.info(f"Predicted yield: {self.predicted_yield_kg_ha} (type: {type(self.predicted_yield_kg_ha)})")
+        
         if self.actual_yield_kg_ha:
-            accuracy = 100 - abs((self.actual_yield_kg_ha - self.predicted_yield_kg_ha) / self.predicted_yield_kg_ha * 100)
-            self.prediction_accuracy = max(0, min(100, accuracy))
-            self.save()
-            return self.prediction_accuracy
-        return None
+            try:
+                actual = float(self.actual_yield_kg_ha)
+                predicted = float(self.predicted_yield_kg_ha)
+                
+                logger.info(f"Converted actual: {actual}")
+                logger.info(f"Converted predicted: {predicted}")
+                
+                if predicted == 0:
+                    logger.error("Predicted yield is zero, cannot calculate accuracy")
+                    return None
+                
+                accuracy = 100 - abs((actual - predicted) / predicted * 100)
+                logger.info(f"Raw accuracy: {accuracy}")
+                
+                self.prediction_accuracy = max(0, min(100, accuracy))
+                logger.info(f"Clamped accuracy: {self.prediction_accuracy}")
+                
+                self.save()
+                logger.info(f"Saved accuracy to database")
+                
+                logger.info(f"=== MODEL CALCULATE_ACCURACY END ===")
+                return self.prediction_accuracy
+            except Exception as e:
+                logger.error(f"Error in calculate_accuracy: {str(e)}", exc_info=True)
+                return None
+        else:
+            logger.error("Actual yield is None or zero")
+            return None
 
 
 class ResourceUsageAnalytics(models.Model):

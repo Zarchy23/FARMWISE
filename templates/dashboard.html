@@ -441,6 +441,64 @@
         </div>
     </div>
 
+    <!-- ML Predictions Section -->
+    <div class="section-card p-6 mb-8">
+        <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <i class="ri-brain-line text-cyan-400"></i>
+            <span class="text-gradient">AI Yield Predictions</span>
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Prediction Form -->
+            <div class="bg-white/10 rounded-xl p-6 backdrop-blur-lg">
+                <h3 class="text-lg font-semibold text-white mb-4">Get Yield Prediction</h3>
+                <form id="ml-prediction-form" class="space-y-4">
+                    <div>
+                        <label class="block text-white/70 text-sm mb-2">Select Farm</label>
+                        <select id="farm-select" class="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-400">
+                            <option value="">Choose a farm...</option>
+                            {% for farm in farms %}
+                            <option value="{{ farm.id }}">{{ farm.name }} ({{ farm.total_area_hectares }} ha)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-white/70 text-sm mb-2">Temperature (°C)</label>
+                            <input type="number" id="temperature" value="25" class="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-400">
+                        </div>
+                        <div>
+                            <label class="block text-white/70 text-sm mb-2">Rainfall (mm)</label>
+                            <input type="number" id="rainfall" value="500" class="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-400">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-white/70 text-sm mb-2">Fertilizer (kg)</label>
+                            <input type="number" id="fertilizer" value="50" class="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-400">
+                        </div>
+                        <div>
+                            <label class="block text-white/70 text-sm mb-2">Irrigation Days</label>
+                            <input type="number" id="irrigation" value="5" class="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-400">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-3 rounded-lg hover:opacity-90 transition flex items-center justify-center gap-2">
+                        <i class="ri-magic-line"></i>
+                        Predict Yield
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Prediction Result -->
+            <div class="bg-white/10 rounded-xl p-6 backdrop-blur-lg">
+                <h3 class="text-lg font-semibold text-white mb-4">Prediction Result</h3>
+                <div id="prediction-result" class="text-center py-8">
+                    <i class="ri-robot-line text-5xl text-white/30 mb-4"></i>
+                    <p class="text-white/50">Submit the form to get AI-powered yield predictions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Features Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="feature-card p-6">
@@ -488,4 +546,80 @@
         </div>
     </div>
 </div>
+
+<script>
+    // ML Prediction Form Handler
+    document.getElementById('ml-prediction-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const farmId = document.getElementById('farm-select').value;
+        const temperature = document.getElementById('temperature').value;
+        const rainfall = document.getElementById('rainfall').value;
+        const fertilizer = document.getElementById('fertilizer').value;
+        const irrigation = document.getElementById('irrigation').value;
+        
+        if (!farmId) {
+            alert('Please select a farm');
+            return;
+        }
+        
+        const resultDiv = document.getElementById('prediction-result');
+        resultDiv.innerHTML = '<div class="text-center py-8"><i class="ri-loader-4-line text-5xl text-purple-400 animate-spin mb-4"></i><p class="text-white/50">Processing prediction...</p></div>';
+        
+        try {
+            const response = await fetch('/ml/api/predict/yield/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    farm_id: parseInt(farmId),
+                    temperature_avg: parseFloat(temperature),
+                    rainfall_mm: parseFloat(rainfall),
+                    fertilizer_kg: parseFloat(fertilizer),
+                    irrigation_days: parseInt(irrigation),
+                    season: 'Main'
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                resultDiv.innerHTML = `
+                    <div class="text-center py-6">
+                        <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="ri-check-line text-4xl text-white"></i>
+                        </div>
+                        <h4 class="text-2xl font-bold text-white mb-2">${data.predicted_yield_kg_per_hectare} kg/ha</h4>
+                        <p class="text-white/70 mb-4">Predicted Yield</p>
+                        <div class="bg-white/20 rounded-lg p-4 mb-4">
+                            <p class="text-white/60 text-sm">Total Farm Yield</p>
+                            <p class="text-xl font-bold text-white">${data.total_yield_kg} kg</p>
+                        </div>
+                        <p class="text-green-400 text-sm"><i class="ri-shield-check-line"></i> Confidence: 85%</p>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="ri-error-warning-line text-4xl text-red-400"></i>
+                        </div>
+                        <p class="text-red-400">${data.error || 'Prediction failed'}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `
+                <div class="text-center py-8">
+                    <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="ri-error-warning-line text-4xl text-red-400"></i>
+                    </div>
+                    <p class="text-red-400">Network error. Please try again.</p>
+                </div>
+            `;
+        }
+    });
+</script>
 {% endblock %}

@@ -484,3 +484,171 @@ def export_transactions(request):
     except Exception as e:
         messages.error(request, f'Error exporting data: {str(e)}')
         return redirect('core:supermarket_dashboard')
+
+
+# ============================================================
+# ADMIN MONITORING VIEWS (Admin Only)
+# ============================================================
+
+@login_required
+def admin_monitor(request):
+    """Admin monitoring dashboard for supermarket system"""
+    if request.user.user_type != 'admin' and not request.user.is_superuser:
+        messages.error(request, 'This page is only for administrators.')
+        return redirect('core:dashboard')
+    
+    # Get overall statistics
+    total_supermarkets = Supermarket.objects.count()
+    total_products = ProductListing.objects.count()
+    active_products = ProductListing.objects.filter(status='active', is_out_of_stock=False).count()
+    out_of_stock_products = ProductListing.objects.filter(is_out_of_stock=True).count()
+    
+    # Recent supermarkets
+    recent_supermarkets = Supermarket.objects.order_by('-created_at')[:10]
+    
+    # Recent products
+    recent_products = ProductListing.objects.order_by('-created_at')[:10]
+    
+    # Low stock alerts (products with low quantity)
+    low_stock_products = ProductListing.objects.filter(
+        quantity__lte=10,
+        is_out_of_stock=False
+    ).order_by('quantity')[:10]
+    
+    context = {
+        'total_supermarkets': total_supermarkets,
+        'total_products': total_products,
+        'active_products': active_products,
+        'out_of_stock_products': out_of_stock_products,
+        'recent_supermarkets': recent_supermarkets,
+        'recent_products': recent_products,
+        'low_stock_products': low_stock_products,
+    }
+    
+    return render(request, 'supermarket/admin_monitor.html', context)
+
+
+@login_required
+def admin_all_supermarkets(request):
+    """Admin view of all supermarkets"""
+    if request.user.user_type != 'admin' and not request.user.is_superuser:
+        messages.error(request, 'This page is only for administrators.')
+        return redirect('core:dashboard')
+    
+    supermarkets = Supermarket.objects.all().order_by('-created_at')
+    
+    # Filter by status
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        supermarkets = supermarkets.filter(status=status_filter)
+    
+    # Search
+    search_query = request.GET.get('search', '')
+    if search_query:
+        supermarkets = supermarkets.filter(
+            Q(shop_name__icontains=search_query) |
+            Q(owner__username__icontains=search_query) |
+            Q(location__icontains=search_query)
+        )
+    
+    context = {
+        'supermarkets': supermarkets,
+        'status_filter': status_filter,
+        'search_query': search_query,
+    }
+    
+    return render(request, 'supermarket/admin_all_supermarkets.html', context)
+
+
+@login_required
+def admin_sales_analytics(request):
+    """Admin sales analytics dashboard"""
+    if request.user.user_type != 'admin' and not request.user.is_superuser:
+        messages.error(request, 'This page is only for administrators.')
+        return redirect('core:dashboard')
+    
+    # Get date range
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        except:
+            start_date = timezone.now().date() - timedelta(days=30)
+    else:
+        start_date = timezone.now().date() - timedelta(days=30)
+    
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        except:
+            end_date = timezone.now().date()
+    else:
+        end_date = timezone.now().date()
+    
+    # Get sales data (placeholder - would need Order model)
+    total_sales = 0
+    total_orders = 0
+    top_selling_products = []
+    
+    # Get product statistics
+    products_by_category = ProductListing.objects.values('category').annotate(
+        count=Count('id'),
+        total_value=Sum('price_per_unit')
+    ).order_by('-total_value')
+    
+    context = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'total_sales': total_sales,
+        'total_orders': total_orders,
+        'top_selling_products': top_selling_products,
+        'products_by_category': products_by_category,
+    }
+    
+    return render(request, 'supermarket/admin_sales_analytics.html', context)
+
+
+@login_required
+def admin_inventory_alerts(request):
+    """Admin inventory alerts dashboard"""
+    if request.user.user_type != 'admin' and not request.user.is_superuser:
+        messages.error(request, 'This page is only for administrators.')
+        return redirect('core:dashboard')
+    
+    # Get out of stock products
+    out_of_stock = ProductListing.objects.filter(is_out_of_stock=True).order_by('-updated_at')
+    
+    # Get low stock products
+    low_stock = ProductListing.objects.filter(
+        quantity__lte=10,
+        is_out_of_stock=False
+    ).order_by('quantity')
+    
+    # Get inactive products
+    inactive_products = ProductListing.objects.exclude(status='active').order_by('-updated_at')
+    
+    # Get supermarkets with high out-of-stock rates
+    supermarkets_with_issues = []
+    for supermarket in Supermarket.objects.all():
+        supermarket_products = ProductListing.objects.filter(seller__owner=supermarket.owner)
+        if supermarket_products.exists():
+            oos_count = supermarket_products.filter(is_out_of_stock=True).count()
+            total_count = supermarket_products.count()
+            if oos_count > 0 and (oos_count / total_count) > 0.3:  # More than 30% out of stock
+                supermarkets_with_issues.append({
+                    'supermarket': supermarket,
+                    'oos_count': oos_count,
+                    'total_count': total_count,
+                    'percentage': round((oos_count / total_count) * 100, 1)
+                })
+    
+    context = {
+        'out_of_stock': out_of_stock,
+        'low_stock': low_stock,
+        'inactive_products': inactive_products,
+        'supermarkets_with_issues': supermarkets_with_issues,
+    }
+    
+    return render(request, 'supermarket/admin_inventory_alerts.html', context)

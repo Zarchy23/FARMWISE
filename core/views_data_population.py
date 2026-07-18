@@ -60,9 +60,9 @@ def populate_sample_data(request):
                 Cooperative.objects.create(
                     name=name,
                     registration_number=f'COOP/{random.randint(1000, 9999)}',
-                    address=random.choice(['Nairobi', 'Mombasa', 'Kisumu', 'Eldoret']),
-                    email=f'{name.lower().replace(" ", ".")}@coop.ke',
-                    phone_number=f'+2547{random.randint(10000000, 99999999)}',
+                    address=random.choice(['Harare', 'Bulawayo', 'Mutare', 'Gweru', 'Masvingo']),
+                    email=f'{name.lower().replace(" ", ".")}@coop.co.zw',
+                    phone_number=f'+2637{random.randint(10000000, 99999999)}',
                     member_count=random.randint(10, 100),
                     total_farm_area=Decimal(str(random.uniform(50, 500))),
                     is_active=True
@@ -73,8 +73,8 @@ def populate_sample_data(request):
         
         # Create Users
         user_types = ['farmer', 'cooperative_admin', 'agronomist', 'veterinarian', 'equipment_operator']
-        first_names = ['John', 'Mary', 'Peter', 'Grace', 'Samuel', 'Esther', 'David', 'Ruth', 'James', 'Sarah']
-        last_names = ['Kamau', 'Wanjiku', 'Ochieng', 'Muthoni', 'Kipchoge', 'Akinyi', 'Mwangi', 'Njeri', 'Mutua', 'Wanjiru']
+        first_names = ['Tawanda', 'Chipo', 'Farai', 'Rumbidzai', 'Tendai', 'Nyasha', 'Kudzai', 'Precious', 'Takudzwa', 'Nomatter']
+        last_names = ['Moyo', 'Chikowore', 'Dube', 'Nkomo', 'Moyo', 'Sibanda', 'Ndlovu', 'Mujuru', 'Chiweshe', 'Mugabe']
         
         for i in range(20):
             first_name = random.choice(first_names)
@@ -84,13 +84,14 @@ def populate_sample_data(request):
             if not User.objects.filter(username=username).exists():
                 user = User.objects.create_user(
                     username=username,
-                    email=f'{username}@farmwise.co.ke',
+                    email=f'{username}@farmwise.co.zw',
                     password='password123',
                     first_name=first_name,
                     last_name=last_name,
-                    phone_number=f'+2547{random.randint(10000000, 99999999)}',
+                    phone_number=f'+2637{random.randint(10000000, 99999999)}',
                     user_type=random.choice(user_types),
-                    location=random.choice(['Nairobi', 'Mombasa', 'Kisumu', 'Eldoret', 'Nakuru']),
+                    location_lat=Decimal(str(random.uniform(-22.5, -15.5))),
+                    location_lng=Decimal(str(random.uniform(25.0, 33.0))),
                     is_active=True
                 )
                 if cooperatives:
@@ -113,13 +114,13 @@ def populate_sample_data(request):
                     Farm.objects.create(
                         name=farm_name,
                         owner=owner,
-                        location=random.choice(['Nairobi', 'Mombasa', 'Kisumu', 'Eldoret', 'Nakuru']),
+                        location=random.choice(['Harare', 'Bulawayo', 'Mutare', 'Gweru', 'Masvingo']),
                         farm_type=random.choice(farm_types),
                         total_area_hectares=Decimal(str(random.uniform(1, 100))),
                         soil_type=random.choice(['loam', 'clay', 'sandy', 'silt', 'peat']),
                         irrigation_available=random.choice([True, False]),
-                        latitude=Decimal(str(random.uniform(-1.5, -4.5))),
-                        longitude=Decimal(str(random.uniform(34.0, 41.0))),
+                        latitude=Decimal(str(random.uniform(-22.5, -15.5))),
+                        longitude=Decimal(str(random.uniform(25.0, 33.0))),
                         cooperative=random.choice(cooperatives) if cooperatives else None
                     )
                     created['farms'] += 1

@@ -1,0 +1,44 @@
+prepare:
+  split_ratio: 0.2
+  random_seed: 42
+  normalize: true
+
+train:
+  learning_rate: 0.001
+  epochs: 50
+  batch_size: 32
+  model_type: random_forest
+  early_stopping: true
+  patience: 5
+
+evaluate:
+  test_split: 0.2
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - roc_auc
+
+explainability:
+  num_samples: 100
+  background_samples: 50
+  visualization: true
+  
+federated:
+  num_rounds: 3
+  fraction_fit: 1.0
+  min_fit_clients: 2
+  min_available_clients: 2
+  local_epochs: 5
+  
+gan:
+  latent_dim: 100
+  output_dim: 12
+  hidden_dim: 128
+  n_critic: 5
+  lambda_gp: 10
+  epochs: 1000
+  batch_size: 64
+  learning_rate: 0.0002
+  beta1: 0.5

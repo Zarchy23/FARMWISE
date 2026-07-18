@@ -21,6 +21,44 @@
         </div>
     </div>
 
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ total_animals|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Total Animals</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ alive_animals|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Alive</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">{{ male_animals|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Male</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-pink-600">{{ female_animals|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Female</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-orange-600">{{ species_counts|length|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Species Types</div>
+        </div>
+    </div>
+
+    <!-- Species Breakdown -->
+    {% if species_counts %}
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-8">
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">Species Breakdown</h3>
+        <div class="flex flex-wrap gap-2">
+            {% for species in species_counts %}
+            <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">
+                {{ species.animal_type__species|default:"Unknown" }}: {{ species.count }}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}>
+
     <!-- Animals Grid -->
     {% if animals %}
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

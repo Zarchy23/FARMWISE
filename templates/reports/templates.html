@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Report Templates{% endblock %}
+{% block page_title %}Report Templates{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">📋 Report Templates</h1>
+        <p class="mt-2 text-gray-600">Pre-built report templates for common reporting needs</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="text-center py-12">
+            <i class="ri-file-list-line text-5xl text-gray-300 mb-4"></i>
+            <h2 class="text-xl font-semibold text-gray-500 mb-2">Report Templates Coming Soon</h2>
+            <p class="text-gray-400">This feature will provide pre-built templates for common farm reports.</p>
+        </div>
+    </div>
+
+    <div class="mt-6">
+        <a href="{% url 'core:reports' %}" class="text-green-600 hover:text-green-700">
+            <i class="ri-arrow-left-line"></i> Back to Reports Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

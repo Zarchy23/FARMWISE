@@ -1,0 +1,624 @@
+{% extends "base.html" %}
+
+{% block title %}Yield Prediction from Images{% endblock %}
+
+{% block extra_css %}
+<style>
+.yield-prediction {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+.prediction-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.upload-area {
+    border: 3px dashed #11998e;
+    border-radius: 15px;
+    padding: 3rem;
+    text-align: center;
+    background: rgba(17, 153, 142, 0.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    background: rgba(17, 153, 142, 0.1);
+    border-color: #38ef7d;
+}
+
+.upload-area.dragover {
+    background: rgba(17, 153, 142, 0.2);
+    border-color: #38ef7d;
+}
+
+.upload-icon {
+    font-size: 4rem;
+    color: #11998e;
+    margin-bottom: 1rem;
+}
+
+.upload-btn {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.upload-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.upload-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 15px;
+    margin-top: 1rem;
+    display: none;
+}
+
+.result-section {
+    display: none;
+    margin-top: 2rem;
+}
+
+.result-card {
+    background: linear-gradient(135deg, rgba(17, 153, 142, 0.1), rgba(56, 239, 125, 0.1));
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(17, 153, 142, 0.2);
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-label {
+    font-weight: 600;
+    color: #11998e;
+}
+
+.result-value {
+    color: #333;
+}
+
+.recommendation-item {
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    border-left: 3px solid #11998e;
+}
+
+.spinner {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(17, 153, 142, 0.3);
+    border-top-color: #11998e;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 2rem auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.alert-box {
+    padding: 1rem;
+    border-radius: 10px;
+    margin-top: 1rem;
+    display: none;
+}
+
+.alert-box.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-box.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="yield-prediction">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-white font-bold text-3xl mb-2">Yield Prediction from Images</h1>
+                <p class="text-white opacity-80">Upload crop images to get AI-powered yield predictions</p>
+                <a href="/crops/yield-prediction/dashboard/" class="text-white opacity-80 hover:opacity-100 text-sm">
+                    <i class="ri-dashboard-line"></i> View Prediction Dashboard
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="prediction-card">
+                    <h3 class="mb-4"><i class="ri-image-add-line"></i> Upload Crop Image</h3>
+                    
+                    <form id="uploadForm">
+                        {% csrf_token %}
+                        <div class="upload-area" id="uploadArea">
+                            <i class="ri-upload-cloud-2-line upload-icon"></i>
+                            <h4 class="mb-2">Drag & Drop or Click to Upload</h4>
+                            <p class="text-muted mb-3">Supported formats: JPG, PNG, WEBP</p>
+                            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                            <button type="button" class="upload-btn" onclick="document.getElementById('imageInput').click()">
+                                <i class="ri-folder-image-line"></i> Select Image
+                            </button>
+                        </div>
+                        
+                        <img id="previewImage" class="preview-image" alt="Preview">
+                        
+                        <div class="mt-4">
+                            <label class="form-label font-semibold">Select Farm (Optional)</label>
+                            <select class="form-select" id="farmSelect" name="farm_id">
+                                <option value="">-- Select Farm --</option>
+                                {% for farm in user_farms %}
+                                <option value="{{ farm.id }}">{{ farm.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <label class="form-label font-semibold">Crop Type *</label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <select class="form-select" id="cropSelection" name="crop_selection" onchange="toggleCropInput()">
+                                        <option value="dropdown">Select from List</option>
+                                        <option value="custom">Enter Custom Name</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <select class="form-select" id="cropTypeSelect" name="crop_type_id">
+                                        <option value="">-- Select Crop --</option>
+                                        {% for crop in crop_types %}
+                                        <option value="{{ crop.id }}">{{ crop.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="text" class="form-control" id="customCropName" name="custom_crop_name" 
+                                           placeholder="Enter crop name" style="display: none;">
+                                </div>
+                            </div>
+                            <small class="text-muted">Select the crop type from the list or enter a custom name</small>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <label class="form-label font-semibold">Crop Area Size (hectares) *</label>
+                            <input type="number" class="form-control" id="areaSize" name="area_size" 
+                                   placeholder="Enter area in hectares" step="0.01" min="0.1" required>
+                            <small class="text-muted">Enter the total area covered by the crops in hectares</small>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="toggleAdvancedFeatures()">
+                                <i class="ri-settings-3-line"></i> Advanced ML Features
+                            </button>
+                        </div>
+                        
+                        <div id="advancedFeatures" class="mt-4" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Soil Nitrogen (mg/kg)</label>
+                                    <input type="number" class="form-control" id="soilNitrogen" name="soil_nitrogen" 
+                                           placeholder="45" step="0.1" value="45">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Soil Phosphorus (mg/kg)</label>
+                                    <input type="number" class="form-control" id="soilPhosphorus" name="soil_phosphorus" 
+                                           placeholder="78" step="0.1" value="78">
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Soil Potassium (mg/kg)</label>
+                                    <input type="number" class="form-control" id="soilPotassium" name="soil_potassium" 
+                                           placeholder="50" step="0.1" value="50">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Soil pH</label>
+                                    <input type="number" class="form-control" id="soilPh" name="soil_ph" 
+                                           placeholder="6.5" step="0.1" value="6.5">
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Avg Temperature (°C)</label>
+                                    <input type="number" class="form-control" id="temperatureAvg" name="temperature_avg" 
+                                           placeholder="23" step="0.1" value="23">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Rainfall (mm)</label>
+                                    <input type="number" class="form-control" id="rainfallMm" name="rainfall_mm" 
+                                           placeholder="650" step="1" value="650">
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Humidity (%)</label>
+                                    <input type="number" class="form-control" id="humidity" name="humidity" 
+                                           placeholder="65" step="1" value="65">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Fertilizer (kg/ha)</label>
+                                    <input type="number" class="form-control" id="fertilizerKgHa" name="fertilizer_kg_ha" 
+                                           placeholder="100" step="1" value="100">
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Irrigation Days</label>
+                                    <input type="number" class="form-control" id="irrigationDays" name="irrigation_days" 
+                                           placeholder="10" step="1" value="10">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Pesticide Used (kg/ha)</label>
+                                    <input type="number" class="form-control" id="pesticideUsed" name="pesticide_used" 
+                                           placeholder="5" step="0.1" value="5">
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label font-semibold">Disease Severity (1-10)</label>
+                                    <input type="number" class="form-control" id="diseaseSeverity" name="disease_severity" 
+                                           placeholder="2" step="1" min="1" max="10" value="2">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="upload-btn w-full mt-4" id="analyzeBtn" disabled>
+                            <i class="ri-magic-line"></i> Analyze & Predict Yield
+                        </button>
+                    </form>
+                    
+                    <div class="spinner" id="spinner"></div>
+                    <div id="alertBox" class="alert-box"></div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="prediction-card result-section" id="resultSection">
+                    <h3 class="mb-4"><i class="ri-bar-chart-box-line"></i> Prediction Results</h3>
+                    
+                    <div class="result-card">
+                        <h5 class="mb-3"><i class="ri-plant-line"></i> Crop Analysis</h5>
+                        <div class="result-item">
+                            <span class="result-label">Crop Type:</span>
+                            <span class="result-value" id="cropType">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Growth Stage:</span>
+                            <span class="result-value" id="growthStage">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Health Status:</span>
+                            <span class="result-value" id="healthStatus">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <h5 class="mb-3"><i class="ri-line-chart-line"></i> Yield Prediction</h5>
+                        <div class="result-item">
+                            <span class="result-label">Area Size:</span>
+                            <span class="result-value" id="areaSize">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Estimated Yield:</span>
+                            <span class="result-value" id="estimatedYield">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Total Yield:</span>
+                            <span class="result-value" id="totalYield">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Confidence Score:</span>
+                            <span class="result-value" id="confidenceScore">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <h5 class="mb-3"><i class="ri-eye-line"></i> Image Analysis</h5>
+                        <div class="result-item">
+                            <span class="result-label">Leaf Color:</span>
+                            <span class="result-value" id="leafColor">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Plant Density:</span>
+                            <span class="result-value" id="plantDensity">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Disease Detection:</span>
+                            <span class="result-value" id="diseaseDetection">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Pest Detection:</span>
+                            <span class="result-value" id="pestDetection">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <h5 class="mb-3"><i class="ri-lightbulb-line"></i> Recommendations</h5>
+                        <div id="recommendations"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const uploadArea = document.getElementById('uploadArea');
+const imageInput = document.getElementById('imageInput');
+const previewImage = document.getElementById('previewImage');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const uploadForm = document.getElementById('uploadForm');
+const spinner = document.getElementById('spinner');
+const resultSection = document.getElementById('resultSection');
+const alertBox = document.getElementById('alertBox');
+
+// Load saved preferences on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load preferred farm
+    const preferredFarm = localStorage.getItem('preferredFarm');
+    if (preferredFarm) {
+        const farmSelect = document.getElementById('farmSelect');
+        farmSelect.value = preferredFarm;
+    }
+    
+    // Load saved ML features
+    const savedFeatures = localStorage.getItem('mlFeatures');
+    if (savedFeatures) {
+        try {
+            const features = JSON.parse(savedFeatures);
+            if (features.soil_nitrogen) document.getElementById('soilNitrogen').value = features.soil_nitrogen;
+            if (features.soil_phosphorus) document.getElementById('soilPhosphorus').value = features.soil_phosphorus;
+            if (features.soil_potassium) document.getElementById('soilPotassium').value = features.soil_potassium;
+            if (features.soil_ph) document.getElementById('soilPh').value = features.soil_ph;
+            if (features.temperature_avg) document.getElementById('temperatureAvg').value = features.temperature_avg;
+            if (features.rainfall_mm) document.getElementById('rainfallMm').value = features.rainfall_mm;
+            if (features.humidity) document.getElementById('humidity').value = features.humidity;
+            if (features.fertilizer_kg_ha) document.getElementById('fertilizerKgHa').value = features.fertilizer_kg_ha;
+            if (features.irrigation_days) document.getElementById('irrigationDays').value = features.irrigation_days;
+            if (features.pesticide_used) document.getElementById('pesticideUsed').value = features.pesticide_used;
+            if (features.disease_severity) document.getElementById('diseaseSeverity').value = features.disease_severity;
+        } catch (e) {
+            console.error('Error loading saved features:', e);
+        }
+    }
+});
+
+function toggleAdvancedFeatures() {
+    const advancedSection = document.getElementById('advancedFeatures');
+    if (advancedSection.style.display === 'none') {
+        advancedSection.style.display = 'block';
+    } else {
+        advancedSection.style.display = 'none';
+    }
+}
+
+function toggleCropInput() {
+    const selection = document.getElementById('cropSelection').value;
+    const dropdown = document.getElementById('cropTypeSelect');
+    const custom = document.getElementById('customCropName');
+    
+    if (selection === 'dropdown') {
+        dropdown.style.display = 'block';
+        custom.style.display = 'none';
+    } else {
+        dropdown.style.display = 'none';
+        custom.style.display = 'block';
+    }
+}
+
+// Drag and drop handlers
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFile(files[0]);
+    }
+});
+
+// File input change
+imageInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+    }
+});
+
+function handleFile(file) {
+    if (!file.type.startsWith('image/')) {
+        showAlert('Please select an image file', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        previewImage.src = e.target.result;
+        previewImage.style.display = 'block';
+        analyzeBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Form submission
+uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const file = imageInput.files[0];
+    if (!file) {
+        showAlert('Please select an image', 'error');
+        return;
+    }
+    
+    const areaSize = document.getElementById('areaSize').value;
+    if (!areaSize || parseFloat(areaSize) <= 0) {
+        showAlert('Please enter a valid area size', 'error');
+        return;
+    }
+    
+    const cropSelection = document.getElementById('cropSelection').value;
+    const cropTypeId = document.getElementById('cropTypeSelect').value;
+    const customCropName = document.getElementById('customCropName').value;
+    
+    if (cropSelection === 'dropdown' && !cropTypeId) {
+        showAlert('Please select a crop type', 'error');
+        return;
+    }
+    if (cropSelection === 'custom' && !customCropName) {
+        showAlert('Please enter a crop name', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('area_size', areaSize);
+    formData.append('crop_selection', cropSelection);
+    formData.append('crop_type_id', cropTypeId);
+    formData.append('custom_crop_name', customCropName);
+    
+    const farmId = document.getElementById('farmSelect').value;
+    if (farmId) {
+        formData.append('farm_id', farmId);
+        // Save farm preference to localStorage
+        localStorage.setItem('preferredFarm', farmId);
+    }
+    
+    // Add ML features if advanced section is visible
+    if (document.getElementById('advancedFeatures').style.display !== 'none') {
+        formData.append('soil_nitrogen', document.getElementById('soilNitrogen').value);
+        formData.append('soil_phosphorus', document.getElementById('soilPhosphorus').value);
+        formData.append('soil_potassium', document.getElementById('soilPotassium').value);
+        formData.append('soil_ph', document.getElementById('soilPh').value);
+        formData.append('temperature_avg', document.getElementById('temperatureAvg').value);
+        formData.append('rainfall_mm', document.getElementById('rainfallMm').value);
+        formData.append('humidity', document.getElementById('humidity').value);
+        formData.append('fertilizer_kg_ha', document.getElementById('fertilizerKgHa').value);
+        formData.append('irrigation_days', document.getElementById('irrigationDays').value);
+        formData.append('pesticide_used', document.getElementById('pesticideUsed').value);
+        formData.append('disease_severity', document.getElementById('diseaseSeverity').value);
+        
+        // Save feature preferences to localStorage
+        const features = {
+            soil_nitrogen: document.getElementById('soilNitrogen').value,
+            soil_phosphorus: document.getElementById('soilPhosphorus').value,
+            soil_potassium: document.getElementById('soilPotassium').value,
+            soil_ph: document.getElementById('soilPh').value,
+            temperature_avg: document.getElementById('temperatureAvg').value,
+            rainfall_mm: document.getElementById('rainfallMm').value,
+            humidity: document.getElementById('humidity').value,
+            fertilizer_kg_ha: document.getElementById('fertilizerKgHa').value,
+            irrigation_days: document.getElementById('irrigationDays').value,
+            pesticide_used: document.getElementById('pesticideUsed').value,
+            disease_severity: document.getElementById('diseaseSeverity').value
+        };
+        localStorage.setItem('mlFeatures', JSON.stringify(features));
+    }
+    
+    spinner.style.display = 'block';
+    analyzeBtn.disabled = true;
+    alertBox.style.display = 'none';
+    
+    try {
+        const response = await fetch('/crops/yield-prediction/analyze/', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayResults(data.prediction);
+            showAlert('Analysis completed successfully!', 'success');
+        } else {
+            showAlert(data.message || 'Analysis failed', 'error');
+        }
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'error');
+    } finally {
+        spinner.style.display = 'none';
+        analyzeBtn.disabled = false;
+    }
+});
+
+function displayResults(prediction) {
+    document.getElementById('cropType').textContent = prediction.crop_type;
+    document.getElementById('growthStage').textContent = prediction.growth_stage;
+    document.getElementById('healthStatus').textContent = prediction.health_status;
+    document.getElementById('areaSize').textContent = prediction.area_size_hectares + ' ha';
+    document.getElementById('estimatedYield').textContent = prediction.estimated_yield_kg_ha + ' kg/ha';
+    document.getElementById('totalYield').textContent = prediction.total_yield_kg.toFixed(2) + ' kg';
+    document.getElementById('confidenceScore').textContent = prediction.confidence_score + '%';
+    
+    document.getElementById('leafColor').textContent = prediction.image_analysis.leaf_color;
+    document.getElementById('plantDensity').textContent = prediction.image_analysis.plant_density;
+    document.getElementById('diseaseDetection').textContent = prediction.image_analysis.disease_detection;
+    document.getElementById('pestDetection').textContent = prediction.image_analysis.pest_detection;
+    
+    const recommendationsDiv = document.getElementById('recommendations');
+    recommendationsDiv.innerHTML = '';
+    prediction.recommendations.forEach(rec => {
+        const div = document.createElement('div');
+        div.className = 'recommendation-item';
+        div.textContent = rec;
+        recommendationsDiv.appendChild(div);
+    });
+    
+    resultSection.style.display = 'block';
+}
+
+function showAlert(message, type) {
+    alertBox.className = `alert-box ${type}`;
+    alertBox.textContent = message;
+    alertBox.style.display = 'block';
+    
+    setTimeout(() => {
+        alertBox.style.display = 'none';
+    }, 5000);
+}
+</script>
+{% endblock %}

@@ -51,10 +51,6 @@ apscheduler==3.11.2
 Twisted==26.4.0
 pyOpenSSL==26.3.0
 
-# Machine Learning dependencies
-scipy==1.14.1
-scikit-learn==1.5.2
-tensorflow==2.16.1
-joblib==1.4.2
-pandas==2.2.3
+# Core data processing dependencies (kept for analytics)
+pandas==2.2.2
 numpy==1.26.4

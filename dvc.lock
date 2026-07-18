@@ -1,0 +1,101 @@
+schema: '2.0'
+stages:
+  prepare_data:
+    cmd: py -3.12 ml/data/prepare.py data/raw/sample.csv data/processed
+    deps:
+    - path: data/raw/sample.csv
+      hash: md5
+      md5: adc33abf63780d66f74ed7f860ac80f4
+      size: 117360
+    - path: ml/data/prepare.py
+      hash: md5
+      md5: 0c93712855a2c972a7c0b97f48060a53
+      size: 6104
+    params:
+      params.yaml:
+        prepare.random_seed: 42
+        prepare.split_ratio: 0.2
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: d323ff23eb651604b5aab9337524cbda.dir
+      size: 238042
+      nfiles: 4
+  train_model:
+    cmd: py -3.12 ml/models/train.py data/processed models/model.pkl
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: d323ff23eb651604b5aab9337524cbda.dir
+      size: 238042
+      nfiles: 4
+    - path: ml/models/train.py
+      hash: md5
+      md5: 669fac3f24c79b394a95cfe46eafcd4d
+      size: 3571
+    params:
+      params.yaml:
+        train.batch_size: 32
+        train.epochs: 50
+        train.learning_rate: 0.001
+        train.model_type: random_forest
+    outs:
+    - path: models/metrics.json
+      hash: md5
+      md5: 01980201ab5e26483f6253bcff95870c
+      size: 96
+    - path: models/model.pkl
+      hash: md5
+      md5: 4254f9ee19867d676f2ae757b034a36e
+      size: 7300033
+  evaluate_model:
+    cmd: py -3.12 ml/models/evaluate.py models/model.pkl data/processed 
+      reports/evaluation.json
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: d323ff23eb651604b5aab9337524cbda.dir
+      size: 238042
+      nfiles: 4
+    - path: ml/models/evaluate.py
+      hash: md5
+      md5: 45da0cf0506ad3aa21f360649aa21d0e
+      size: 4406
+    - path: models/model.pkl
+      hash: md5
+      md5: 4254f9ee19867d676f2ae757b034a36e
+      size: 7300033
+    params:
+      params.yaml:
+        evaluate.test_split: 0.2
+    outs:
+    - path: reports/evaluation.json
+      hash: md5
+      md5: 200ccfc778dad63a19326c0108ef7799
+      size: 952
+  generate_explanations:
+    cmd: py -3.12 ml/explainability/generate_shap.py models/model.pkl 
+      data/processed reports/shap_explanations
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: d323ff23eb651604b5aab9337524cbda.dir
+      size: 238042
+      nfiles: 4
+    - path: ml/explainability/generate_shap.py
+      hash: md5
+      md5: fe18796bc3d5a686fb6cc01ef4e216eb
+      size: 7897
+    - path: models/model.pkl
+      hash: md5
+      md5: 4254f9ee19867d676f2ae757b034a36e
+      size: 7300033
+    params:
+      params.yaml:
+        explainability.num_samples: 100
+    outs:
+    - path: reports/shap_explanations
+      hash: md5
+      md5: 7a121f9f0da1eb3666030a90202b5f59.dir
+      size: 1753413
+      nfiles: 15

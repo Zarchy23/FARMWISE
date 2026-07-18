@@ -5,9 +5,13 @@
 import logging
 import os
 import requests
+import warnings
 from typing import Dict, List, Optional
 from PIL import Image
 import json
+
+# Suppress deprecated library warnings
+warnings.filterwarnings('ignore', category=FutureWarning, message='.*google.generativeai.*')
 from io import BytesIO
 from decouple import config
 

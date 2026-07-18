@@ -27,4 +27,10 @@ urlpatterns = [
     path('export/sales/', views_supermarket.export_sales, name='export_sales'),
     path('export/inventory/', views_supermarket.export_inventory, name='export_inventory'),
     path('export/transactions/', views_supermarket.export_transactions, name='export_transactions'),
+    
+    # Admin Monitoring (Admin Only)
+    path('admin/monitor/', views_supermarket.admin_monitor, name='admin_monitor'),
+    path('admin/all-supermarkets/', views_supermarket.admin_all_supermarkets, name='admin_all_supermarkets'),
+    path('admin/sales-analytics/', views_supermarket.admin_sales_analytics, name='admin_sales_analytics'),
+    path('admin/inventory-alerts/', views_supermarket.admin_inventory_alerts, name='admin_inventory_alerts'),
 ]

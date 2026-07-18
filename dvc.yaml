@@ -1,0 +1,47 @@
+stages:
+  prepare_data:
+    cmd: py -3.12 ml/data/prepare.py data/raw/sample.csv data/processed
+    deps:
+      - data/raw/sample.csv
+      - ml/data/prepare.py
+    outs:
+      - data/processed
+    params:
+      - prepare.split_ratio
+      - prepare.random_seed
+  
+  train_model:
+    cmd: py -3.12 ml/models/train.py data/processed models/model.pkl
+    deps:
+      - data/processed
+      - ml/models/train.py
+    outs:
+      - models/model.pkl
+      - models/metrics.json
+    params:
+      - train.learning_rate
+      - train.epochs
+      - train.batch_size
+      - train.model_type
+  
+  evaluate_model:
+    cmd: py -3.12 ml/models/evaluate.py models/model.pkl data/processed reports/evaluation.json
+    deps:
+      - models/model.pkl
+      - data/processed
+      - ml/models/evaluate.py
+    outs:
+      - reports/evaluation.json
+    params:
+      - evaluate.test_split
+  
+  generate_explanations:
+    cmd: py -3.12 ml/explainability/generate_shap.py models/model.pkl data/processed reports/shap_explanations
+    deps:
+      - models/model.pkl
+      - data/processed
+      - ml/explainability/generate_shap.py
+    outs:
+      - reports/shap_explanations
+    params:
+      - explainability.num_samples
