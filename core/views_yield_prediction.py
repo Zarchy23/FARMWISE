@@ -13,7 +13,6 @@ import logging
 import os
 import base64
 import tempfile
-from core.services.hybrid_prediction_service import hybrid_service
 from core.models_analytics import YieldPrediction
 from core.models import Farm, CropType
 
@@ -118,9 +117,14 @@ def analyze_crop_image(request):
                 'pesticide_used': float(pesticide_used),
                 'disease_severity': float(disease_severity)
             }
-            
+
             # Get hybrid prediction
-            result = hybrid_service.predict_yield_hybrid(features, use_api_fallback=True)
+            try:
+                from core.services.hybrid_prediction_service import hybrid_service
+                result = hybrid_service.predict_yield_hybrid(features, use_api_fallback=True)
+            except Exception as e:
+                logger.warning(f"Hybrid service not available: {e}")
+                result = {'error': 'Hybrid service not available'}
             
             if 'error' in result:
                 # Fallback to mock prediction

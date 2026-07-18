@@ -5,18 +5,17 @@ Combines local ML models with external AI APIs for advanced results
 
 import logging
 from typing import Dict, Optional
-from .ml_model_service import ml_service
 
 logger = logging.getLogger(__name__)
 
 
 class HybridPredictionService:
     """Service that combines local models with external AI APIs"""
-    
+
     def __init__(self):
-        self.ml_service = ml_service
+        self.ml_service = None
         self.multi_ai_available = False
-        
+
         # Try to import multi-AI service
         try:
             from .multi_ai_service import multi_ai_service
@@ -25,6 +24,17 @@ class HybridPredictionService:
             logger.info("Hybrid service: Multi-AI service available")
         except ImportError:
             logger.warning("Hybrid service: Multi-AI service not available")
+
+    def _get_ml_service(self):
+        """Lazy load ML service"""
+        if self.ml_service is None:
+            try:
+                from .ml_model_service import ml_service
+                self.ml_service = ml_service
+            except Exception as e:
+                logger.warning(f"Could not load ML service: {e}")
+                self.ml_service = None
+        return self.ml_service
     
     def predict_pest_hybrid(self, image_path: str, use_api_fallback: bool = True) -> Dict:
         """
@@ -48,13 +58,15 @@ class HybridPredictionService:
         
         # Try local model first
         try:
-            local_result = self.ml_service.predict_pest(image_path)
-            if 'error' not in local_result:
-                results['local_model'] = local_result
-                results['pest_name'] = local_result.get('pest', 'Unknown')
-                results['confidence'] = local_result.get('confidence', 0.0)
-                results['pest_detected'] = local_result.get('confidence', 0.0) > 0.5
-                logger.info(f"Local pest model: {local_result.get('pest')} ({local_result.get('confidence', 0):.2f})")
+            ml_service = self._get_ml_service()
+            if ml_service:
+                local_result = ml_service.predict_pest(image_path)
+                if 'error' not in local_result:
+                    results['local_model'] = local_result
+                    results['pest_name'] = local_result.get('pest', 'Unknown')
+                    results['confidence'] = local_result.get('confidence', 0.0)
+                    results['pest_detected'] = local_result.get('confidence', 0.0) > 0.5
+                    logger.info(f"Local pest model: {local_result.get('pest')} ({local_result.get('confidence', 0):.2f})")
         except Exception as e:
             logger.warning(f"Local pest model failed: {e}")
         
@@ -109,13 +121,15 @@ class HybridPredictionService:
         
         # Try local model first
         try:
-            local_result = self.ml_service.predict_disease(image_path)
-            if 'error' not in local_result:
-                results['local_model'] = local_result
-                results['disease_name'] = local_result.get('disease', 'Unknown')
-                results['confidence'] = local_result.get('confidence', 0.0)
-                results['disease_detected'] = local_result.get('confidence', 0.0) > 0.5
-                logger.info(f"Local disease model: {local_result.get('disease')} ({local_result.get('confidence', 0):.2f})")
+            ml_service = self._get_ml_service()
+            if ml_service:
+                local_result = ml_service.predict_disease(image_path)
+                if 'error' not in local_result:
+                    results['local_model'] = local_result
+                    results['disease_name'] = local_result.get('disease', 'Unknown')
+                    results['confidence'] = local_result.get('confidence', 0.0)
+                    results['disease_detected'] = local_result.get('confidence', 0.0) > 0.5
+                    logger.info(f"Local disease model: {local_result.get('disease')} ({local_result.get('confidence', 0):.2f})")
         except Exception as e:
             logger.warning(f"Local disease model failed: {e}")
         
@@ -168,11 +182,13 @@ class HybridPredictionService:
         
         # Try local model first
         try:
-            local_result = self.ml_service.predict_yield(features)
-            if 'error' not in local_result:
-                results['local_model'] = local_result
-                results['predicted_yield'] = local_result.get('predicted_yield_kg_per_hectare', 0.0)
-                logger.info(f"Local yield model: {results['predicted_yield']:.2f} kg/ha")
+            ml_service = self._get_ml_service()
+            if ml_service:
+                local_result = ml_service.predict_yield(features)
+                if 'error' not in local_result:
+                    results['local_model'] = local_result
+                    results['predicted_yield'] = local_result.get('predicted_yield_kg_per_hectare', 0.0)
+                    logger.info(f"Local yield model: {results['predicted_yield']:.2f} kg/ha")
         except Exception as e:
             logger.warning(f"Local yield model failed: {e}")
         
