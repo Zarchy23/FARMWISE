@@ -31,6 +31,8 @@ echo "Data loading completed."
 echo "Starting FarmWise..."
 python -m gunicorn farmwise.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \
-    --workers 3 \
+    --workers 1 \
     --worker-class sync \
-    --timeout 120
+    --timeout 120 \
+    --access-logfile - \
+    --error-logfile -
