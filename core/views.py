@@ -1588,11 +1588,11 @@ def analyze_pest_with_ai(image_file, image_name):
         try:
             # Use hybrid service (local model + external AI)
             logger.info(f'Starting hybrid pest detection analysis for {image_name}')
-            from .services import get_hybrid_service
-            hybrid_service = get_hybrid_service()
-            if hybrid_service:
+            try:
+                from .services.hybrid_prediction_service import hybrid_service
                 result = hybrid_service.predict_pest_hybrid(tmp_path, use_api_fallback=True)
-            else:
+            except Exception as e:
+                logger.warning(f"Hybrid service not available: {e}")
                 result = {'error': 'Hybrid service not available'}
             logger.info(f'Hybrid pest result: {result}')
             
@@ -5306,11 +5306,11 @@ def ml_predict_disease(request):
             tmp_path = tmp.name
 
         try:
-            from .services import get_ml_service
-            ml_service = get_ml_service()
-            if ml_service:
+            try:
+                from .services.ml_model_service import ml_service
                 result = ml_service.predict_disease(tmp_path)
-            else:
+            except Exception as e:
+                logger.warning(f"ML service not available: {e}")
                 result = {'error': 'ML service not available'}
             return JsonResponse(result)
         finally:
@@ -5345,11 +5345,11 @@ def ml_predict_pest(request):
             tmp_path = tmp.name
 
         try:
-            from .services import get_ml_service
-            ml_service = get_ml_service()
-            if ml_service:
+            try:
+                from .services.ml_model_service import ml_service
                 result = ml_service.predict_pest(tmp_path)
-            else:
+            except Exception as e:
+                logger.warning(f"ML service not available: {e}")
                 result = {'error': 'ML service not available'}
             return JsonResponse(result)
         finally:
@@ -5372,11 +5372,11 @@ def ml_predict_yield(request):
     try:
         import json
         features = json.loads(request.body)
-        from .services import get_ml_service
-        ml_service = get_ml_service()
-        if ml_service:
+        try:
+            from .services.ml_model_service import ml_service
             result = ml_service.predict_yield(features)
-        else:
+        except Exception as e:
+            logger.warning(f"ML service not available: {e}")
             result = {'error': 'ML service not available'}
         return JsonResponse(result)
     except Exception as e:
@@ -5385,11 +5385,11 @@ def ml_predict_yield(request):
 
 def ml_model_status(request):
     """Get status of all ML models"""
-    from .services import get_ml_service
-    ml_service = get_ml_service()
-    if ml_service:
+    try:
+        from .services.ml_model_service import ml_service
         status = ml_service.get_model_status()
-    else:
+    except Exception as e:
+        logger.warning(f"ML service not available: {e}")
         status = {
             'disease_model': False,
             'pest_model': False,

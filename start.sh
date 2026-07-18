@@ -29,10 +29,15 @@ fi
 echo "Data loading completed."
 
 echo "Starting FarmWise..."
+echo "PORT environment variable: ${PORT:-8000}"
+
+# Try to start with gunicorn, fallback to development server if it fails
 python -m gunicorn farmwise.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \
     --workers 1 \
     --worker-class sync \
     --timeout 120 \
     --access-logfile - \
-    --error-logfile -
+    --error-logfile - || \
+    echo "Gunicorn failed, trying development server..." && \
+    python manage.py runserver 0.0.0.0:${PORT:-8000}
