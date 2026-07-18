@@ -31,8 +31,6 @@ from .services.crop_automation_service import CropAutomationService
 from .services.livestock_automation_service import LivestockAutomationService
 from .services.insurance_automation_service import InsuranceAutomationService
 from .services.payroll_automation_service import PayrollAutomationService
-from .services.ml_model_service import ml_service
-from .services.hybrid_prediction_service import hybrid_service
 
 # ============================================================
 # HOME & DASHBOARD
@@ -1590,7 +1588,12 @@ def analyze_pest_with_ai(image_file, image_name):
         try:
             # Use hybrid service (local model + external AI)
             logger.info(f'Starting hybrid pest detection analysis for {image_name}')
-            result = hybrid_service.predict_pest_hybrid(tmp_path, use_api_fallback=True)
+            from .services import get_hybrid_service
+            hybrid_service = get_hybrid_service()
+            if hybrid_service:
+                result = hybrid_service.predict_pest_hybrid(tmp_path, use_api_fallback=True)
+            else:
+                result = {'error': 'Hybrid service not available'}
             logger.info(f'Hybrid pest result: {result}')
             
             # Normalize result to match expected format
@@ -5301,9 +5304,14 @@ def ml_predict_disease(request):
             for chunk in image_file.chunks():
                 tmp.write(chunk)
             tmp_path = tmp.name
-        
+
         try:
-            result = ml_service.predict_disease(tmp_path)
+            from .services import get_ml_service
+            ml_service = get_ml_service()
+            if ml_service:
+                result = ml_service.predict_disease(tmp_path)
+            else:
+                result = {'error': 'ML service not available'}
             return JsonResponse(result)
         finally:
             # Clean up temp file
@@ -5335,9 +5343,14 @@ def ml_predict_pest(request):
             for chunk in image_file.chunks():
                 tmp.write(chunk)
             tmp_path = tmp.name
-        
+
         try:
-            result = ml_service.predict_pest(tmp_path)
+            from .services import get_ml_service
+            ml_service = get_ml_service()
+            if ml_service:
+                result = ml_service.predict_pest(tmp_path)
+            else:
+                result = {'error': 'ML service not available'}
             return JsonResponse(result)
         finally:
             # Clean up temp file
@@ -5359,7 +5372,12 @@ def ml_predict_yield(request):
     try:
         import json
         features = json.loads(request.body)
-        result = ml_service.predict_yield(features)
+        from .services import get_ml_service
+        ml_service = get_ml_service()
+        if ml_service:
+            result = ml_service.predict_yield(features)
+        else:
+            result = {'error': 'ML service not available'}
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -5367,5 +5385,15 @@ def ml_predict_yield(request):
 
 def ml_model_status(request):
     """Get status of all ML models"""
-    status = ml_service.get_model_status()
+    from .services import get_ml_service
+    ml_service = get_ml_service()
+    if ml_service:
+        status = ml_service.get_model_status()
+    else:
+        status = {
+            'disease_model': False,
+            'pest_model': False,
+            'yield_model': False,
+            'error': 'ML service not available'
+        }
     return JsonResponse(status)
