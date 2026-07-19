@@ -142,10 +142,10 @@ def populate_sample_data(request):
                         name=field_name,
                         area_hectares=field_area,
                         soil_type=random.choice(['sandy', 'clay', 'loamy', 'silty', 'peaty']),
-                        slope_type=random.choice(['flat', 'gentle', 'moderate', 'steep']),
-                        drainage_type=random.choice(['excellent', 'good', 'moderate', 'poor']),
+                        slope=random.choice(['flat', 'gentle', 'moderate', 'steep']),
+                        drainage=random.choice(['excellent', 'good', 'moderate', 'poor']),
                         irrigation_type=random.choice(['none', 'drip', 'sprinkler', 'flood']),
-                        current_crop=random.choice(crop_types),
+                        irrigation_available=random.choice([True, False]),
                         is_active=True
                     )
 
