@@ -10,7 +10,7 @@ from django.utils import timezone
 from datetime import timedelta, date
 from decimal import Decimal
 import random
-from core.models import User, Farm, CropSeason, Animal, Equipment, Cooperative, Asset
+from core.models import User, Farm, CropSeason, Animal, Equipment, Cooperative, Asset, Field, CropType
 import logging
 
 logger = logging.getLogger(__name__)
@@ -128,24 +128,58 @@ def populate_sample_data(request):
                     created['farms'] += 1
         
         farms = list(Farm.objects.all())
-        
-        # Create Crop Seasons
-        season_names = ['Long Rains 2024', 'Short Rains 2024', 'Long Rains 2025', 'Short Rains 2025']
-        
+
+        # Create Fields for farms
         for farm in farms:
-            if farm.farm_type in ['crop', 'mixed']:
-                for season in season_names[:2]:  # Create 2 seasons per farm
-                    if not CropSeason.objects.filter(farm=farm, season_name=season).exists():
+            num_fields = random.randint(1, 3)
+            for i in range(num_fields):
+                field_name = f"{farm.name} - Field {i+1}"
+                if not Field.objects.filter(farm=farm, name=field_name).exists():
+                    Field.objects.create(
+                        farm=farm,
+                        name=field_name,
+                        area_hectares=Decimal(str(random.uniform(0.5, farm.total_area_hectares / num_fields))),
+                        soil_type=random.choice(['sandy', 'clay', 'loamy', 'silty', 'peaty']),
+                        slope_type=random.choice(['flat', 'gentle', 'moderate', 'steep']),
+                        drainage_type=random.choice(['excellent', 'good', 'moderate', 'poor']),
+                        irrigation_type=random.choice(['none', 'drip', 'sprinkler', 'flood']),
+                        current_crop=random.choice(crop_types),
+                        is_active=True
+                    )
+
+        fields = list(Field.objects.all())
+
+        # Create CropTypes if they don't exist
+        for crop_name in crop_types:
+            if not CropType.objects.filter(name=crop_name).exists():
+                CropType.objects.create(
+                    name=crop_name,
+                    category=random.choice(['cereals', 'vegetables', 'fruits', 'legumes', 'tubers']),
+                    growing_season_days=random.randint(60, 180),
+                    water_requirement=random.choice(['low', 'medium', 'high']),
+                    soil_preference=random.choice(['sandy', 'clay', 'loamy', 'silty']),
+                    is_active=True
+                )
+
+        crop_type_objects = list(CropType.objects.all())
+
+        # Create Crop Seasons
+        season_choices = ['long_rain', 'short_rain', 'main', 'off']
+
+        for field in fields:
+            if field.farm.farm_type in ['crop', 'mixed']:
+                for season in season_choices[:2]:  # Create 2 seasons per field
+                    if not CropSeason.objects.filter(field=field, season=season).exists():
                         CropSeason.objects.create(
-                            farm=farm,
-                            season_name=season,
-                            crop_type=random.choice(crop_types),
+                            field=field,
+                            crop_type=random.choice(crop_type_objects),
+                            season=season,
+                            variety=random.choice(['Standard', 'Improved', 'Hybrid', 'Local']),
                             planting_date=date(2024, random.randint(1, 12), random.randint(1, 28)),
                             expected_harvest_date=date(2024, random.randint(6, 12), random.randint(1, 28)),
-                            area_planted_hectares=Decimal(str(random.uniform(0.5, farm.total_area_hectares))),
-                            fertilizer_used_kg=random.randint(50, 500),
-                            irrigation_used=random.choice([True, False]),
-                            status=random.choice(['planted', 'growing', 'harvested', 'failed'])
+                            status=random.choice(['planted', 'growing', 'harvested', 'failed']),
+                            estimated_yield_kg=Decimal(str(random.uniform(1000, 5000))),
+                            notes=f'{season} season for {field.name}'
                         )
                         created['crop_seasons'] += 1
         
