@@ -339,6 +339,9 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
 ]
 
+# Reduce PBKDF2 iterations for Render free tier memory constraints
+PBKDF2_ITERATIONS = 100000  # Default is 180000, reduced for lower memory usage
+
 # ============================================================
 # Internationalization
 # ============================================================
