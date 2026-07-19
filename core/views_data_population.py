@@ -219,23 +219,29 @@ def populate_sample_data(request):
                         created['animals'] += 1
         
         # Create Equipment
-        equipment_types = ['tractor', 'plow', 'harvester', 'irrigation_system', 'sprayer', 'truck']
+        equipment_categories = ['tractor', 'plow', 'harvester', 'irrigation', 'sprayer', 'other']
 
-        for farm in farms:
-            num_equipment = random.randint(1, 5)
-            for i in range(num_equipment):
-                equipment_name = f'{random.choice(equipment_types).title()} {random.randint(1, 100)}'
-                if not Equipment.objects.filter(farm=farm, name=equipment_name).exists():
-                    Equipment.objects.create(
-                        farm=farm,
-                        equipment_type=random.choice(equipment_types),
-                        name=equipment_name,
-                        purchase_date=date(2018 + random.randint(0, 6), random.randint(1, 12), random.randint(1, 28)),
-                        last_maintenance_date=date(2024, random.randint(1, 6), random.randint(1, 28)),
-                        status=random.choice(['operational', 'maintenance', 'broken']),
-                        purchase_price=Decimal(str(random.uniform(50000, 500000)))
-                    )
-                    created['equipment'] += 1
+        for user in users:
+            if user.user_type in ['farmer', 'equipment_operator']:
+                num_equipment = random.randint(1, 3)
+                for i in range(num_equipment):
+                    equipment_name = f'{random.choice(equipment_categories).title()} {random.randint(1, 100)}'
+                    if not Equipment.objects.filter(owner=user, name=equipment_name).exists():
+                        Equipment.objects.create(
+                            owner=user,
+                            category=random.choice(equipment_categories),
+                            name=equipment_name,
+                            description=f'{equipment_name} available for rent',
+                            daily_rate=Decimal(str(random.uniform(50, 500))),
+                            hourly_rate=Decimal(str(random.uniform(10, 50))),
+                            deposit_amount=Decimal(str(random.uniform(100, 1000))),
+                            status=random.choice(['available', 'maintenance', 'broken']),
+                            location=random.choice(['Harare', 'Bulawayo', 'Mutare', 'Gweru', 'Masvingo']),
+                            latitude=Decimal(str(random.uniform(-22.5, -15.5))),
+                            longitude=Decimal(str(random.uniform(25.0, 33.0))),
+                            is_verified=random.choice([True, False])
+                        )
+                        created['equipment'] += 1
 
         # Create Assets (personal assets for users)
         asset_types = ['tractor', 'harvester', 'planter', 'sprayer', 'plow', 'cultivator', 'trailer', 'irrigation', 'vehicle', 'tool', 'machinery', 'other']
