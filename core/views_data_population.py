@@ -135,10 +135,12 @@ def populate_sample_data(request):
             for i in range(num_fields):
                 field_name = f"{farm.name} - Field {i+1}"
                 if not Field.objects.filter(farm=farm, name=field_name).exists():
+                    # Calculate area using Decimal operations
+                    field_area = farm.total_area_hectares / Decimal(num_fields)
                     Field.objects.create(
                         farm=farm,
                         name=field_name,
-                        area_hectares=Decimal(str(random.uniform(0.5, farm.total_area_hectares / num_fields))),
+                        area_hectares=field_area,
                         soil_type=random.choice(['sandy', 'clay', 'loamy', 'silty', 'peaty']),
                         slope_type=random.choice(['flat', 'gentle', 'moderate', 'steep']),
                         drainage_type=random.choice(['excellent', 'good', 'moderate', 'poor']),
