@@ -491,8 +491,11 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
 # Production: Use SendGrid API
 if not DEBUG:
-    # Production: Use console backend to prevent SMTP connection timeouts
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    # Production: Use SendGrid API
+    EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
+    SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
+    SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@farmwise.com')
 else:
     # Development: Use custom SMTP backend that handles SSL certificate issues
     EMAIL_BACKEND = 'core.backends.DevelopmentSMTPBackend'
