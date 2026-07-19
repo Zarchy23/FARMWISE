@@ -156,10 +156,10 @@ def populate_sample_data(request):
             if not CropType.objects.filter(name=crop_name).exists():
                 CropType.objects.create(
                     name=crop_name,
-                    category=random.choice(['cereals', 'vegetables', 'fruits', 'legumes', 'tubers']),
-                    growing_season_days=random.randint(60, 180),
-                    water_requirement=random.choice(['low', 'medium', 'high']),
-                    soil_preference=random.choice(['sandy', 'clay', 'loamy', 'silty']),
+                    category=random.choice(['cereal', 'vegetable', 'fruit', 'legume', 'tuber']),
+                    growing_days=random.randint(60, 180),
+                    water_requirement_mm=random.randint(200, 800),
+                    expected_yield_kg_per_ha=Decimal(str(random.uniform(1000, 5000))),
                     is_active=True
                 )
 
