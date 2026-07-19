@@ -10,7 +10,7 @@ from django.utils import timezone
 from datetime import timedelta, date
 from decimal import Decimal
 import random
-from core.models import User, Farm, CropSeason, Animal, Equipment, Cooperative, Asset, Field, CropType
+from core.models import User, Farm, CropSeason, Animal, Equipment, Cooperative, Asset, Field, CropType, AnimalType
 import logging
 
 logger = logging.getLogger(__name__)
@@ -184,23 +184,35 @@ def populate_sample_data(request):
                             notes=f'{season} season for {field.name}'
                         )
                         created['crop_seasons'] += 1
-        
+
+        # Create AnimalTypes if they don't exist
+        animal_species = ['cattle', 'goat', 'sheep', 'chicken', 'pig']
+        for species in animal_species:
+            if not AnimalType.objects.filter(species=species, breed='Standard').exists():
+                AnimalType.objects.create(
+                    species=species,
+                    breed='Standard',
+                    avg_lifespan_years=random.randint(5, 15),
+                    gestation_days=random.randint(100, 300),
+                    market_price=Decimal(str(random.uniform(100, 1000))),
+                    is_active=True
+                )
+
+        animal_type_objects = list(AnimalType.objects.all())
+
         # Create Animals
-        animal_types = ['cattle', 'goat', 'sheep', 'chicken', 'pig']
-        
         for farm in farms:
             if farm.farm_type in ['livestock', 'mixed', 'dairy', 'poultry']:
                 num_animals = random.randint(5, 50)
                 for i in range(num_animals):
                     Animal.objects.create(
                         farm=farm,
-                        animal_type=random.choice(animal_types),
+                        animal_type=random.choice(animal_type_objects),
                         tag_number=f'AN{random.randint(10000, 99999)}',
-                        breed=random.choice(['indigenous', 'hybrid', 'exotic']),
-                        birth_date=date(2020 + random.randint(0, 4), random.randint(1, 12), random.randint(1, 28)),
                         gender=random.choice(['male', 'female']),
-                        health_status=random.choice(['healthy', 'sick', 'recovering']),
-                        weight_kg=random.randint(20, 500)
+                        birth_date=date(2020 + random.randint(0, 4), random.randint(1, 12), random.randint(1, 28)),
+                        weight_kg=Decimal(str(random.uniform(20, 500))),
+                        status=random.choice(['alive', 'sold', 'dead'])
                     )
                     created['animals'] += 1
         
