@@ -108,6 +108,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'core.middleware.AuditMiddleware',  # Log user actions for audit trail
 ]
 
 ROOT_URLCONF = 'farmwise.urls'
