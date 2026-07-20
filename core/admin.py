@@ -68,16 +68,21 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ('user', 'action', 'model_name', 'object_id', 'created_at')
-    list_filter = ('action', 'model_name', 'created_at')
-    search_fields = ('user__username', 'model_name', 'object_id')
-    readonly_fields = ('user', 'action', 'model_name', 'object_id', 'details', 'ip_address', 'user_agent', 'created_at')
-    
+    list_display = ('user', 'action', 'model_name', 'object_id', 'severity', 'created_at')
+    list_filter = ('action', 'model_name', 'severity', 'created_at')
+    search_fields = ('user__username', 'model_name', 'object_id', 'details')
+    readonly_fields = ('user', 'action', 'model_name', 'object_id', 'details', 'ip_address', 'user_agent', 'is_activity', 'severity', 'farm', 'created_at')
+    ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
+
     def has_add_permission(self, request):
         return False
-    
+
     def has_change_permission(self, request, obj=None):
         return False
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
 
 
 # ============================================================
