@@ -60,7 +60,7 @@ def supermarket_profile_create(request):
     # Check if profile already exists
     try:
         supermarket = request.user.supermarket_profile
-        return redirect('core:supermarket_profile_edit')
+        return redirect('/supermarket/profile/edit/')
     except Supermarket.DoesNotExist:
         pass
     
@@ -71,7 +71,7 @@ def supermarket_profile_create(request):
             supermarket.owner = request.user
             supermarket.save()
             messages.success(request, f'Supermarket profile "{supermarket.shop_name}" created successfully!')
-            return redirect('core:supermarket_profile')
+            return redirect('/supermarket/profile/')
     else:
         form = SupermarketForm()
     
@@ -92,7 +92,7 @@ def supermarket_profile_edit(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'Supermarket profile updated successfully!')
-            return redirect('core:supermarket_profile')
+            return redirect('/supermarket/profile/')
     else:
         form = SupermarketForm(instance=supermarket)
     
@@ -114,7 +114,7 @@ def supermarket_products_list(request):
         supermarket = request.user.supermarket_profile
     except Supermarket.DoesNotExist:
         messages.error(request, 'Please complete your supermarket profile first.')
-        return redirect('core:supermarket_profile_create')
+        return redirect('/supermarket/profile/create/')
     
     # Get all products listed by this supermarket
     products = ProductListing.objects.filter(seller__owner=request.user).order_by('-created_at')
@@ -162,7 +162,7 @@ def supermarket_product_add(request):
         supermarket = request.user.supermarket_profile
     except Supermarket.DoesNotExist:
         messages.error(request, 'Please complete your supermarket profile first.')
-        return redirect('core:supermarket_profile_create')
+        return redirect('/supermarket/profile/create/')
     
     # Supermarkets need a farm to create listings - create a default farm
     from .models import Farm
@@ -300,7 +300,7 @@ def supermarket_dashboard(request):
     try:
         supermarket = request.user.supermarket_profile
     except Supermarket.DoesNotExist:
-        return redirect('core:supermarket_profile_create')
+        return redirect('/supermarket/profile/create/')
     
     # Get ALL products (including out of stock)
     all_products = ProductListing.objects.filter(seller__owner=request.user).order_by('-created_at')
@@ -652,3 +652,56 @@ def admin_inventory_alerts(request):
     }
     
     return render(request, 'supermarket/admin_inventory_alerts.html', context)
+
+
+@login_required
+def admin_supermarket_approvals(request):
+    """Admin interface to approve/reject supermarket profiles"""
+    if request.user.user_type != 'admin' and not request.user.is_superuser:
+        messages.error(request, 'This page is only for administrators.')
+        return redirect('core:dashboard')
+    
+    # Get pending supermarket profiles
+    pending_supermarkets = Supermarket.objects.filter(is_verified=False, is_active=True).order_by('-created_at')
+    
+    # Get all supermarkets with stats
+    all_supermarkets = Supermarket.objects.all().order_by('-created_at')
+    
+    context = {
+        'pending_supermarkets': pending_supermarkets,
+        'all_supermarkets': all_supermarkets,
+        'total_pending': pending_supermarkets.count(),
+        'total_verified': Supermarket.objects.filter(is_verified=True).count(),
+    }
+    
+    return render(request, 'supermarket/admin_approvals.html', context)
+
+
+@login_required
+def admin_approve_supermarket(request, pk):
+    """Approve a supermarket profile"""
+    if request.user.user_type != 'admin' and not request.user.is_superuser:
+        messages.error(request, 'This action is only for administrators.')
+        return redirect('core:dashboard')
+    
+    supermarket = get_object_or_404(Supermarket, pk=pk)
+    supermarket.is_verified = True
+    supermarket.save()
+    
+    messages.success(request, f'Supermarket "{supermarket.shop_name}" has been approved successfully!')
+    return redirect('/admin/supermarket/approvals/')
+
+
+@login_required
+def admin_reject_supermarket(request, pk):
+    """Reject a supermarket profile"""
+    if request.user.user_type != 'admin' and not request.user.is_superuser:
+        messages.error(request, 'This action is only for administrators.')
+        return redirect('core:dashboard')
+    
+    supermarket = get_object_or_404(Supermarket, pk=pk)
+    supermarket.is_active = False
+    supermarket.save()
+    
+    messages.warning(request, f'Supermarket "{supermarket.shop_name}" has been rejected and deactivated.')
+    return redirect('/admin/supermarket/approvals/')

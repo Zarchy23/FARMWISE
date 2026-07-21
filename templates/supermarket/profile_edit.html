@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Supermarket Profile - FarmWise{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Edit Supermarket Profile</h2>
+            
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.shop_name.id_for_label }}" class="form-label">Shop Name</label>
+                            {{ form.shop_name }}
+                            {% if form.shop_name.errors %}
+                                <div class="text-danger">{{ form.shop_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.business_type.id_for_label }}" class="form-label">Business Type</label>
+                            {{ form.business_type }}
+                            {% if form.business_type.errors %}
+                                <div class="text-danger">{{ form.business_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number</label>
+                            {{ form.phone_number }}
+                            {% if form.phone_number.errors %}
+                                <div class="text-danger">{{ form.phone_number.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.physical_address.id_for_label }}" class="form-label">Physical Address</label>
+                            {{ form.physical_address }}
+                            {% if form.physical_address.errors %}
+                                <div class="text-danger">{{ form.physical_address.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.website.id_for_label }}" class="form-label">Website (Optional)</label>
+                            {{ form.website }}
+                            {% if form.website.errors %}
+                                <div class="text-danger">{{ form.website.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Update Profile</button>
+                        <a href="/supermarket/profile/" class="btn btn-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

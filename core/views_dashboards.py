@@ -77,30 +77,19 @@ def offline_dashboard(request):
 
 @login_required
 def market_dashboard(request):
-    """Market dashboard - display market prices and analytics"""
+    """Market dashboard - display marketplace listings and analytics"""
     try:
-        from .models import (
-            MarketPrice, SellerListing, BuyerInquiry, 
-            Commodity, MarketAnalytics
-        )
+        from .models import ProductListing
         
-        # Get market data
-        latest_prices = MarketPrice.objects.select_related('commodity').order_by('-timestamp')[:10]
-        my_listings = SellerListing.objects.filter(seller=request.user).order_by('-created_at')[:5]
-        pending_inquiries = BuyerInquiry.objects.filter(status='pending').count()
-        total_commodities = Commodity.objects.count()
-        
-        # Get price trends
-        market_analytics = MarketAnalytics.objects.filter(
-            user=request.user
-        ).order_by('-created_at')[:5]
+        # Get marketplace data
+        my_listings = ProductListing.objects.filter(seller__owner=request.user).order_by('-created_at')[:5]
+        all_listings = ProductListing.objects.filter(status='active').order_by('-created_at')[:10]
+        total_listings = ProductListing.objects.filter(status='active').count()
         
         context = {
-            'latest_prices': latest_prices,
             'my_listings': my_listings,
-            'pending_inquiries': pending_inquiries,
-            'total_commodities': total_commodities,
-            'market_analytics': market_analytics,
+            'all_listings': all_listings,
+            'total_listings': total_listings,
         }
         
         return render(request, 'market/dashboard.html', context)

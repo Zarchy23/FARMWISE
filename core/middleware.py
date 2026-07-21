@@ -86,12 +86,19 @@ class AuditMiddleware(MiddlewareMixin):
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
     """Log user login"""
+    # Get client IP
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    
     AuditLog.objects.create(
         user=user,
         action='login',
         model_name='User',
         object_id=str(user.id),
-        ip_address=AuditMiddleware()._get_client_ip(request),
+        ip_address=ip,
         user_agent=request.META.get('HTTP_USER_AGENT', ''),
         details={'path': request.path}
     )
@@ -101,12 +108,19 @@ def log_user_login(sender, request, user, **kwargs):
 def log_user_logout(sender, request, user, **kwargs):
     """Log user logout"""
     if user:
+        # Get client IP
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        
         AuditLog.objects.create(
             user=user,
             action='logout',
             model_name='User',
             object_id=str(user.id),
-            ip_address=AuditMiddleware()._get_client_ip(request),
+            ip_address=ip,
             user_agent=request.META.get('HTTP_USER_AGENT', ''),
             details={'path': request.path}
         )

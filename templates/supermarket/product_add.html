@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Add Product - FarmWise Supermarket{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold text-slate-900">
+                        <i class="fas fa-plus-circle text-blue-600 mr-3"></i>Add New Product
+                    </h1>
+                    <p class="text-slate-600 mt-2 text-lg">List a new product for sale in the marketplace</p>
+                </div>
+                <a href="/supermarket/dashboard/" class="inline-flex items-center px-6 py-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold transition shadow-sm">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Form Card -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
+                <h2 class="text-2xl font-bold text-white">Product Information</h2>
+                <p class="text-blue-100 mt-1">Fill in the details below to list your product</p>
+            </div>
+            
+            <div class="p-8">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Product Name -->
+                        <div class="md:col-span-2">
+                            <label for="{{ form.product_name.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-2">Product Name</label>
+                            {{ form.product_name }}
+                            {% if form.product_name.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.product_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Category -->
+                        <div>
+                            <label for="{{ form.category.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-2">Category</label>
+                            {{ form.category }}
+                            {% if form.category.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.category.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Unit -->
+                        <div>
+                            <label for="{{ form.unit.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-2">Unit</label>
+                            {{ form.unit }}
+                            {% if form.unit.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.unit.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Quantity -->
+                        <div>
+                            <label for="{{ form.quantity.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-2">Quantity</label>
+                            {{ form.quantity }}
+                            {% if form.quantity.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.quantity.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Price -->
+                        <div>
+                            <label for="{{ form.price_per_unit.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-2">Price per Unit ($)</label>
+                            {{ form.price_per_unit }}
+                            {% if form.price_per_unit.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.price_per_unit.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Description -->
+                        <div class="md:col-span-2">
+                            <label for="{{ form.description.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-2">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Images -->
+                        <div class="md:col-span-2">
+                            <label for="{{ form.images.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-2">Product Images</label>
+                            {{ form.images }}
+                            {% if form.images.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.images.errors }}</div>
+                            {% endif %}
+                            <p class="text-xs text-slate-500 mt-1">Upload clear images of your product (optional)</p>
+                        </div>
+                        
+                        <!-- Expiry Date -->
+                        <div>
+                            <label for="{{ form.expiry_date.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-2">Expiry Date</label>
+                            {{ form.expiry_date }}
+                            {% if form.expiry_date.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.expiry_date.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Delivery Available -->
+                        <div class="flex items-center">
+                            <div class="flex items-center h-5">
+                                {{ form.delivery_available }}
+                            </div>
+                            <div class="ml-3">
+                                <label for="{{ form.delivery_available.id_for_label }}" class="text-sm font-semibold text-slate-700">Delivery Available</label>
+                            </div>
+                            {% if form.delivery_available.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.delivery_available.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Delivery Fee -->
+                        <div>
+                            <label for="{{ form.delivery_fee.id_for_label }}" class="block text-sm font-semibold text-slate-700 mb-2">Delivery Fee ($)</label>
+                            {{ form.delivery_fee }}
+                            {% if form.delivery_fee.errors %}
+                                <div class="text-red-600 text-sm mt-1">{{ form.delivery_fee.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="mt-8 flex items-center gap-4">
+                        <button type="submit" class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg">
+                            <i class="fas fa-plus"></i> Add Product
+                        </button>
+                        <a href="/supermarket/dashboard/" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-900 px-6 py-3 rounded-lg font-semibold transition">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="url"],
+textarea,
+select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e2e8f0;
+}
+</style>
+{% endblock %}

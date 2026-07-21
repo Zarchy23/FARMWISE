@@ -10,7 +10,7 @@ from django.db.models import Q, Count
 from django.utils import timezone
 from datetime import timedelta
 
-from .models import PestReport, Notification, User, Farm, Field
+from .models import PestReport, Notification, User, Farm, Field, PestVerificationRequest
 from .forms_pest_verification import (
     PestReportApprovalForm,
     PestReportRejectionForm,
@@ -38,18 +38,33 @@ def send_notification(user, title, message, notification_type='info', link=''):
 
 @login_required
 def agronomist_pest_dashboard(request):
-    """Agronomist dashboard for reviewing pest detection reports - ALL agronomists see all reports"""
+    """Agronomist dashboard for reviewing pest detection reports - shows verification requests"""
     
     # Check if user is agronomist
     if not is_agronomist(request.user):
         messages.error(request, 'Only agronomists can access this dashboard.')
         return redirect('core:dashboard')
     
-    # Get ALL pest reports from ALL farms (no farm assignment restriction)
-    # This allows any agronomist to see all pest detections and decisions made by others
-    reports_query = PestReport.objects.all().select_related(
+    # Get pest reports that have verification requests for this agronomist
+    # OR show all reports if no specific requests exist
+    verification_requests = PestVerificationRequest.objects.filter(
+        agronomist=request.user,
+        status='pending'
+    ).select_related('pest_report', 'pest_report__farmer', 'pest_report__farm')
+    
+    # Get the pest reports from verification requests
+    report_ids = [vr.pest_report.id for vr in verification_requests]
+    
+    # Start with reports that have verification requests for this agronomist
+    reports_query = PestReport.objects.filter(id__in=report_ids).select_related(
         'farmer', 'farm', 'field', 'crop', 'verified_by'
     )
+    
+    # If no verification requests, show all pending reports
+    if not report_ids:
+        reports_query = PestReport.objects.all().select_related(
+            'farmer', 'farm', 'field', 'crop', 'verified_by'
+        )
     
     # Apply filters
     filter_form = AgronomistDashboardFilterForm(request.GET, agronomist_user=request.user)
@@ -90,7 +105,7 @@ def agronomist_pest_dashboard(request):
         reports_query = reports_query.filter(farm_id=farm_filter)
     
     # Order by priority: pending first, then by severity and date
-    reports_query = reports_query.order_by('-agronomist_verified', '-created_at')
+    reports_query = reports_query.order_by('-created_at')
     
     # Count statistics
     stats = {
@@ -100,6 +115,7 @@ def agronomist_pest_dashboard(request):
         'needs_revision': reports_query.filter(status='needs_revision').count(),
         'total': reports_query.count(),
         'severe': reports_query.filter(severity='severe').count(),
+        'my_requests': verification_requests.count(),
     }
     
     # Pagination
@@ -108,11 +124,22 @@ def agronomist_pest_dashboard(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    # Annotate reports with verification request info
+    reports_with_requests = []
+    for report in page_obj.object_list:
+        vr = verification_requests.filter(pest_report=report).first()
+        reports_with_requests.append({
+            'report': report,
+            'verification_request': vr,
+            'has_request': vr is not None,
+        })
+    
     context = {
         'page_obj': page_obj,
-        'reports': page_obj.object_list,
+        'reports_with_requests': reports_with_requests,
         'filter_form': filter_form,
         'stats': stats,
+        'showing_verification_requests': bool(report_ids),
     }
     
     return render(request, 'pest/agronomist_dashboard.html', context)
@@ -128,6 +155,13 @@ def pest_verification_detail(request, pk):
     if not is_agronomist(request.user):
         messages.error(request, 'Only agronomists can access this.')
         return redirect('core:dashboard')
+    
+    # Check if this agronomist has a pending verification request for this report
+    has_pending_request = PestVerificationRequest.objects.filter(
+        pest_report=report,
+        agronomist=request.user,
+        status='pending'
+    ).exists()
     
     # Any agronomist can view any report - no farm assignment restriction
     if request.method == 'POST':
@@ -152,12 +186,16 @@ def pest_verification_detail(request, pk):
     rejection_form = PestReportRejectionForm()
     revision_form = PestReportRevisionRequestForm()
     
+    # Allow editing if report is pending OR if this agronomist has a pending verification request
+    can_edit = report.status == 'pending' or has_pending_request
+    
     context = {
         'report': report,
         'approval_form': approval_form,
         'rejection_form': rejection_form,
         'revision_form': revision_form,
-        'can_edit': report.status == 'pending',
+        'can_edit': can_edit,
+        'has_pending_request': has_pending_request,
     }
     
     return render(request, 'pest/verification_detail.html', context)
@@ -186,6 +224,17 @@ def approve_pest_report(request, report, form):
     
     report.updated_at = timezone.now()
     report.save()
+    
+    # Update verification requests for this agronomist
+    PestVerificationRequest.objects.filter(
+        pest_report=report,
+        agronomist=request.user,
+        status='pending'
+    ).update(
+        status='completed',
+        agronomist_response=agronomist_notes or 'Approved',
+        responded_at=timezone.now()
+    )
     
     # Send notification to farmer
     notification_message = f"""
@@ -226,6 +275,17 @@ def reject_pest_report(request, report, form):
     report.verified_by = request.user
     report.updated_at = timezone.now()
     report.save()
+    
+    # Update verification requests for this agronomist
+    PestVerificationRequest.objects.filter(
+        pest_report=report,
+        agronomist=request.user,
+        status='pending'
+    ).update(
+        status='declined',
+        agronomist_response=f"Rejected: {rejection_reason}",
+        responded_at=timezone.now()
+    )
     
     # Send notification to farmer
     notification_message = f"""

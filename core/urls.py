@@ -6,8 +6,8 @@ from django.views.generic import RedirectView
 from . import views
 from . import views_pest_verification
 from . import views_dashboards
-from . import views_data_population
 from . import views_yield_prediction
+from . import views_supermarket
 
 # API imports have been removed - using HTML templates instead
 # from .api import views_market
@@ -119,6 +119,7 @@ urlpatterns = [
     path('pest-detection/upload/', views.pest_upload, name='pest_upload'),
     path('pest-detection/history/', views.pest_history, name='pest_history'),
     path('pest-detection/<int:pk>/', views.pest_detail, name='pest_detail'),
+    path('pest-detection/<int:report_id>/send-verification/', views.send_verification_request, name='send_verification_request'),
     
     # ============================================================
     # PEST DETECTION VERIFICATION (AGRONOMIST)
@@ -319,7 +320,8 @@ urlpatterns = [
     # ============================================================
     # SUPERMARKET MANAGEMENT
     # ============================================================
-    path('supermarket/', include('core.urls_supermarket')),
+    path('supermarket/', include(('core.urls_supermarket', 'supermarket'))),
+    path('admin/supermarket/approvals/', views_supermarket.admin_supermarket_approvals, name='admin_supermarket_approvals'),
     
     # ============================================================
     # PAYMENT SYSTEM (Phase 3.2)
@@ -338,13 +340,6 @@ urlpatterns = [
     path('ml/predict/pest/', views.ml_predict_pest, name='ml_predict_pest'),
     path('ml/predict/yield/', views.ml_predict_yield, name='ml_predict_yield'),
     path('ml/status/', views.ml_model_status, name='ml_model_status'),
-    
-    # ============================================================
-    # DATA POPULATION (for environments without shell access)
-    # ============================================================
-    path('admin/populate-data/', views_data_population.populate_sample_data, name='populate_sample_data'),
-    path('admin/clear-data/', views_data_population.clear_sample_data, name='clear_sample_data'),
-    path('admin/data-population/', views_data_population.data_population_dashboard, name='data_population_dashboard'),
     
     # ============================================================
     # LEGACY API ENDPOINTS (for AJAX/JavaScript)

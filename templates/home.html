@@ -24,9 +24,12 @@
                 <a href="{% url 'core:dashboard' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium">
                     <i class="ri-folder-open-line mr-1"></i>Dashboard
                 </a>
-                <a href="{% url 'logout' %}" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition text-sm font-medium">
-                    <i class="ri-logout-box-line mr-1"></i>Logout
-                </a>
+                <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition text-sm font-medium">
+                        <i class="ri-logout-box-line mr-1"></i>Logout
+                    </button>
+                </form>
             {% else %}
                 <a href="{% url 'core:register' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium">
                     <i class="ri-user-add-line mr-1"></i>Register

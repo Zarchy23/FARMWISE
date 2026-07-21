@@ -91,7 +91,7 @@
                     <h1 class="section-title mb-2">🏪 Market Dashboard</h1>
                     <p class="text-gray-600 text-lg">Monitor prices, listings, and inquiries</p>
                 </div>
-                <a href="{% url 'core:market' %}" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                <a href="{% url 'core:marketplace' %}" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all">
                     <i class="ri-store-line"></i> Market
                 </a>
             </div>
@@ -99,16 +99,16 @@
 
         <!-- Status Overview -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <!-- Latest Prices -->
+            <!-- Total Listings -->
             <div class="stat-card p-6 rounded-2xl">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Latest Prices</p>
-                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ latest_prices|length }}</p>
-                        <p class="text-xs text-gray-500 mt-2">Commodity prices</p>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Total Listings</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ total_listings }}</p>
+                        <p class="text-xs text-gray-500 mt-2">Active marketplace</p>
                     </div>
                     <div class="icon-badge bg-gradient-to-br from-green-100 to-green-50">
-                        <i class="ri-stock-line text-green-600"></i>
+                        <i class="ri-store-line text-green-600"></i>
                     </div>
                 </div>
             </div>
@@ -119,7 +119,7 @@
                     <div>
                         <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">My Listings</p>
                         <p class="text-4xl font-bold text-gray-800 mt-3">{{ my_listings|length }}</p>
-                        <p class="text-xs text-gray-500 mt-2">Active listings</p>
+                        <p class="text-xs text-gray-500 mt-2">Your products</p>
                     </div>
                     <div class="icon-badge bg-gradient-to-br from-blue-100 to-blue-50">
                         <i class="ri-list-check-line text-blue-600"></i>
@@ -127,30 +127,30 @@
                 </div>
             </div>
 
-            <!-- Pending Inquiries -->
+            <!-- Recent Activity -->
             <div class="stat-card p-6 rounded-2xl">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Pending Inquiries</p>
-                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ pending_inquiries }}</p>
-                        <p class="text-xs text-gray-500 mt-2">Awaiting response</p>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Recent Activity</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ all_listings|length }}</p>
+                        <p class="text-xs text-gray-500 mt-2">New listings</p>
                     </div>
                     <div class="icon-badge bg-gradient-to-br from-orange-100 to-orange-50">
-                        <i class="ri-mail-line text-orange-600"></i>
+                        <i class="ri-time-line text-orange-600"></i>
                     </div>
                 </div>
             </div>
 
-            <!-- Commodities -->
+            <!-- Marketplace Status -->
             <div class="stat-card p-6 rounded-2xl">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Commodities</p>
-                        <p class="text-4xl font-bold text-gray-800 mt-3">{{ total_commodities }}</p>
-                        <p class="text-xs text-gray-500 mt-2">Available types</p>
+                        <p class="text-gray-600 text-sm font-semibold uppercase tracking-wide">Marketplace</p>
+                        <p class="text-4xl font-bold text-gray-800 mt-3">Active</p>
+                        <p class="text-xs text-gray-500 mt-2">System status</p>
                     </div>
                     <div class="icon-badge bg-gradient-to-br from-purple-100 to-purple-50">
-                        <i class="ri-box-line text-purple-600"></i>
+                        <i class="ri-check-line text-purple-600"></i>
                     </div>
                 </div>
             </div>

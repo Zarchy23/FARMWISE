@@ -4,36 +4,121 @@
 {% block title %}Supermarket Profile - FarmWise{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8">
-            <h2>Supermarket Profile</h2>
-            
-            {% if supermarket %}
-                <div class="card">
-                    <div class="card-body">
-                        <h5>{{ supermarket.shop_name }}</h5>
-                        <p><strong>Business Type:</strong> {{ supermarket.get_business_type_display }}</p>
-                        <p><strong>Phone:</strong> {{ supermarket.phone_number }}</p>
-                        <p><strong>Location:</strong> {{ supermarket.physical_address }}</p>
-                        <p><strong>Website:</strong> {% if supermarket.website %}<a href="{{ supermarket.website }}">{{ supermarket.website }}</a>{% else %}Not provided{% endif %}</p>
-                        <p><strong>Status:</strong> {% if supermarket.is_verified %}<span class="badge bg-success">Verified</span>{% else %}<span class="badge bg-warning">Not Verified</span>{% endif %}</p>
-                        
-                        <a href="{% url 'supermarket:profile_edit' %}" class="btn btn-primary">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold text-slate-900">
+                        <i class="fas fa-store text-blue-600 mr-3"></i>Supermarket Profile
+                    </h1>
+                    <p class="text-slate-600 mt-2 text-lg">Manage your supermarket business information</p>
+                </div>
+                <a href="/supermarket/dashboard/" class="inline-flex items-center px-6 py-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold transition shadow-sm">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        {% if supermarket %}
+            <!-- Profile Card -->
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-3xl font-bold text-white">{{ supermarket.shop_name }}</h2>
+                            <p class="text-blue-100 mt-1">{{ supermarket.get_business_type_display }}</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            {% if supermarket.is_verified %}
+                                <span class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full font-semibold">
+                                    <i class="fas fa-check-circle"></i> Verified
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-full font-semibold">
+                                    <i class="fas fa-clock"></i> Pending Verification
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Contact Information -->
+                        <div class="bg-slate-50 rounded-xl p-6">
+                            <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center">
+                                <i class="fas fa-phone text-blue-600 mr-2"></i>Contact Information
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-sm text-slate-600 font-semibold">Phone Number</p>
+                                    <p class="text-slate-900 font-medium">{{ supermarket.phone_number }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-slate-600 font-semibold">Physical Address</p>
+                                    <p class="text-slate-900 font-medium">{{ supermarket.physical_address }}</p>
+                                </div>
+                                {% if supermarket.website %}
+                                <div>
+                                    <p class="text-sm text-slate-600 font-semibold">Website</p>
+                                    <a href="{{ supermarket.website }}" target="_blank" class="text-blue-600 font-medium hover:underline">{{ supermarket.website }}</a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Business Details -->
+                        <div class="bg-slate-50 rounded-xl p-6">
+                            <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center">
+                                <i class="fas fa-building text-blue-600 mr-2"></i>Business Details
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-sm text-slate-600 font-semibold">Business Type</p>
+                                    <p class="text-slate-900 font-medium">{{ supermarket.get_business_type_display }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-slate-600 font-semibold">Profile Created</p>
+                                    <p class="text-slate-900 font-medium">{{ supermarket.created_at|date:"F d, Y" }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-slate-600 font-semibold">Last Updated</p>
+                                    <p class="text-slate-900 font-medium">{{ supermarket.updated_at|date:"F d, Y" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="mt-8 flex items-center gap-4">
+                        <a href="/supermarket/profile/edit/" class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg">
                             <i class="fas fa-edit"></i> Edit Profile
                         </a>
-                        <a href="{% url 'supermarket:dashboard' %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        <a href="/supermarket/dashboard/" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-900 px-6 py-3 rounded-lg font-semibold transition">
+                            <i class="fas fa-tachometer-alt"></i> Go to Dashboard
                         </a>
                     </div>
                 </div>
-            {% else %}
-                <div class="alert alert-info">
-                    You haven't created your supermarket profile yet. 
-                    <a href="{% url 'supermarket:profile_create' %}" class="btn btn-primary btn-sm">Create Profile</a>
+            </div>
+        {% else %}
+            <!-- No Profile State -->
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-12 text-center">
+                <div class="mb-6">
+                    <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-blue-50">
+                        <i class="fas fa-store-slash text-blue-600 text-4xl"></i>
+                    </div>
                 </div>
-            {% endif %}
-        </div>
+                <h2 class="text-3xl font-bold text-slate-900 mb-3">No Supermarket Profile Yet</h2>
+                <p class="text-slate-600 mb-8 max-w-md mx-auto text-lg">
+                    You haven't created your supermarket profile yet. Create your profile to start listing products and managing your business on FarmWise.
+                </p>
+                <a href="/supermarket/profile/create/" class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-4 rounded-lg font-semibold transition shadow-md hover:shadow-lg text-lg">
+                    <i class="fas fa-plus-circle"></i> Create Your Profile
+                </a>
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

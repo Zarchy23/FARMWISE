@@ -1262,6 +1262,37 @@ class PestReport(models.Model):
         return f"{self.ai_diagnosis} - {self.confidence}% - {self.created_at.date()}"
 
 
+class PestVerificationRequest(models.Model):
+    """Track verification requests sent to agronomists for pest reports"""
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('declined', 'Declined'),
+        ('completed', 'Completed'),
+    ]
+    
+    pest_report = models.ForeignKey(PestReport, on_delete=models.CASCADE, related_name='verification_requests')
+    agronomist = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='pest_verification_requests', limit_choices_to={'user_type': 'agronomist'})
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    farmer_notes = models.TextField(blank=True, help_text='Additional notes from farmer')
+    agronomist_response = models.TextField(blank=True, help_text='Response from agronomist')
+    sent_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'pest_verification_requests'
+        indexes = [
+            models.Index(fields=['pest_report', 'status']),
+            models.Index(fields=['agronomist', 'status']),
+            models.Index(fields=['sent_at']),
+        ]
+        ordering = ['-sent_at']
+    
+    def __str__(self):
+        return f"Verification request for {self.pest_report.ai_diagnosis} to {self.agronomist.username}"
+
+
 # ============================================================
 # SECTION 8: WEATHER & IRRIGATION
 # ============================================================

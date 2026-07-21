@@ -172,7 +172,7 @@
                         </div>
                         <div>
                             <h2 class="text-xl font-bold text-gray-800">Pest Detection Reports</h2>
-                            <p class="text-sm text-gray-500">{% if reports %}{{ reports|length }} report{{ reports|length|pluralize }} awaiting action{% else %}No reports to review{% endif %}</p>
+                            <p class="text-sm text-gray-500">{% if reports_with_requests %}{{ reports_with_requests|length }} report{{ reports_with_requests|length|pluralize }} awaiting action{% else %}No reports to review{% endif %}</p>
                         </div>
                     </div>
                 </div>
@@ -180,7 +180,7 @@
 
             <!-- Content -->
             <div class="overflow-x-auto">
-                {% if reports %}
+                {% if reports_with_requests %}
                     <table class="w-full">
                         <thead class="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                             <tr class="text-left text-sm font-bold text-gray-700">
@@ -194,7 +194,8 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
-                            {% for report in reports %}
+                            {% for item in reports_with_requests %}
+                                {% with report=item.report verification_request=item.verification_request has_request=item.has_request %}
                                 <tr class="hover:bg-gradient-to-r hover:from-blue-50 hover:to-emerald-50 transition-colors group">
                                     <!-- Farmer Info -->
                                     <td class="px-6 py-4">
@@ -206,6 +207,11 @@
                                                 <p class="font-semibold text-gray-900">{{ report.farmer.get_full_name }}</p>
                                                 <p class="text-xs text-gray-500">{{ report.farm.name }}{% if report.field %} • {{ report.field.name }}{% endif %}</p>
                                                 <p class="text-xs text-gray-400">{{ report.farmer.phone_number }}</p>
+                                                {% if has_request %}
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 mt-1">
+                                                    <i class="ri-mail-send-line"></i> Verification Request
+                                                </span>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </td>
@@ -303,6 +309,7 @@
                                         </a>
                                     </td>
                                 </tr>
+                                {% endwith %}
                             {% endfor %}
                         </tbody>
                     </table>

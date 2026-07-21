@@ -33,4 +33,9 @@ urlpatterns = [
     path('admin/all-supermarkets/', views_supermarket.admin_all_supermarkets, name='admin_all_supermarkets'),
     path('admin/sales-analytics/', views_supermarket.admin_sales_analytics, name='admin_sales_analytics'),
     path('admin/inventory-alerts/', views_supermarket.admin_inventory_alerts, name='admin_inventory_alerts'),
+    
+    # Admin Approvals (Admin Only)
+    path('admin/approvals/', views_supermarket.admin_supermarket_approvals, name='admin_approvals'),
+    path('admin/approve/<int:pk>/', views_supermarket.admin_approve_supermarket, name='admin_approve'),
+    path('admin/reject/<int:pk>/', views_supermarket.admin_reject_supermarket, name='admin_reject'),
 ]

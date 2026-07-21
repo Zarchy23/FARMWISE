@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Supermarket Approvals - FarmWise Admin{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold text-slate-900">
+                        <i class="fas fa-check-double text-blue-600 mr-3"></i>Supermarket Approvals
+                    </h1>
+                    <p class="text-slate-600 mt-2 text-lg">Review and approve supermarket registration requests</p>
+                </div>
+                <a href="/admin/" class="inline-flex items-center px-6 py-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold transition shadow-sm">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Admin
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-600 font-semibold uppercase tracking-wide">Pending Approval</p>
+                        <p class="text-4xl font-bold text-orange-600 mt-2">{{ total_pending }}</p>
+                    </div>
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-orange-100">
+                        <i class="fas fa-clock text-orange-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-600 font-semibold uppercase tracking-wide">Verified Supermarkets</p>
+                        <p class="text-4xl font-bold text-green-600 mt-2">{{ total_verified }}</p>
+                    </div>
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100">
+                        <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-600 font-semibold uppercase tracking-wide">Total Supermarkets</p>
+                        <p class="text-4xl font-bold text-blue-600 mt-2">{{ all_supermarkets.count }}</p>
+                    </div>
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-blue-100">
+                        <i class="fas fa-store text-blue-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Approvals Section -->
+        {% if pending_supermarkets %}
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden mb-8">
+            <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6">
+                <h2 class="text-2xl font-bold text-white flex items-center">
+                    <i class="fas fa-hourglass-half mr-3"></i>Pending Approvals
+                </h2>
+            </div>
+            
+            <div class="p-6">
+                <div class="space-y-4">
+                    {% for supermarket in pending_supermarkets %}
+                    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 hover:border-orange-300 transition">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <h3 class="text-xl font-bold text-slate-900">{{ supermarket.shop_name }}</h3>
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-semibold">
+                                        <i class="fas fa-clock"></i> Pending
+                                    </span>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p class="text-slate-600 font-semibold">Owner</p>
+                                        <p class="text-slate-900">{{ supermarket.owner.get_full_name|default:supermarket.owner.username }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-600 font-semibold">Business Type</p>
+                                        <p class="text-slate-900">{{ supermarket.get_business_type_display }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-600 font-semibold">Phone</p>
+                                        <p class="text-slate-900">{{ supermarket.phone_number }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-600 font-semibold">Address</p>
+                                        <p class="text-slate-900">{{ supermarket.physical_address }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-600 font-semibold">Registration Number</p>
+                                        <p class="text-slate-900">{{ supermarket.registration_number|default:'Not provided' }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-600 font-semibold">Submitted</p>
+                                        <p class="text-slate-900">{{ supermarket.created_at|date:"F d, Y - H:i" }}</p>
+                                    </div>
+                                </div>
+                                
+                                {% if supermarket.description %}
+                                <div class="mt-4">
+                                    <p class="text-slate-600 font-semibold text-sm">Description</p>
+                                    <p class="text-slate-900 text-sm">{{ supermarket.description }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="flex flex-col gap-2 ml-4">
+                                <form method="post" action="/supermarket/admin/approve/{{ supermarket.pk }}/">
+                                    {% csrf_token %}
+                                    <button type="submit" class="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg">
+                                        <i class="fas fa-check"></i> Approve
+                                    </button>
+                                </form>
+                                <form method="post" action="/supermarket/admin/reject/{{ supermarket.pk }}/">
+                                    {% csrf_token %}
+                                    <button type="submit" class="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg">
+                                        <i class="fas fa-times"></i> Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-12 text-center mb-8">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-6">
+                <i class="fas fa-check-circle text-green-600 text-4xl"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-900 mb-3">All Caught Up!</h2>
+            <p class="text-slate-600 text-lg">No pending supermarket approvals at the moment.</p>
+        </div>
+        {% endif %}
+
+        <!-- All Supermarkets Section -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
+                <h2 class="text-2xl font-bold text-white flex items-center">
+                    <i class="fas fa-list mr-3"></i>All Supermarkets
+                </h2>
+            </div>
+            
+            <div class="p-6">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-slate-200">
+                                <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Shop Name</th>
+                                <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Owner</th>
+                                <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Type</th>
+                                <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Status</th>
+                                <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600">Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for supermarket in all_supermarkets %}
+                            <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                <td class="py-3 px-4">
+                                    <p class="font-semibold text-slate-900">{{ supermarket.shop_name }}</p>
+                                    <p class="text-sm text-slate-600">{{ supermarket.phone_number }}</p>
+                                </td>
+                                <td class="py-3 px-4 text-slate-900">{{ supermarket.owner.get_full_name|default:supermarket.owner.username }}</td>
+                                <td class="py-3 px-4 text-slate-900">{{ supermarket.get_business_type_display }}</td>
+                                <td class="py-3 px-4">
+                                    {% if supermarket.is_verified %}
+                                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                                            <i class="fas fa-check-circle"></i> Verified
+                                        </span>
+                                    {% elif not supermarket.is_active %}
+                                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
+                                            <i class="fas fa-times-circle"></i> Rejected
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-semibold">
+                                            <i class="fas fa-clock"></i> Pending
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-4 text-slate-900 text-sm">{{ supermarket.created_at|date:"M d, Y" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

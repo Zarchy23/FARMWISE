@@ -781,6 +781,14 @@ def animal_list(request):
             breeding_records__isnull=False
         ).distinct()
         animals = animals_with_breeding
+    elif filter_type == 'milk':
+        # Get animals with milk production records
+        from .models import MilkProduction
+        animals_with_milk = Animal.objects.filter(
+            farm__owner=request.user,
+            milk_records__isnull=False
+        ).distinct()
+        animals = animals_with_milk
 
     return render(request, 'livestock/list.html', {
         'animals': animals,
@@ -2298,8 +2306,54 @@ def pest_history(request):
 @login_required
 def pest_detail(request, pk):
     """Pest report details"""
-    report = get_object_or_404(PestReport, pk=pk, farmer=request.user)
-    return render(request, 'pest/detail.html', {'report': report})
+    # Allow farmers to view their own reports, and agronomists to view any report
+    if request.user.user_type == 'agronomist':
+        report = get_object_or_404(PestReport, pk=pk)
+    else:
+        report = get_object_or_404(PestReport, pk=pk, farmer=request.user)
+    
+    agronomists = User.objects.filter(user_type='agronomist')
+    return render(request, 'pest/detail.html', {'report': report, 'agronomists': agronomists})
+
+
+@login_required
+def send_verification_request(request, report_id):
+    """Send pest verification request to agronomist(s)"""
+    report = get_object_or_404(PestReport, pk=report_id, farmer=request.user)
+    
+    if request.method == 'POST':
+        agronomist_ids = request.POST.getlist('agronomist_ids')
+        send_to_all = request.POST.get('send_to_all') == 'true'
+        farmer_notes = request.POST.get('farmer_notes', '')
+        
+        if send_to_all:
+            agronomists = User.objects.filter(user_type='agronomist')
+        else:
+            agronomists = User.objects.filter(id__in=agronomist_ids, user_type='agronomist')
+        
+        created_count = 0
+        for agronomist in agronomists:
+            # Check if request already exists
+            if not PestVerificationRequest.objects.filter(
+                pest_report=report,
+                agronomist=agronomist,
+                status='pending'
+            ).exists():
+                PestVerificationRequest.objects.create(
+                    pest_report=report,
+                    agronomist=agronomist,
+                    farmer_notes=farmer_notes
+                )
+                created_count += 1
+        
+        if created_count > 0:
+            messages.success(request, f'Sent verification request to {created_count} agronomist(s)')
+        else:
+            messages.warning(request, 'No new verification requests sent (requests may already be pending)')
+        
+        return redirect('core:pest_detail', pk=report.pk)
+    
+    return redirect('core:pest_detail', pk=report.pk)
 
 
 # ============================================================
