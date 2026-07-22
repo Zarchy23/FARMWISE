@@ -397,7 +397,7 @@ DATA_UPLOAD_MAX_FILE_SIZE = 10485760  # 10MB
 # AWS S3 Storage (Production)
 # ============================================================
 
-USE_S3 = config('USE_S3', default=False, cast=bool)
+USE_S3 = config('USE_S3', default=True, cast=bool)
 
 if USE_S3:
     # AWS Settings
