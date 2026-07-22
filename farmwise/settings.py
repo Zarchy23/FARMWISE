@@ -496,9 +496,12 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 # Production: Use SendGrid API
 if not DEBUG:
     # Production: Use SendGrid API
-    EMAIL_BACKEND = 'sgbackend.SendGridBackend'
-    SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
-    SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.sendgrid.net'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = 'apikey'
+    EMAIL_HOST_PASSWORD = config('SENDGRID_API_KEY', default='')
     DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@farmwise.com')
 else:
     # Development: Use custom SMTP backend that handles SSL certificate issues
