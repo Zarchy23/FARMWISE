@@ -496,7 +496,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 # Production: Use SendGrid API
 if not DEBUG:
     # Production: Use SendGrid API
-    EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
+    EMAIL_BACKEND = 'sgbackend.SendGridBackend'
     SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
     SENDGRID_SANDBOX_MODE_IN_DEBUG = False
     DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@farmwise.com')
