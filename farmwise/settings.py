@@ -3,6 +3,7 @@
 
 import os
 import logging
+import urllib.parse
 from pathlib import Path
 from decouple import config, Csv
 from datetime import timedelta
@@ -166,6 +167,23 @@ DATABASE_URL = (
 )
 
 if DATABASE_URL:
+    # Some Vercel/Supabase URLs include params (supa, pgbouncer) that libpq
+    # does not recognise. Keep only well-known libpq options.
+    _allowed = {
+        'sslmode', 'connect_timeout', 'application_name', 'fallback_application_name',
+        'keepalives', 'keepalives_idle', 'keepalives_interval', 'keepalives_count',
+        'tcp_user_timeout', 'sslcert', 'sslkey', 'sslrootcert', 'sslcrl',
+        'sslpassword', 'channel_binding', 'gssencmode', 'sslsni', 'replication',
+        'target_session_attrs', 'options',
+    }
+    _parsed = urllib.parse.urlparse(DATABASE_URL)
+    _qs = urllib.parse.parse_qs(_parsed.query)
+    _clean = {k: v for k, v in _qs.items() if k in _allowed}
+    _parsed = _parsed._replace(
+        query=urllib.parse.urlencode(_clean, doseq=True) if _clean else ''
+    )
+    DATABASE_URL = _parsed.geturl()
+
     DATABASES = {
         'default': dj_database_url.parse(
             DATABASE_URL,
