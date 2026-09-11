@@ -8,6 +8,13 @@ from decouple import config, Csv
 from datetime import timedelta
 import dj_database_url
 
+
+def _int_config(name, default):
+    """Return an env var as an int, using `default` if it is missing or empty."""
+    value = config(name, default=str(default))
+    return int(value) if value.strip() else default
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -38,7 +45,7 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     
     # HSTS (HTTP Strict Transport Security)
-    SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=31536000, cast=int)  # 1 year
+    SECURE_HSTS_SECONDS = _int_config('SECURE_HSTS_SECONDS', 31536000)  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=True, cast=bool)
     SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=True, cast=bool)
     
@@ -153,7 +160,7 @@ else:
             'PASSWORD': config('DB_PASSWORD'),
             'HOST': config('DB_HOST', default='localhost'),
             'PORT': config('DB_PORT', default='5432'),
-            'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+            'CONN_MAX_AGE': _int_config('DB_CONN_MAX_AGE', 60),
             'OPTIONS': {
                 'connect_timeout': 10,
             },
@@ -498,7 +505,7 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@farmwise.com'
 
 # Email SMTP Settings (for development/testing)
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_PORT = _int_config('EMAIL_PORT', 587)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
