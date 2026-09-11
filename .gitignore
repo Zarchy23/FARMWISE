@@ -119,3 +119,5 @@ temp/
 
 # Uploaded files
 uploads/
+.vercel
+.env*.local
