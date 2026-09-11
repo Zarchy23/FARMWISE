@@ -9,6 +9,12 @@ from datetime import timedelta
 import dj_database_url
 
 
+def _bool_config(name, default):
+    """Return an env var as a bool, using `default` if it is missing or empty."""
+    value = config(name, default=str(default))
+    return value.strip().lower() in ('true', '1', 'yes') if value.strip() else default
+
+
 def _int_config(name, default):
     """Return an env var as an int, using `default` if it is missing or empty."""
     value = config(name, default=str(default))
@@ -26,7 +32,7 @@ if not SECRET_KEY:
     SECRET_KEY = 'django-insecure-dev-key-change-in-production'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = _bool_config('DEBUG', True)
 
 _ALLOW_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,.onrender.com,.vercel.app', cast=Csv())
 ALLOWED_HOSTS = [h.strip() for h in _ALLOW_HOSTS if h.strip()]
