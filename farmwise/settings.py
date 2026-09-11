@@ -26,7 +26,12 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-pro
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,.onrender.com,.vercel.app', cast=Csv())
+_ALLOW_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,.onrender.com,.vercel.app', cast=Csv())
+ALLOWED_HOSTS = [h.strip() for h in _ALLOW_HOSTS if h.strip()]
+
+# Always accept any Vercel preview/production domain
+if '.vercel.app' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('.vercel.app')
 
 # Application URL for email links and frontend
 APP_URL = config('APP_URL', default='http://localhost:8000')
