@@ -1,0 +1,46 @@
+# Large ML model files and datasets
+ml_models/
+data/
+.dvc/
+backups/
+media/
+uploads/
+ml/datasets/
+ml/cache/
+
+# ML artifacts
+*.pth
+*.pt
+*.pkl
+*.h5
+*.joblib
+*.zip
+*.tar.gz
+*.npz
+
+# Source maps
+*.map
+
+# Generated / local files
+static_root/
+*.sqlite3
+*.db
+*.log
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments / env files
+venv/
+.env/
+.venv/
+env/
+ENV/
+.env
+.env.*
+
+# IDE / git
+.git/
+.vscode/
+.idea/
+.DS_Store

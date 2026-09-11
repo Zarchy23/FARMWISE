@@ -9,8 +9,14 @@ import warnings
 from pathlib import Path
 import numpy as np
 from PIL import Image
-import torch
-import torchvision.transforms as transforms
+
+try:
+    import torch
+    import torchvision.transforms as transforms
+except ImportError:
+    torch = None
+    transforms = None
+
 from django.conf import settings
 import logging
 
