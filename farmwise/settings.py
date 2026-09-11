@@ -152,7 +152,12 @@ ASGI_APPLICATION = 'farmwise.asgi.application'
 # Database - PostgreSQL with PostGIS for geospatial features
 # ============================================================
 
-DATABASE_URL = config('DATABASE_URL', default='')
+DATABASE_URL = (
+    config('DATABASE_URL', default='')
+    or config('POSTGRES_URL', default='')
+    or config('POSTGRES_URL_NON_POOLING', default='')
+    or config('PRISMA_DATABASE_URL', default='')
+)
 
 if DATABASE_URL:
     DATABASES = {
