@@ -26,7 +26,7 @@ if not SECRET_KEY:
     SECRET_KEY = 'django-insecure-dev-key-change-in-production'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = config('DEBUG', default=True, cast=bool)
 
 _ALLOW_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,.onrender.com,.vercel.app', cast=Csv())
 ALLOWED_HOSTS = [h.strip() for h in _ALLOW_HOSTS if h.strip()]
