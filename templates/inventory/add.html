@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Add Inventory Item{% endblock %}
+{% block page_title %}Add Inventory Item{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'core:inventory_list' %}" class="text-green-600 hover:text-green-700 flex items-center space-x-2">
+            <i class="ri-arrow-left-line"></i>
+            <span>Back to Inventory</span>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <h1 class="text-2xl font-bold mb-6">Add New Inventory Item</h1>
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Item Name *</label>
+                    {{ form.name }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                    {{ form.category }}
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                {{ form.description }}
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
+                    {{ form.quantity }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Unit *</label>
+                    {{ form.unit }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Min Stock Level</label>
+                    {{ form.minimum_stock_level }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cost per Unit</label>
+                    {{ form.cost_per_unit }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                    {{ form.supplier }}
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Contact</label>
+                {{ form.supplier_contact }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Storage Location</label>
+                {{ form.location }}
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
+                    {{ form.purchase_date }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                    {{ form.expiry_date }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">🌱 Crops (Optional)</label>
+                    {{ form.crop_seasons }}
+                    <p class="text-xs text-gray-500 mt-1">Select crops this inventory is used for</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">🐄 Livestock (Optional)</label>
+                    {{ form.animals }}
+                    <p class="text-xs text-gray-500 mt-1">Select animals this inventory is used for</p>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">🐟 Fish Cycles (Optional)</label>
+                {{ form.fish_cycles }}
+                <p class="text-xs text-gray-500 mt-1">Select fish farming cycles this inventory is used for</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                {{ form.notes }}
+            </div>
+
+            <div class="flex space-x-4 pt-4">
+                <button type="submit" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-medium">
+                    Add Inventory Item
+                </button>
+                <a href="{% url 'core:inventory_list' %}" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium text-center">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

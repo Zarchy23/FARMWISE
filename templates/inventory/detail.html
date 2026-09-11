@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}{{ inventory.name }}{% endblock %}
+{% block page_title %}Inventory Details{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'core:inventory_list' %}" class="text-green-600 hover:text-green-700 flex items-center space-x-2">
+            <i class="ri-arrow-left-line"></i>
+            <span>Back to Inventory</span>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold">{{ inventory.name }}</h1>
+                    <p class="text-green-100 mt-1">{{ inventory.get_category_display }}</p>
+                </div>
+                <span class="px-4 py-2 rounded-full text-sm font-medium
+                    {% if inventory.status == 'in_stock' %}bg-white text-green-600
+                    {% elif inventory.status == 'low_stock' %}bg-orange-200 text-orange-800
+                    {% elif inventory.status == 'out_of_stock' %}bg-red-200 text-red-800
+                    {% elif inventory.status == 'expired' %}bg-purple-200 text-purple-800
+                    {% else %}bg-gray-200 text-gray-800{% endif %}">
+                    {{ inventory.get_status_display }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6">
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ inventory.quantity }} {{ inventory.unit }}</div>
+                    <div class="text-sm text-gray-500">Current Quantity</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ inventory.minimum_stock_level }} {{ inventory.unit }}</div>
+                    <div class="text-sm text-gray-500">Min Stock Level</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-purple-600">${{ inventory.total_value|default:"0"|floatformat:2 }}</div>
+                    <div class="text-sm text-gray-500">Total Value</div>
+                </div>
+            </div>
+
+            <!-- Details -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-bold text-lg mb-4">Item Information</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm text-gray-500">Description</label>
+                            <p class="text-gray-800">{{ inventory.description|default:"N/A" }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Storage Location</label>
+                            <p class="text-gray-800">{{ inventory.location|default:"N/A" }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Cost per Unit</label>
+                            <p class="text-gray-800">${{ inventory.cost_per_unit|default:"0"|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-lg mb-4">Supplier Information</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm text-gray-500">Supplier</label>
+                            <p class="text-gray-800">{{ inventory.supplier|default:"N/A" }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Supplier Contact</label>
+                            <p class="text-gray-800">{{ inventory.supplier_contact|default:"N/A" }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Purchase Date</label>
+                            <p class="text-gray-800">{{ inventory.purchase_date|default:"N/A" }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Expiry Date</label>
+                            <p class="text-gray-800 {% if inventory.is_expired %}text-red-600 font-semibold{% endif %}">
+                                {{ inventory.expiry_date|default:"N/A" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if inventory.notes %}
+            <div class="mt-6">
+                <h3 class="font-bold text-lg mb-2">Notes</h3>
+                <p class="text-gray-600 bg-gray-50 p-4 rounded-lg">{{ inventory.notes }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Related Crops, Livestock, and Fish Cycles -->
+            <div class="mt-6">
+                <h3 class="font-bold text-lg mb-4">Used For</h3>
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-700 mb-2">🌱 Crops</h4>
+                        {% if inventory.crop_seasons.all %}
+                        <ul class="space-y-1">
+                            {% for crop in inventory.crop_seasons.all %}
+                            <li class="text-sm text-gray-600">
+                                {{ crop.crop_type.name }} - {{ crop.field.name }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-sm text-gray-400">No crops linked</p>
+                        {% endif %}
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-700 mb-2">🐄 Livestock</h4>
+                        {% if inventory.animals.all %}
+                        <ul class="space-y-1">
+                            {% for animal in inventory.animals.all %}
+                            <li class="text-sm text-gray-600">
+                                {{ animal.name }} - {{ animal.animal_type.name }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-sm text-gray-400">No animals linked</p>
+                        {% endif %}
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-700 mb-2">🐟 Fish Cycles</h4>
+                        {% if inventory.fish_cycles.all %}
+                        <ul class="space-y-1">
+                            {% for cycle in inventory.fish_cycles.all %}
+                            <li class="text-sm text-gray-600">
+                                {{ cycle.fish_species.name }} - {{ cycle.pond.name }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-sm text-gray-400">No fish cycles linked</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="mt-6 pt-6 border-t">
+                <h3 class="font-bold text-lg mb-4">Quick Actions</h3>
+                <div class="flex flex-wrap gap-2">
+                    <form method="post" action="{% url 'core:inventory_edit' inventory.pk %}" class="inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="in_stock">
+                        <button type="submit" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition text-sm">
+                            Mark In Stock
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'core:inventory_edit' inventory.pk %}" class="inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="low_stock">
+                        <button type="submit" class="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition text-sm">
+                            Mark Low Stock
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'core:inventory_edit' inventory.pk %}" class="inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="out_of_stock">
+                        <button type="submit" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition text-sm">
+                            Mark Out of Stock
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-6 pt-6 border-t flex space-x-4">
+                <a href="{% url 'core:inventory_edit' inventory.pk %}" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium text-center">
+                    Edit Item
+                </a>
+                <a href="{% url 'core:inventory_delete' inventory.pk %}" class="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition font-medium text-center">
+                    Delete Item
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

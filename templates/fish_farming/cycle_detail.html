@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}{{ cycle.fish_species.name }} Cycle{% endblock %}
+{% block page_title %}Fish Cycle Details{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'core:fish_cycle_list' %}" class="text-green-600 hover:text-green-700 flex items-center space-x-2">
+            <i class="ri-arrow-left-line"></i>
+            <span>Back to Cycles</span>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-cyan-500 to-cyan-600 p-6 text-white">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold">{{ cycle.fish_species.name }}</h1>
+                    <p class="text-cyan-100 mt-1">{{ cycle.pond.name }} - {{ cycle.get_season_display }}</p>
+                </div>
+                <span class="px-4 py-2 rounded-full text-sm font-medium
+                    {% if cycle.status == 'planned' %}bg-white text-gray-700
+                    {% elif cycle.status == 'stocking' %}bg-blue-200 text-blue-800
+                    {% elif cycle.status == 'growing' %}bg-green-200 text-green-800
+                    {% elif cycle.status == 'feeding' %}bg-yellow-200 text-yellow-800
+                    {% elif cycle.status == 'ready_for_harvest' %}bg-purple-200 text-purple-800
+                    {% elif cycle.status == 'harvested' %}bg-emerald-200 text-emerald-800
+                    {% else %}bg-red-200 text-red-800{% endif %}">
+                    {{ cycle.get_status_display }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6">
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ cycle.stock_quantity }}</div>
+                    <div class="text-sm text-gray-500">Stocked</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ cycle.expected_harvest_kg|default:"0"|floatformat:1 }} kg</div>
+                    <div class="text-sm text-gray-500">Expected</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-purple-600">{{ cycle.actual_harvest_kg|default:"0"|floatformat:1 }} kg</div>
+                    <div class="text-sm text-gray-500">Actual</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-orange-600">{{ cycle.days_in_cycle }}</div>
+                    <div class="text-sm text-gray-500">Days</div>
+                </div>
+            </div>
+
+            <!-- Details -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-bold text-lg mb-4">Stocking Info</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm text-gray-500">Stocking Date</label>
+                            <p class="text-gray-800">{{ cycle.stocking_date }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Stock Quantity</label>
+                            <p class="text-gray-800">{{ cycle.stock_quantity }} fish</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Avg Weight at Stocking</label>
+                            <p class="text-gray-800">{{ cycle.average_weight_at_stocking_g|default:"0" }}g</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-lg mb-4">Harvest Info</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm text-gray-500">Expected Harvest Date</label>
+                            <p class="text-gray-800">{{ cycle.expected_harvest_date }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Expected Weight per Fish</label>
+                            <p class="text-gray-800">{{ cycle.expected_weight_per_fish_g }}g</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Survival Rate</label>
+                            <p class="text-gray-800">{{ cycle.expected_survival_rate }}%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financials -->
+            <div class="mt-6">
+                <h3 class="font-bold text-lg mb-4">Financials</h3>
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <label class="text-sm text-gray-500">Seed Cost</label>
+                        <p class="font-medium">${{ cycle.seed_cost|default:"0"|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <label class="text-sm text-gray-500">Feed Cost</label>
+                        <p class="font-medium">${{ cycle.feed_cost|default:"0"|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <label class="text-sm text-gray-500">Total Cost</label>
+                        <p class="font-medium">${{ cycle.total_cost|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <label class="text-sm text-gray-500">Profit</label>
+                        <p class="font-medium {% if cycle.profit and cycle.profit > 0 %}text-green-600{% elif cycle.profit and cycle.profit < 0 %}text-red-600{% endif %}">
+                            ${{ cycle.profit|default:"0"|floatformat:2 }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {% if cycle.notes %}
+            <div class="mt-6">
+                <h3 class="font-bold text-lg mb-2">Notes</h3>
+                <p class="text-gray-600 bg-gray-50 p-4 rounded-lg">{{ cycle.notes }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="mt-6 pt-6 border-t flex space-x-4">
+                <a href="{% url 'core:fish_cycle_edit' cycle.pk %}" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium text-center">
+                    Edit Cycle
+                </a>
+                <a href="{% url 'core:fish_cycle_delete' cycle.pk %}" class="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition font-medium text-center">
+                    Delete Cycle
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

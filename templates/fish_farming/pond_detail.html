@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}{{ pond.name }}{% endblock %}
+{% block page_title %}Fish Pond Details{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'core:fish_pond_list' %}" class="text-green-600 hover:text-green-700 flex items-center space-x-2">
+            <i class="ri-arrow-left-line"></i>
+            <span>Back to Ponds</span>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold">{{ pond.name }}</h1>
+                    <p class="text-blue-100 mt-1">{{ pond.get_pond_type_display }}</p>
+                </div>
+                <span class="px-4 py-2 rounded-full text-sm font-medium
+                    {% if pond.status == 'active' %}bg-white text-blue-600
+                    {% elif pond.status == 'maintenance' %}bg-yellow-200 text-yellow-800
+                    {% elif pond.status == 'inactive' %}bg-gray-200 text-gray-800
+                    {% else %}bg-red-200 text-red-800{% endif %}">
+                    {{ pond.get_status_display }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6">
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ pond.volume_cubic_meters }} m³</div>
+                    <div class="text-sm text-gray-500">Volume</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ pond.max_capacity }}</div>
+                    <div class="text-sm text-gray-500">Max Capacity</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-purple-600">{{ pond.surface_area_sqm }} m²</div>
+                    <div class="text-sm text-gray-500">Surface Area</div>
+                </div>
+            </div>
+
+            <!-- Details -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-bold text-lg mb-4">Dimensions</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm text-gray-500">Length</label>
+                            <p class="text-gray-800">{{ pond.length_m }} meters</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Width</label>
+                            <p class="text-gray-800">{{ pond.width_m }} meters</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Depth</label>
+                            <p class="text-gray-800">{{ pond.depth_m }} meters</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-lg mb-4">Location & Water</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-sm text-gray-500">Location</label>
+                            <p class="text-gray-800">{{ pond.location|default:"N/A" }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Water Source</label>
+                            <p class="text-gray-800">{{ pond.water_source|default:"N/A" }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-500">Stocking Density</label>
+                            <p class="text-gray-800">{{ pond.max_stocking_density }} fish/m³</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if pond.notes %}
+            <div class="mt-6">
+                <h3 class="font-bold text-lg mb-2">Notes</h3>
+                <p class="text-gray-600 bg-gray-50 p-4 rounded-lg">{{ pond.notes }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Active Cycles -->
+            <div class="mt-6">
+                <h3 class="font-bold text-lg mb-4">Active Cycles</h3>
+                {% if active_cycles %}
+                <div class="space-y-2">
+                    {% for cycle in active_cycles %}
+                    <div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                        <div>
+                            <p class="font-medium">{{ cycle.fish_species.name }}</p>
+                            <p class="text-sm text-gray-500">{{ cycle.stocking_date }} - {{ cycle.expected_harvest_date }}</p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ cycle.get_status_display }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-400">No active cycles</p>
+                {% endif %}
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-6 pt-6 border-t flex space-x-4">
+                <a href="{% url 'core:fish_pond_edit' pond.pk %}" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium text-center">
+                    Edit Pond
+                </a>
+                <a href="{% url 'core:fish_cycle_add' %}" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-medium text-center">
+                    Start New Cycle
+                </a>
+                <a href="{% url 'core:fish_pond_delete' pond.pk %}" class="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition font-medium text-center">
+                    Delete Pond
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

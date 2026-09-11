@@ -218,13 +218,106 @@ class FieldForm(forms.ModelForm):
 # SECTION 3: CROP MANAGEMENT FORMS
 # ============================================================
 
+class CropTypeForm(forms.ModelForm):
+    """Form for managing crop types"""
+    
+    suitable_seasons = forms.MultipleChoiceField(
+        choices=CropSeason.SEASONS,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'space-y-2'
+        })
+    )
+    
+    class Meta:
+        model = CropType
+        fields = ['name', 'scientific_name', 'category', 'growing_days', 
+                  'water_requirement_mm', 'optimal_temp_min', 'optimal_temp_max',
+                  'planting_distance_cm', 'seed_rate_kg_per_ha', 'expected_yield_kg_per_ha',
+                  'suitable_seasons', 'image', 'description', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Crop name (e.g., Maize, Wheat)'
+            }),
+            'scientific_name': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Scientific name (optional)'
+            }),
+            'category': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'growing_days': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '1',
+                'placeholder': 'Days to harvest'
+            }),
+            'water_requirement_mm': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '0',
+                'placeholder': 'Water needed (mm)'
+            }),
+            'optimal_temp_min': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'placeholder': 'Min temp (°C)'
+            }),
+            'optimal_temp_max': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'placeholder': 'Max temp (°C)'
+            }),
+            'planting_distance_cm': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '0',
+                'placeholder': 'Planting distance (cm)'
+            }),
+            'seed_rate_kg_per_ha': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Seed rate (kg/ha)'
+            }),
+            'expected_yield_kg_per_ha': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Expected yield (kg/ha)'
+            }),
+            'image': forms.FileInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'accept': 'image/*'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'rows': 3,
+                'placeholder': 'Describe the crop characteristics...'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'w-4 h-4 text-green-600 rounded focus:ring-green-500'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.suitable_seasons:
+            self.fields['suitable_seasons'].initial = self.instance.suitable_seasons
+    
+    def save(self, commit=True):
+        crop_type = super().save(commit=False)
+        crop_type.suitable_seasons = self.cleaned_data['suitable_seasons']
+        if commit:
+            crop_type.save()
+        return crop_type
+
+
 class CropSeasonForm(forms.ModelForm):
     """Form for planting crops"""
     
     class Meta:
         model = CropSeason
         fields = ['field', 'crop_type', 'variety', 'season', 'planting_date', 'expected_harvest_date', 
-                  'estimated_yield_kg', 'photo', 'notes']
+                  'area_allocated_hectares', 'estimated_yield_kg', 'photo', 'notes']
         widgets = {
             'field': forms.Select(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500'
@@ -246,6 +339,12 @@ class CropSeasonForm(forms.ModelForm):
             'expected_harvest_date': forms.DateInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
                 'type': 'date'
+            }),
+            'area_allocated_hectares': forms.NumberInput(attrs={
+                'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Area in hectares'
             }),
             'estimated_yield_kg': forms.NumberInput(attrs={
                 'class': 'w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-green-500',
@@ -1211,5 +1310,405 @@ class PayrollForm(forms.ModelForm):
                 'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
                 'placeholder': 'Additional notes (optional)',
                 'rows': 3
+            }),
+        }
+
+
+# ============================================================
+# SECTION 12: INVENTORY FORMS
+# ============================================================
+
+class InventoryForm(forms.ModelForm):
+    """Form for managing farm inventory"""
+    
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            # Filter crop seasons, animals, and fish cycles by user's farm
+            self.fields['crop_seasons'].queryset = CropSeason.objects.filter(field__farm__owner=user)
+            self.fields['animals'].queryset = Animal.objects.filter(farm__owner=user)
+            self.fields['fish_cycles'].queryset = FishCycle.objects.filter(pond__farm__owner=user)
+    
+    class Meta:
+        model = Inventory
+        fields = ['name', 'category', 'description', 'quantity', 'unit', 
+                  'minimum_stock_level', 'cost_per_unit', 'supplier', 
+                  'supplier_contact', 'location', 'purchase_date', 'expiry_date', 
+                  'crop_seasons', 'animals', 'fish_cycles', 'notes']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Item name (e.g., Maize Seeds, NPK Fertilizer)'
+            }),
+            'category': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'rows': 3,
+                'placeholder': 'Describe the item, brand, specifications...'
+            }),
+            'quantity': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Current quantity'
+            }),
+            'unit': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'minimum_stock_level': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Alert when below this level'
+            }),
+            'cost_per_unit': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Cost per unit (optional)'
+            }),
+            'supplier': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Supplier name (optional)'
+            }),
+            'supplier_contact': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Supplier phone/email (optional)'
+            }),
+            'location': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Storage location (e.g., Warehouse A, Shelf 3)'
+            }),
+            'purchase_date': forms.DateInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'type': 'date'
+            }),
+            'expiry_date': forms.DateInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'type': 'date'
+            }),
+            'crop_seasons': forms.SelectMultiple(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'size': '4'
+            }),
+            'animals': forms.SelectMultiple(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'size': '4'
+            }),
+            'fish_cycles': forms.SelectMultiple(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'size': '4'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'rows': 3,
+                'placeholder': 'Additional notes (optional)'
+            }),
+        }
+
+
+# ============================================================
+# SECTION 13: FISH FARMING FORMS
+# ============================================================
+
+class FishSpeciesForm(forms.ModelForm):
+    """Form for managing fish species"""
+    
+    class Meta:
+        model = FishSpecies
+        fields = ['name', 'scientific_name', 'water_type', 'description', 
+                  'growth_period_days', 'ideal_temperature_min', 'ideal_temperature_max', 
+                  'market_price_per_kg']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Species name (e.g., Tilapia, Catfish)'
+            }),
+            'scientific_name': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Scientific name (optional)'
+            }),
+            'water_type': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'rows': 3,
+                'placeholder': 'Describe the species characteristics...'
+            }),
+            'growth_period_days': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '1',
+                'placeholder': 'Days to reach market size'
+            }),
+            'ideal_temperature_min': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'placeholder': 'Min temperature (°C)'
+            }),
+            'ideal_temperature_max': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'placeholder': 'Max temperature (°C)'
+            }),
+            'market_price_per_kg': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Market price per kg (optional)'
+            }),
+        }
+
+
+class FishPondForm(forms.ModelForm):
+    """Form for managing fish ponds"""
+    
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['farm'].queryset = Farm.objects.filter(owner=user)
+    
+    class Meta:
+        model = FishPond
+        fields = ['farm', 'name', 'pond_type', 'length_m', 'width_m', 'depth_m', 
+                  'max_stocking_density', 'location', 'water_source', 'status', 'notes']
+        widgets = {
+            'farm': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'name': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Pond name (e.g., Pond A, Tank 1)'
+            }),
+            'pond_type': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'length_m': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'min': '0',
+                'placeholder': 'Length (meters)'
+            }),
+            'width_m': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'min': '0',
+                'placeholder': 'Width (meters)'
+            }),
+            'depth_m': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'min': '0',
+                'placeholder': 'Depth (meters)'
+            }),
+            'volume_cubic_meters': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'min': '0',
+                'placeholder': 'Volume (cubic meters)'
+            }),
+            'max_stocking_density': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '1',
+                'placeholder': 'Max fish per cubic meter'
+            }),
+            'location': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Location on farm'
+            }),
+            'water_source': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Water source (borehole, river, etc.)'
+            }),
+            'status': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'rows': 3,
+                'placeholder': 'Additional notes (optional)'
+            }),
+        }
+
+
+class FishCycleForm(forms.ModelForm):
+    """Form for managing fish farming cycles"""
+    
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['pond'].queryset = FishPond.objects.filter(farm__owner=user)
+        # Ensure fish species dropdown is populated
+        if 'fish_species' in self.fields:
+            self.fields['fish_species'].queryset = FishSpecies.objects.all().order_by('name')
+            self.fields['fish_species'].empty_label = "Select Fish Species"
+    
+    class Meta:
+        model = FishCycle
+        fields = ['pond', 'fish_species', 'season', 'cycle_name', 
+                  'stocking_date', 'stock_quantity', 'average_weight_at_stocking_g',
+                  'expected_harvest_date', 'expected_weight_per_fish_g', 'expected_survival_rate',
+                  'actual_harvest_date', 'actual_quantity', 'average_weight_at_harvest_g',
+                  'seed_cost', 'feed_cost', 'other_costs', 'total_revenue', 'notes']
+        widgets = {
+            'pond': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'fish_species': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'season': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'cycle_name': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Optional cycle name'
+            }),
+            'stocking_date': forms.DateInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'type': 'date'
+            }),
+            'stock_quantity': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '1',
+                'placeholder': 'Number of fish stocked'
+            }),
+            'average_weight_at_stocking_g': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'placeholder': 'Avg weight at stocking (grams)'
+            }),
+            'expected_harvest_date': forms.DateInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'type': 'date'
+            }),
+            'expected_weight_per_fish_g': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'placeholder': 'Expected weight per fish (grams)'
+            }),
+            'expected_survival_rate': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'min': '0',
+                'max': '100',
+                'placeholder': 'Survival rate %'
+            }),
+            'actual_harvest_date': forms.DateInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'type': 'date'
+            }),
+            'actual_quantity': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '0',
+                'placeholder': 'Actual number harvested'
+            }),
+            'average_weight_at_harvest_g': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'placeholder': 'Avg weight at harvest (grams)'
+            }),
+            'status': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'seed_cost': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Fingerling/Startup cost'
+            }),
+            'feed_cost': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Feed cost'
+            }),
+            'other_costs': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Other costs'
+            }),
+            'total_revenue': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Total revenue'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'rows': 3,
+                'placeholder': 'Additional notes (optional)'
+            }),
+        }
+
+
+class FishProductionForm(forms.ModelForm):
+    """Form for recording fish production/harvest"""
+    
+    class Meta:
+        model = FishProduction
+        fields = ['cycle', 'harvest_date', 'quantity', 'total_weight_kg', 
+                  'average_weight_g', 'grade', 'sold_quantity', 'sold_weight_kg', 
+                  'revenue', 'remaining_quantity', 'notes']
+        widgets = {
+            'cycle': forms.Select(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500'
+            }),
+            'harvest_date': forms.DateInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'type': 'date'
+            }),
+            'quantity': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '1',
+                'placeholder': 'Number of fish harvested'
+            }),
+            'total_weight_kg': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Total weight (kg)'
+            }),
+            'average_weight_g': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.1',
+                'placeholder': 'Avg weight per fish (grams)'
+            }),
+            'grade': forms.TextInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'placeholder': 'Grade/quality (optional)'
+            }),
+            'sold_quantity': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '0',
+                'placeholder': 'Number sold'
+            }),
+            'sold_weight_kg': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Weight sold (kg)'
+            }),
+            'revenue': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Revenue from sales'
+            }),
+            'remaining_quantity': forms.NumberInput(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'min': '0',
+                'placeholder': 'Fish kept for breeding'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500',
+                'rows': 3,
+                'placeholder': 'Additional notes (optional)'
             }),
         }

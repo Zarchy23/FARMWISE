@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Seasonal Recommendations{% endblock %}
+{% block page_title %}Seasonal Crop Recommendations{% endblock %}
+
+{% block content %}
+<div>
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">Seasonal Recommendations</h1>
+            <p class="text-gray-600">Crop suggestions based on current season and your farm conditions</p>
+        </div>
+    </div>
+
+    <!-- Current Season Banner -->
+    <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 mb-8 text-white">
+        <div class="flex items-center space-x-4">
+            <i class="ri-calendar-line text-4xl"></i>
+            <div>
+                <h2 class="text-2xl font-bold">Current Season: {{ current_season_name }}</h2>
+                <p class="text-green-100">Recommended crops for this time of year</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Suitable Crops -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b">
+                <h3 class="font-bold text-lg">🌱 Suitable Crops for {{ current_season_name }}</h3>
+            </div>
+            <div class="p-4">
+                {% if suitable_crops %}
+                <div class="space-y-3">
+                    {% for crop in suitable_crops %}
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-semibold">{{ crop.name }}</h4>
+                                <p class="text-sm text-gray-600">{{ crop.get_category_display }}</p>
+                            </div>
+                            <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+                                {{ crop.growing_days }} days
+                            </span>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-500">
+                            <p>Expected yield: {{ crop.expected_yield_kg_per_ha|default:"0" }} kg/ha</p>
+                            {% if crop.suitable_seasons %}
+                            <p class="mt-1">Also suitable for: 
+                                {% for season in crop.suitable_seasons %}
+                                    {% if season != current_season %}
+                                        {{ season }}{% if not forloop.last %}, {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="ri-plant-line text-4xl text-gray-300 mb-2"></i>
+                    <p class="text-gray-500">No crops configured for this season yet.</p>
+                    <p class="text-sm text-gray-400">Admins can add suitable seasons to crop types.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Available Area -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b">
+                <h3 class="font-bold text-lg">📐 Available Field Area</h3>
+            </div>
+            <div class="p-4">
+                {% if field_availability %}
+                <div class="space-y-3">
+                    {% for item in field_availability %}
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-semibold">{{ item.field.name }}</h4>
+                                <p class="text-sm text-gray-600">{{ item.farm.name }}</p>
+                            </div>
+                            <span class="text-sm font-bold text-green-600">
+                                {{ item.available_area|floatformat:2 }} ha available
+                            </span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ item.utilization_percent|floatformat:1 }}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Total: {{ item.total_area|floatformat:2 }} ha | 
+                            Allocated: {{ item.allocated_area|floatformat:2 }} ha
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="ri-map-line text-4xl text-gray-300 mb-2"></i>
+                    <p class="text-gray-500">No available field area.</p>
+                    <p class="text-sm text-gray-400">All fields are fully allocated or no fields exist.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Historical Performance -->
+    {% if crop_performance %}
+    <div class="bg-white rounded-lg shadow mt-6">
+        <div class="p-4 border-b">
+            <h3 class="font-bold text-lg">📊 Your Historical Crop Performance</h3>
+            <p class="text-sm text-gray-500">Average yields from past harvests</p>
+        </div>
+        <div class="p-4">
+            <div class="grid md:grid-cols-3 gap-4">
+                {% for perf in crop_performance %}
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <h4 class="font-semibold">{{ perf.crop_type__name }}</h4>
+                    <div class="text-2xl font-bold text-green-600 mt-2">
+                        {{ perf.avg_yield|floatformat:1 }} kg
+                    </div>
+                    <p class="text-xs text-gray-500">Average yield</p>
+                    <p class="text-xs text-gray-400 mt-1">{{ perf.count }} harvests</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="mt-6 flex space-x-4">
+        <a href="{% url 'core:crop_plant' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-medium">
+            Plant a Crop
+        </a>
+        <a href="{% url 'core:area_utilization' %}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium">
+            View Area Utilization
+        </a>
+    </div>
+</div>
+{% endblock %}

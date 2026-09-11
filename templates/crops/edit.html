@@ -40,10 +40,12 @@
                     <label class="block text-gray-700 font-medium mb-2">Season <span class="text-red-500">*</span></label>
                     <select name="season" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
                         <option value="">--Select Season--</option>
-                        <option value="spring" {% if crop.season == 'spring' %}selected{% endif %}>Spring</option>
-                        <option value="summer" {% if crop.season == 'summer' %}selected{% endif %}>Summer</option>
-                        <option value="autumn" {% if crop.season == 'autumn' %}selected{% endif %}>Autumn</option>
-                        <option value="winter" {% if crop.season == 'winter' %}selected{% endif %}>Winter</option>
+                        <option value="main_rainy" {% if crop.season == 'main_rainy' %}selected{% endif %}>Main Rainy Season (Nov-Mar)</option>
+                        <option value="early_planting" {% if crop.season == 'early_planting' %}selected{% endif %}>Early Planting (Sept-Oct)</option>
+                        <option value="late_planting" {% if crop.season == 'late_planting' %}selected{% endif %}>Late Planting (Dec-Jan)</option>
+                        <option value="winter" {% if crop.season == 'winter' %}selected{% endif %}>Winter Season (Apr-Aug)</option>
+                        <option value="irrigated" {% if crop.season == 'irrigated' %}selected{% endif %}>Irrigated/Off-Season</option>
+                        <option value="short_rain" {% if crop.season == 'short_rain' %}selected{% endif %}>Short Rain Season</option>
                     </select>
                 </div>
             </div>
@@ -68,6 +70,11 @@
                     <label class="block text-gray-700 font-medium mb-2">Expected Harvest Date <span class="text-red-500">*</span></label>
                     <input type="date" name="expected_harvest_date" value="{{ crop.expected_harvest_date|date:'Y-m-d' }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Area Allocated (hectares) <span class="text-red-500">*</span></label>
+                <input type="number" step="0.01" min="0" name="area_allocated_hectares" value="{{ crop.area_allocated_hectares }}" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Area in hectares">
             </div>
             
             <div class="mb-4">

@@ -188,7 +188,14 @@
                 <div x-show="expandedMenu === 'crops'" x-transition class="ml-6 space-y-1 mt-1">
                     <a href="{% url 'core:crop_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">List</a>
                     <a href="{% url 'core:crop_plant' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Plant</a>
+                    <a href="{% url 'core:seasonal_recommendations' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">🌱 Seasonal Recommendations</a>
+                    <a href="{% url 'core:area_utilization' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">📐 Area Utilization</a>
+                    <div class="border-t border-green-600 my-2"></div>
                     <a href="{% url 'core:yield_prediction' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Yield Prediction</a>
+                    {% if user.is_staff or user.is_superuser %}
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:crop_type_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">🌾 Crop Types (Admin)</a>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -252,6 +259,42 @@
                 </div>
             </div>
             {% endif %}
+
+            <!-- Inventory Management (ALL USERS) -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'inventory' ? null : 'inventory'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-store-3-line text-xl"></i>
+                    <span class="font-medium">Inventory</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition-transform" :class="{'rotate-180': expandedMenu === 'inventory'}"></i>
+                </button>
+                <div x-show="expandedMenu === 'inventory'" class="ml-4 mt-2 space-y-1">
+                    <a href="{% url 'core:inventory_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">📦 Inventory</a>
+                    <a href="{% url 'core:inventory_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Item</a>
+                </div>
+            </div>
+
+            <!-- Fish Farming (ALL USERS) -->
+            <div>
+                <button @click="expandedMenu = expandedMenu === 'fish_farming' ? null : 'fish_farming'" 
+                        class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="ri-fish-line text-xl"></i>
+                    <span class="font-medium">Fish Farming</span>
+                    <i class="ri-arrow-down-s-line ml-auto transition-transform" :class="{'rotate-180': expandedMenu === 'fish_farming'}"></i>
+                </button>
+                <div x-show="expandedMenu === 'fish_farming'" class="ml-4 mt-2 space-y-1">
+                    <a href="{% url 'core:fish_pond_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">🌊 Fish Ponds</a>
+                    <a href="{% url 'core:fish_pond_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Pond</a>
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:fish_cycle_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">🐟 Fish Cycles</a>
+                    <a href="{% url 'core:fish_cycle_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Start Cycle</a>
+                    {% if user.is_staff or user.is_superuser %}
+                    <div class="border-t border-green-600 my-2"></div>
+                    <a href="{% url 'core:fish_species_list' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700 font-semibold text-blue-200">🐠 Fish Species (Admin)</a>
+                    <a href="{% url 'core:fish_species_add' %}" class="block px-3 py-2 text-sm rounded hover:bg-green-700">Add Species</a>
+                    {% endif %}
+                </div>
+            </div>
 
             <!-- Marketplace (FARMERS, LARGE FARMERS, SUPERMARKET, ADMIN ONLY) -->
             {% if user.user_type == 'farmer' or user.user_type == 'large_farmer' or user.user_type == 'supermarket' or user.user_type == 'admin' or user.is_superuser %}

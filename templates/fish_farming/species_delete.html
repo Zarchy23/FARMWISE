@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Delete Fish Species{% endblock %}
+{% block page_title %}Delete Fish Species{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'core:fish_species_list' %}" class="text-green-600 hover:text-green-700 flex items-center space-x-2">
+            <i class="ri-arrow-left-line"></i>
+            <span>Back to Species</span>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="text-center mb-6">
+            <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="ri-delete-bin-line text-3xl text-red-600"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Delete Fish Species</h1>
+            <p class="text-gray-600">Are you sure you want to delete <strong>{{ species.name }}</strong>?</p>
+            <p class="text-sm text-red-600 mt-2">This action cannot be undone.</p>
+        </div>
+
+        <form method="post" class="flex space-x-4">
+            {% csrf_token %}
+            <button type="submit" class="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition font-medium">
+                Yes, Delete
+            </button>
+            <a href="{% url 'core:fish_species_list' %}" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium text-center">
+                Cancel
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

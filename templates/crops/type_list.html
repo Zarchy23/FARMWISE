@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Crop Types Management{% endblock %}
+{% block page_title %}Crop Types Management{% endblock %}
+
+{% block content %}
+<div>
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">Crop Types</h1>
+            <p class="text-gray-600">Manage crop types and their seasonal suitability</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'core:crop_type_add' %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+                <i class="ri-add-line"></i>
+                <span>Add Crop Type</span>
+            </a>
+        </div>
+    </div>
+
+    {% if crop_types %}
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for crop_type in crop_types %}
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden">
+            <div class="h-40 bg-gradient-to-r from-green-400 to-green-600 flex items-center justify-center">
+                {% if crop_type.image %}
+                <img src="{{ crop_type.image.url }}" alt="{{ crop_type.name }}" class="w-full h-full object-cover">
+                {% else %}
+                <i class="ri-plant-line text-5xl text-white"></i>
+                {% endif %}
+            </div>
+
+            <div class="p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h3 class="font-bold text-lg">{{ crop_type.name }}</h3>
+                        <p class="text-sm text-gray-600">{{ crop_type.get_category_display }}</p>
+                    </div>
+                    <span class="text-xs px-2 py-1 rounded-full {% if crop_type.is_active %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-700{% endif %}">
+                        {% if crop_type.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+
+                <div class="bg-gray-50 p-3 rounded mb-4">
+                    <p class="text-sm text-gray-600">Growing: {{ crop_type.growing_days }} days</p>
+                    <p class="text-sm text-gray-600">Expected yield: {{ crop_type.expected_yield_kg_per_ha|default:"0" }} kg/ha</p>
+                </div>
+
+                {% if crop_type.suitable_seasons %}
+                <div class="mb-4">
+                    <p class="text-xs text-gray-500 mb-1">Suitable seasons:</p>
+                    <div class="flex flex-wrap gap-1">
+                        {% for season in crop_type.suitable_seasons %}
+                        <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">{{ season }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="flex space-x-2">
+                    <a href="{% url 'core:crop_type_edit' crop_type.pk %}" class="flex-1 text-center bg-blue-50 text-blue-600 py-2 rounded hover:bg-blue-100 transition text-sm font-medium">Edit</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+        <i class="ri-plant-line text-6xl text-gray-300 mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-500 mb-2">No Crop Types Yet</h2>
+        <p class="text-gray-400 mb-6">Add your first crop type to get started</p>
+        <a href="{% url 'core:crop_type_add' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition inline-block">Add Crop Type</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

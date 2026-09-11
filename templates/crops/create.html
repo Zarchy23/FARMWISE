@@ -37,12 +37,16 @@
             
             <div class="mb-4">
                 <label class="block text-gray-700 font-medium mb-2">Season</label>
-                <select name="season" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="main">Main Season</option>
-                    <option value="off">Off Season</option>
-                    <option value="dry">Dry Season</option>
-                    <option value="wet">Wet Season</option>
+                <select name="season" id="season_select" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">-- Select Season --</option>
+                    <option value="main_rainy">Main Rainy Season (Nov-Mar)</option>
+                    <option value="early_planting">Early Planting (Sept-Oct)</option>
+                    <option value="late_planting">Late Planting (Dec-Jan)</option>
+                    <option value="winter">Winter Season (Apr-Aug)</option>
+                    <option value="irrigated">Irrigated/Off-Season</option>
+                    <option value="short_rain">Short Rain Season</option>
                 </select>
+                <div id="season_warning" class="text-red-500 text-sm mt-1 hidden"></div>
             </div>
             
             <div class="grid md:grid-cols-2 gap-4">
@@ -54,6 +58,13 @@
                     <label class="block text-gray-700 font-medium mb-2">Expected Harvest Date</label>
                     <input type="date" name="expected_harvest_date" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Area Allocated (hectares) *</label>
+                <input type="number" step="0.01" min="0" name="area_allocated_hectares" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Enter area in hectares">
+                <div id="area_info" class="text-gray-500 text-sm mt-1"></div>
+                <div id="area_warning" class="text-red-500 text-sm mt-1 hidden"></div>
             </div>
             
             <div class="mb-4">
@@ -81,10 +92,20 @@
 </div>
 
 <script>
-    // Auto-calculate expected harvest date based on crop type
+    // Crop suitability data (would ideally come from server)
+    const cropSuitability = {
+        // This will be populated dynamically from crop type data
+    };
+    
     const cropTypeSelect = document.querySelector('select[name="crop_type"]');
+    const fieldSelect = document.querySelector('select[name="field"]');
+    const seasonSelect = document.querySelector('select[name="season"]');
     const plantingDateInput = document.querySelector('input[name="planting_date"]');
     const harvestDateInput = document.querySelector('input[name="expected_harvest_date"]');
+    const areaInput = document.querySelector('input[name="area_allocated_hectares"]');
+    const seasonWarning = document.getElementById('season_warning');
+    const areaInfo = document.getElementById('area_info');
+    const areaWarning = document.getElementById('area_warning');
     
     function calculateHarvestDate() {
         if (cropTypeSelect.value && plantingDateInput.value) {
@@ -101,7 +122,49 @@
         }
     }
     
+    function checkSeasonalSuitability() {
+        const cropId = cropTypeSelect.value;
+        const season = seasonSelect.value;
+        
+        if (cropId && season) {
+            // In a real implementation, this would check against crop.suitable_seasons
+            // For now, we'll show a warning for off-season planting
+            if (season === 'off') {
+                seasonWarning.textContent = '⚠️ Off-season planting may require additional irrigation and care.';
+                seasonWarning.classList.remove('hidden');
+            } else {
+                seasonWarning.classList.add('hidden');
+            }
+        }
+    }
+    
+    function checkAreaAllocation() {
+        const fieldId = fieldSelect.value;
+        const area = parseFloat(areaInput.value);
+        
+        if (fieldId) {
+            const fieldOption = fieldSelect.options[fieldSelect.selectedIndex];
+            const fieldText = fieldOption.text;
+            const areaMatch = fieldText.match(/\(([\d.]+) ha\)/);
+            
+            if (areaMatch) {
+                const fieldArea = parseFloat(areaMatch[1]);
+                areaInfo.textContent = `Field total area: ${fieldArea} ha`;
+                
+                if (area > fieldArea) {
+                    areaWarning.textContent = `⚠️ Allocated area (${area} ha) exceeds field area (${fieldArea} ha)`;
+                    areaWarning.classList.remove('hidden');
+                } else {
+                    areaWarning.classList.add('hidden');
+                }
+            }
+        }
+    }
+    
     cropTypeSelect.addEventListener('change', calculateHarvestDate);
     plantingDateInput.addEventListener('change', calculateHarvestDate);
+    seasonSelect.addEventListener('change', checkSeasonalSuitability);
+    fieldSelect.addEventListener('change', checkAreaAllocation);
+    areaInput.addEventListener('input', checkAreaAllocation);
 </script>
 {% endblock %}

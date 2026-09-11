@@ -58,6 +58,11 @@ urlpatterns = [
     path('crops/<int:pk>/', views.crop_detail, name='crop_detail'),
     path('crops/<int:pk>/edit/', views.crop_edit, name='crop_edit'),
     path('crops/<int:pk>/delete/', views.crop_delete, name='crop_delete'),
+    path('crops/types/', views.crop_type_list, name='crop_type_list'),
+    path('crops/types/add/', views.crop_type_add, name='crop_type_add'),
+    path('crops/types/<int:pk>/edit/', views.crop_type_edit, name='crop_type_edit'),
+    path('crops/area-utilization/', views.area_utilization_dashboard, name='area_utilization'),
+    path('crops/seasonal-recommendations/', views.seasonal_recommendations, name='seasonal_recommendations'),
     path('crops/<int:crop_id>/harvest/', views.crop_harvest, name='crop_harvest'),
     path('crops/<int:crop_id>/input/add/', views.input_add, name='input_add'),
     path('crops/yield-prediction/', views_yield_prediction.yield_prediction_image, name='yield_prediction'),
@@ -98,6 +103,29 @@ urlpatterns = [
     path('assets/<int:pk>/', views.asset_detail, name='asset_detail'),
     path('assets/<int:pk>/edit/', views.asset_edit, name='asset_edit'),
     path('assets/<int:pk>/delete/', views.asset_delete, name='asset_delete'),
+    
+    # Inventory Management
+    path('inventory/', views.inventory_list, name='inventory_list'),
+    path('inventory/add/', views.inventory_add, name='inventory_add'),
+    path('inventory/<int:pk>/', views.inventory_detail, name='inventory_detail'),
+    path('inventory/<int:pk>/edit/', views.inventory_edit, name='inventory_edit'),
+    path('inventory/<int:pk>/delete/', views.inventory_delete, name='inventory_delete'),
+    
+    # Fish Farming
+    path('fish-farming/ponds/', views.fish_pond_list, name='fish_pond_list'),
+    path('fish-farming/ponds/add/', views.fish_pond_add, name='fish_pond_add'),
+    path('fish-farming/ponds/<int:pk>/', views.fish_pond_detail, name='fish_pond_detail'),
+    path('fish-farming/ponds/<int:pk>/edit/', views.fish_pond_edit, name='fish_pond_edit'),
+    path('fish-farming/ponds/<int:pk>/delete/', views.fish_pond_delete, name='fish_pond_delete'),
+    path('fish-farming/species/', views.fish_species_list, name='fish_species_list'),
+    path('fish-farming/species/add/', views.fish_species_add, name='fish_species_add'),
+    path('fish-farming/species/<int:pk>/edit/', views.fish_species_edit, name='fish_species_edit'),
+    path('fish-farming/species/<int:pk>/delete/', views.fish_species_delete, name='fish_species_delete'),
+    path('fish-farming/cycles/', views.fish_cycle_list, name='fish_cycle_list'),
+    path('fish-farming/cycles/add/', views.fish_cycle_add, name='fish_cycle_add'),
+    path('fish-farming/cycles/<int:pk>/', views.fish_cycle_detail, name='fish_cycle_detail'),
+    path('fish-farming/cycles/<int:pk>/edit/', views.fish_cycle_edit, name='fish_cycle_edit'),
+    path('fish-farming/cycles/<int:pk>/delete/', views.fish_cycle_delete, name='fish_cycle_delete'),
     
     # ============================================================
     # MARKETPLACE

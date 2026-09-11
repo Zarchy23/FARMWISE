@@ -684,6 +684,216 @@ def crop_delete(request, pk):
 
 
 @login_required
+def crop_type_list(request):
+    """List all crop types (admin/staff only)"""
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to manage crop types.')
+        return redirect('core:crop_list')
+    
+    crop_types = CropType.objects.all()
+    return render(request, 'crops/type_list.html', {'crop_types': crop_types})
+
+
+@login_required
+def crop_type_add(request):
+    """Add a new crop type (admin/staff only)"""
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to manage crop types.')
+        return redirect('core:crop_list')
+    
+    from core.forms import CropTypeForm
+    
+    if request.method == 'POST':
+        form = CropTypeForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Crop type added successfully!')
+            return redirect('core:crop_type_list')
+        else:
+            for field, errors in form.errors.items():
+                messages.error(request, f'{field}: {", ".join(errors)}')
+    else:
+        form = CropTypeForm()
+    
+    return render(request, 'crops/type_add.html', {'form': form})
+
+
+@login_required
+def crop_type_edit(request, pk):
+    """Edit crop type (admin/staff only)"""
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to manage crop types.')
+        return redirect('core:crop_list')
+    
+    from core.forms import CropTypeForm
+    
+    crop_type = get_object_or_404(CropType, pk=pk)
+    
+    if request.method == 'POST':
+        form = CropTypeForm(request.POST, request.FILES, instance=crop_type)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Crop type updated successfully!')
+            return redirect('core:crop_type_list')
+    else:
+        form = CropTypeForm(instance=crop_type)
+    
+    return render(request, 'crops/type_edit.html', {'form': form, 'crop_type': crop_type})
+
+
+@login_required
+def area_utilization_dashboard(request):
+    """Dashboard showing farm area utilization"""
+    from django.db.models import Sum
+    
+    farms = Farm.objects.filter(owner=request.user)
+    
+    farm_data = []
+    total_farm_area = 0
+    total_allocated_area = 0
+    
+    for farm in farms:
+        fields = farm.crop_fields.all()
+        farm_total_area = sum([f.area_hectares for f in fields if hasattr(f, 'area_hectares')]) or 0
+        
+        # Calculate allocated area for this farm
+        allocated_area = CropSeason.objects.filter(
+            field__farm=farm,
+            status__in=['planned', 'planting', 'planted', 'growing']
+        ).aggregate(total=Sum('area_allocated_hectares'))['total'] or Decimal('0')
+        
+        utilization_percent = (allocated_area / farm_total_area * 100) if farm_total_area > 0 else 0
+        available_area = farm_total_area - allocated_area
+        
+        field_details = []
+        for field in fields:
+            field_allocated = CropSeason.objects.filter(
+                field=field,
+                status__in=['planned', 'planting', 'planted', 'growing']
+            ).aggregate(total=Sum('area_allocated_hectares'))['total'] or Decimal('0')
+            
+            field_utilization = (field_allocated / field.area_hectares * 100) if hasattr(field, 'area_hectares') and field.area_hectares > 0 else 0
+            field_available = field.area_hectares - field_allocated if hasattr(field, 'area_hectares') else 0
+            
+            active_crops = CropSeason.objects.filter(
+                field=field,
+                status__in=['planned', 'planting', 'planted', 'growing']
+            )
+            
+            field_details.append({
+                'name': field.name,
+                'total_area': field.area_hectares if hasattr(field, 'area_hectares') else 0,
+                'allocated_area': field_allocated,
+                'available_area': field_available,
+                'utilization_percent': field_utilization,
+                'active_crops': active_crops.count(),
+                'crops': active_crops
+            })
+        
+        farm_data.append({
+            'name': farm.name,
+            'total_area': farm_total_area,
+            'allocated_area': allocated_area,
+            'available_area': available_area,
+            'utilization_percent': utilization_percent,
+            'fields': field_details
+        })
+        
+        total_farm_area += farm_total_area
+        total_allocated_area += allocated_area
+    
+    total_utilization = (total_allocated_area / total_farm_area * 100) if total_farm_area > 0 else 0
+    total_available = total_farm_area - total_allocated_area
+    
+    context = {
+        'farm_data': farm_data,
+        'total_farm_area': total_farm_area,
+        'total_allocated_area': total_allocated_area,
+        'total_available_area': total_available,
+        'total_utilization_percent': total_utilization,
+    }
+    
+    return render(request, 'crops/area_utilization.html', context)
+
+
+@login_required
+def seasonal_recommendations(request):
+    """Recommend suitable crops based on current season and available area"""
+    from django.db.models import Sum
+    from datetime import datetime
+    
+    # Determine current season based on month
+    current_month = datetime.now().month
+    if current_month in [11, 12, 1, 2, 3]:
+        current_season = 'main_rainy'
+        current_season_name = 'Main Rainy Season (Nov-Mar)'
+    elif current_month in [9, 10]:
+        current_season = 'early_planting'
+        current_season_name = 'Early Planting (Sept-Oct)'
+    elif current_month in [12, 1]:
+        current_season = 'late_planting'
+        current_season_name = 'Late Planting (Dec-Jan)'
+    elif current_month in [4, 5, 6, 7, 8]:
+        current_season = 'winter'
+        current_season_name = 'Winter Season (Apr-Aug)'
+    else:
+        current_season = 'irrigated'
+        current_season_name = 'Irrigated/Off-Season'
+    
+    # Get suitable crops for current season
+    suitable_crops = CropType.objects.filter(
+        is_active=True,
+        suitable_seasons__contains=current_season
+    ).distinct()
+    
+    # Get available area per field
+    farms = Farm.objects.filter(owner=request.user)
+    field_availability = []
+    
+    for farm in farms:
+        for field in farm.crop_fields.all():
+            allocated = CropSeason.objects.filter(
+                field=field,
+                status__in=['planned', 'planting', 'planted', 'growing']
+            ).aggregate(total=Sum('area_allocated_hectares'))['total'] or Decimal('0')
+            
+            total_area = field.area_hectares if hasattr(field, 'area_hectares') else 0
+            available = total_area - allocated
+            
+            if available > 0:
+                utilization_percent = (allocated / total_area * 100) if total_area > 0 else 0
+                field_availability.append({
+                    'field': field,
+                    'farm': farm,
+                    'total_area': total_area,
+                    'allocated_area': allocated,
+                    'available_area': available,
+                    'utilization_percent': utilization_percent,
+                })
+    
+    # Get historical performance (average yield per crop type)
+    from django.db.models import Avg, Count
+    crop_performance = CropSeason.objects.filter(
+        field__farm__owner=request.user,
+        status='harvested',
+        actual_yield_kg__isnull=False
+    ).values('crop_type__name').annotate(
+        avg_yield=Avg('actual_yield_kg'),
+        count=Count('id')
+    ).order_by('-avg_yield')
+    
+    context = {
+        'current_season': current_season,
+        'current_season_name': current_season_name,
+        'suitable_crops': suitable_crops,
+        'field_availability': field_availability,
+        'crop_performance': crop_performance,
+    }
+    
+    return render(request, 'crops/seasonal_recommendations.html', context)
+
+
+@login_required
 def crop_harvest(request, crop_id):
     """Record harvest for a crop"""
     crop = get_object_or_404(CropSeason, pk=crop_id, field__farm__owner=request.user)
@@ -1160,6 +1370,396 @@ def asset_delete(request, pk):
         messages.success(request, 'Asset deleted successfully!')
         return redirect('core:asset_list')
     return render(request, 'assets/delete.html', {'asset': asset})
+
+
+# ============================================================
+# INVENTORY MANAGEMENT VIEWS
+# ============================================================
+
+@login_required
+def inventory_list(request):
+    """List all inventory items for the current user"""
+    from core.models import Inventory
+    
+    inventory_items = Inventory.objects.filter(owner=request.user)
+    
+    # Calculate statistics
+    total_items = inventory_items.count()
+    in_stock = inventory_items.filter(status='in_stock').count()
+    low_stock = inventory_items.filter(status='low_stock').count()
+    out_of_stock = inventory_items.filter(status='out_of_stock').count()
+    expired = inventory_items.filter(status='expired').count()
+    
+    # Calculate total value
+    total_value = inventory_items.aggregate(total=Sum('total_value'))['total'] or 0
+    
+    # Filter by category
+    category_filter = request.GET.get('category')
+    if category_filter:
+        inventory_items = inventory_items.filter(category=category_filter)
+    
+    # Filter by status
+    status_filter = request.GET.get('status')
+    if status_filter:
+        inventory_items = inventory_items.filter(status=status_filter)
+    
+    context = {
+        'inventory_items': inventory_items,
+        'total_items': total_items,
+        'in_stock': in_stock,
+        'low_stock': low_stock,
+        'out_of_stock': out_of_stock,
+        'expired': expired,
+        'total_value': total_value,
+        'category_choices': Inventory.CATEGORY_CHOICES,
+        'status_choices': Inventory.STATUS_CHOICES,
+    }
+    return render(request, 'inventory/list.html', context)
+
+
+@login_required
+def inventory_add(request):
+    """Add a new inventory item"""
+    from core.models import Inventory
+    from core.forms import InventoryForm
+    
+    if request.method == 'POST':
+        form = InventoryForm(request.POST, user=request.user)
+        if form.is_valid():
+            inventory = form.save(commit=False)
+            inventory.owner = request.user
+            inventory.save()
+            form.save_m2m()  # Save many-to-many relationships
+            messages.success(request, 'Inventory item added successfully!')
+            return redirect('core:inventory_list')
+        else:
+            for field, errors in form.errors.items():
+                messages.error(request, f'{field}: {", ".join(errors)}')
+    else:
+        form = InventoryForm(user=request.user)
+    
+    return render(request, 'inventory/add.html', {'form': form})
+
+
+@login_required
+def inventory_detail(request, pk):
+    """View inventory item details"""
+    from core.models import Inventory
+    
+    inventory = get_object_or_404(Inventory, pk=pk, owner=request.user)
+    return render(request, 'inventory/detail.html', {'inventory': inventory})
+
+
+@login_required
+def inventory_edit(request, pk):
+    """Edit inventory item"""
+    from core.models import Inventory
+    from core.forms import InventoryForm
+    
+    inventory = get_object_or_404(Inventory, pk=pk, owner=request.user)
+    
+    if request.method == 'POST':
+        # Check if this is a quick status change
+        if 'status' in request.POST and len(request.POST) == 2:  # Only status and csrf
+            inventory.status = request.POST['status']
+            inventory.save()
+            messages.success(request, f'Inventory status updated to {inventory.get_status_display()}')
+            return redirect('core:inventory_detail', pk=inventory.pk)
+        
+        form = InventoryForm(request.POST, instance=inventory, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Inventory item updated successfully!')
+            return redirect('core:inventory_detail', pk=inventory.pk)
+    else:
+        form = InventoryForm(instance=inventory, user=request.user)
+    
+    return render(request, 'inventory/edit.html', {'form': form, 'inventory': inventory})
+
+
+@login_required
+def inventory_delete(request, pk):
+    """Delete inventory item"""
+    from core.models import Inventory
+    
+    inventory = get_object_or_404(Inventory, pk=pk, owner=request.user)
+    if request.method == 'POST':
+        inventory.delete()
+        messages.success(request, 'Inventory item deleted successfully!')
+        return redirect('core:inventory_list')
+    return render(request, 'inventory/delete.html', {'inventory': inventory})
+
+
+# ============================================================
+# FISH FARMING VIEWS
+# ============================================================
+
+@login_required
+def fish_pond_list(request):
+    """List all fish ponds for the current user"""
+    from core.models import FishPond
+    
+    ponds = FishPond.objects.filter(farm__owner=request.user)
+    
+    # Calculate statistics
+    total_ponds = ponds.count()
+    active_ponds = ponds.filter(status='active').count()
+    total_capacity = sum([pond.max_capacity for pond in ponds])
+    total_volume = sum([pond.volume_cubic_meters for pond in ponds])
+    
+    # Add active cycles count to each pond
+    pond_data = []
+    for pond in ponds:
+        active_cycles = pond.cycles.filter(status__in=['planned', 'stocking', 'growing', 'feeding', 'ready_for_harvest']).count()
+        pond_data.append({
+            'pond': pond,
+            'active_cycles': active_cycles,
+        })
+    
+    context = {
+        'ponds': pond_data,
+        'total_ponds': total_ponds,
+        'active_ponds': active_ponds,
+        'total_capacity': total_capacity,
+        'total_volume': total_volume,
+    }
+    return render(request, 'fish_farming/pond_list.html', context)
+
+
+@login_required
+def fish_pond_add(request):
+    """Add a new fish pond"""
+    from core.models import FishPond
+    from core.forms import FishPondForm
+    
+    if request.method == 'POST':
+        form = FishPondForm(request.POST, user=request.user)
+        if form.is_valid():
+            pond = form.save()
+            messages.success(request, 'Fish pond added successfully!')
+            return redirect('core:fish_pond_list')
+        else:
+            for field, errors in form.errors.items():
+                messages.error(request, f'{field}: {", ".join(errors)}')
+    else:
+        form = FishPondForm(user=request.user)
+    
+    return render(request, 'fish_farming/pond_add.html', {'form': form})
+
+
+@login_required
+def fish_pond_detail(request, pk):
+    """View fish pond details"""
+    from core.models import FishPond
+    
+    pond = get_object_or_404(FishPond, pk=pk, farm__owner=request.user)
+    active_cycles = pond.cycles.filter(status__in=['planned', 'stocking', 'growing', 'feeding', 'ready_for_harvest'])
+    
+    return render(request, 'fish_farming/pond_detail.html', {
+        'pond': pond,
+        'active_cycles': active_cycles,
+    })
+
+
+@login_required
+def fish_pond_edit(request, pk):
+    """Edit fish pond"""
+    from core.models import FishPond
+    from core.forms import FishPondForm
+    
+    pond = get_object_or_404(FishPond, pk=pk, farm__owner=request.user)
+    
+    if request.method == 'POST':
+        form = FishPondForm(request.POST, instance=pond, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Fish pond updated successfully!')
+            return redirect('core:fish_pond_detail', pk=pond.pk)
+    else:
+        form = FishPondForm(instance=pond, user=request.user)
+    
+    return render(request, 'fish_farming/pond_edit.html', {'form': form, 'pond': pond})
+
+
+@login_required
+def fish_pond_delete(request, pk):
+    """Delete fish pond"""
+    from core.models import FishPond
+    
+    pond = get_object_or_404(FishPond, pk=pk, farm__owner=request.user)
+    if request.method == 'POST':
+        pond.delete()
+        messages.success(request, 'Fish pond deleted successfully!')
+        return redirect('core:fish_pond_list')
+    return render(request, 'fish_farming/pond_delete.html', {'pond': pond})
+
+
+@login_required
+def fish_species_list(request):
+    """List all fish species (admin/staff only)"""
+    from core.models import FishSpecies
+    
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to view fish species.')
+        return redirect('core:fish_pond_list')
+    
+    species = FishSpecies.objects.all()
+    return render(request, 'fish_farming/species_list.html', {'species': species})
+
+
+@login_required
+def fish_species_add(request):
+    """Add a new fish species (admin/staff only)"""
+    from core.models import FishSpecies
+    from core.forms import FishSpeciesForm
+    
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to add fish species.')
+        return redirect('core:fish_species_list')
+    
+    if request.method == 'POST':
+        form = FishSpeciesForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Fish species added successfully!')
+            return redirect('core:fish_species_list')
+        else:
+            for field, errors in form.errors.items():
+                messages.error(request, f'{field}: {", ".join(errors)}')
+    else:
+        form = FishSpeciesForm()
+    
+    return render(request, 'fish_farming/species_add.html', {'form': form})
+
+
+@login_required
+def fish_species_edit(request, pk):
+    """Edit fish species (admin/staff only)"""
+    from core.models import FishSpecies
+    from core.forms import FishSpeciesForm
+    
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to edit fish species.')
+        return redirect('core:fish_species_list')
+    
+    species = get_object_or_404(FishSpecies, pk=pk)
+    
+    if request.method == 'POST':
+        form = FishSpeciesForm(request.POST, instance=species)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Fish species updated successfully!')
+            return redirect('core:fish_species_list')
+        else:
+            for field, errors in form.errors.items():
+                messages.error(request, f'{field}: {", ".join(errors)}')
+    else:
+        form = FishSpeciesForm(instance=species)
+    
+    return render(request, 'fish_farming/species_edit.html', {'form': form, 'species': species})
+
+
+@login_required
+def fish_species_delete(request, pk):
+    """Delete fish species (admin/staff only)"""
+    from core.models import FishSpecies
+    
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to delete fish species.')
+        return redirect('core:fish_species_list')
+    
+    species = get_object_or_404(FishSpecies, pk=pk)
+    if request.method == 'POST':
+        species.delete()
+        messages.success(request, 'Fish species deleted successfully!')
+        return redirect('core:fish_species_list')
+    return render(request, 'fish_farming/species_delete.html', {'species': species})
+
+
+@login_required
+def fish_cycle_list(request):
+    """List all fish cycles for the current user"""
+    from core.models import FishCycle
+    
+    cycles = FishCycle.objects.filter(pond__farm__owner=request.user)
+    
+    # Calculate statistics
+    total_cycles = cycles.count()
+    active_cycles = cycles.filter(status__in=['stocking', 'growing', 'feeding']).count()
+    harvested_cycles = cycles.filter(status='harvested').count()
+    
+    context = {
+        'cycles': cycles,
+        'total_cycles': total_cycles,
+        'active_cycles': active_cycles,
+        'harvested_cycles': harvested_cycles,
+    }
+    return render(request, 'fish_farming/cycle_list.html', context)
+
+
+@login_required
+def fish_cycle_add(request):
+    """Add a new fish cycle"""
+    from core.models import FishCycle
+    from core.forms import FishCycleForm
+    
+    if request.method == 'POST':
+        form = FishCycleForm(request.POST, user=request.user)
+        if form.is_valid():
+            cycle = form.save(commit=False)
+            cycle.created_by = request.user
+            cycle.save()
+            messages.success(request, 'Fish cycle added successfully!')
+            return redirect('core:fish_cycle_list')
+        else:
+            for field, errors in form.errors.items():
+                messages.error(request, f'{field}: {", ".join(errors)}')
+    else:
+        form = FishCycleForm(user=request.user)
+    
+    return render(request, 'fish_farming/cycle_add.html', {'form': form})
+
+
+@login_required
+def fish_cycle_detail(request, pk):
+    """View fish cycle details"""
+    from core.models import FishCycle
+    
+    cycle = get_object_or_404(FishCycle, pk=pk, pond__farm__owner=request.user)
+    return render(request, 'fish_farming/cycle_detail.html', {'cycle': cycle})
+
+
+@login_required
+def fish_cycle_edit(request, pk):
+    """Edit fish cycle"""
+    from core.models import FishCycle
+    from core.forms import FishCycleForm
+    
+    cycle = get_object_or_404(FishCycle, pk=pk, pond__farm__owner=request.user)
+    
+    if request.method == 'POST':
+        form = FishCycleForm(request.POST, instance=cycle, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Fish cycle updated successfully!')
+            return redirect('core:fish_cycle_detail', pk=cycle.pk)
+    else:
+        form = FishCycleForm(instance=cycle, user=request.user)
+    
+    return render(request, 'fish_farming/cycle_edit.html', {'form': form, 'cycle': cycle})
+
+
+@login_required
+def fish_cycle_delete(request, pk):
+    """Delete fish cycle"""
+    from core.models import FishCycle
+    
+    cycle = get_object_or_404(FishCycle, pk=pk, pond__farm__owner=request.user)
+    if request.method == 'POST':
+        cycle.delete()
+        messages.success(request, 'Fish cycle deleted successfully!')
+        return redirect('core:fish_cycle_list')
+    return render(request, 'fish_farming/cycle_delete.html', {'cycle': cycle})
 
 
 @login_required

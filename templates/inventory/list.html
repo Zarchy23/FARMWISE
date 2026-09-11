@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Inventory Management{% endblock %}
+{% block page_title %}Inventory Management{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">Inventory</h1>
+            <p class="text-gray-600">Track and manage your farm inventory</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'core:inventory_add' %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+                <i class="ri-add-line"></i>
+                <span>Add Item</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ total_items|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Total Items</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ in_stock|default:"0" }}</div>
+            <div class="text-xs text-gray-500">In Stock</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-orange-600">{{ low_stock|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Low Stock</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-red-600">{{ out_of_stock|default:"0" }}</div>
+            <div class="text-xs text-gray-500">Out of Stock</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">${{ total_value|default:"0"|floatformat:2 }}</div>
+            <div class="text-xs text-gray-500">Total Value</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div class="flex gap-4">
+            <div class="flex-1">
+                <label class="text-sm text-gray-600 mb-1 block">Filter by Category</label>
+                <select name="category" onchange="location.href='?category='+this.value" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">All Categories</option>
+                    {% for value, label in category_choices %}
+                    <option value="{{ value }}" {% if request.GET.category == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex-1">
+                <label class="text-sm text-gray-600 mb-1 block">Filter by Status</label>
+                <select name="status" onchange="location.href='?status='+this.value" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">All Statuses</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Grid -->
+    {% if inventory_items %}
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for item in inventory_items %}
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden card-hover">
+            <div class="h-48 bg-gradient-to-r from-green-400 to-green-600 flex items-center justify-center">
+                <i class="ri-store-3-line text-5xl text-white"></i>
+            </div>
+
+            <div class="p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h3 class="font-bold text-lg">{{ item.name }}</h3>
+                        <p class="text-sm text-gray-600">{{ item.get_category_display }}</p>
+                    </div>
+                    <span class="text-xs px-2 py-1 rounded-full
+                        {% if item.status == 'in_stock' %}bg-green-100 text-green-700
+                        {% elif item.status == 'low_stock' %}bg-orange-100 text-orange-700
+                        {% elif item.status == 'out_of_stock' %}bg-red-100 text-red-700
+                        {% elif item.status == 'expired' %}bg-purple-100 text-purple-700
+                        {% else %}bg-gray-100 text-gray-700{% endif %}">
+                        {{ item.get_status_display }}
+                    </span>
+                </div>
+
+                <div class="bg-gray-50 p-3 rounded mb-4">
+                    <p class="text-sm text-gray-600">Quantity: {{ item.quantity }} {{ item.unit }}</p>
+                    {% if item.minimum_stock_level > 0 %}
+                    <p class="text-sm {% if item.is_low_stock %}text-orange-600 font-semibold{% else %}text-gray-600{% endif %}">
+                        Min Level: {{ item.minimum_stock_level }} {{ item.unit }}
+                    </p>
+                    {% endif %}
+                    {% if item.expiry_date %}
+                    <p class="text-sm {% if item.is_expired %}text-red-600 font-semibold{% else %}text-gray-600{% endif %}">
+                        Expires: {{ item.expiry_date }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="flex space-x-2">
+                    <a href="{% url 'core:inventory_detail' item.pk %}" class="flex-1 text-center bg-green-50 text-green-600 py-2 rounded hover:bg-green-100 transition text-sm font-medium">View</a>
+                    <a href="{% url 'core:inventory_edit' item.pk %}" class="flex-1 text-center bg-blue-50 text-blue-600 py-2 rounded hover:bg-blue-100 transition text-sm font-medium">Edit</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+        <i class="ri-store-3-line text-6xl text-gray-300 mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-500 mb-2">No Inventory Items</h2>
+        <p class="text-gray-400 mb-6">Start tracking your farm inventory</p>
+        <a href="{% url 'core:inventory_add' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition inline-block">Add Your First Item</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

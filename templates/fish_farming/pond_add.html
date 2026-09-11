@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Add Fish Pond{% endblock %}
+{% block page_title %}Add Fish Pond{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'core:fish_pond_list' %}" class="text-green-600 hover:text-green-700 flex items-center space-x-2">
+            <i class="ri-arrow-left-line"></i>
+            <span>Back to Ponds</span>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <h1 class="text-2xl font-bold mb-6">Add New Fish Pond</h1>
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Farm *</label>
+                    {{ form.farm }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Pond Name *</label>
+                    {{ form.name }}
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Pond Type *</label>
+                {{ form.pond_type }}
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Length (m) *</label>
+                    {{ form.length_m }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Width (m) *</label>
+                    {{ form.width_m }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Depth (m) *</label>
+                    {{ form.depth_m }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Volume (m³) *</label>
+                    {{ form.volume_cubic_meters }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Max Stocking Density *</label>
+                    {{ form.max_stocking_density }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    {{ form.location }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Water Source</label>
+                    {{ form.water_source }}
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                {{ form.status }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                {{ form.notes }}
+            </div>
+
+            <div class="flex space-x-4 pt-4">
+                <button type="submit" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-medium">
+                    Add Fish Pond
+                </button>
+                <a href="{% url 'core:fish_pond_list' %}" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium text-center">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

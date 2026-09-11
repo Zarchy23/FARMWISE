@@ -540,6 +540,15 @@ class CropType(models.Model):
         ('fodder', 'Fodder'),
     ]
     
+    SEASON_CHOICES = [
+        ('main_rainy', 'Main Rainy Season (Nov-Mar)'),
+        ('early_planting', 'Early Planting (Sept-Oct)'),
+        ('late_planting', 'Late Planting (Dec-Jan)'),
+        ('winter', 'Winter Season (Apr-Aug)'),
+        ('irrigated', 'Irrigated/Off-Season'),
+        ('short_rain', 'Short Rain Season'),
+    ]
+    
     name = models.CharField(max_length=100, unique=True)
     scientific_name = models.CharField(max_length=200, blank=True)
     category = models.CharField(max_length=20, choices=CATEGORIES)
@@ -550,6 +559,10 @@ class CropType(models.Model):
     planting_distance_cm = models.IntegerField(null=True, blank=True)
     seed_rate_kg_per_ha = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     expected_yield_kg_per_ha = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    # Seasonal suitability - which seasons this crop can be grown in
+    suitable_seasons = models.JSONField(default=list, help_text="List of suitable seasons (e.g., ['main', 'long_rain'])")
+    
     image = models.ImageField(upload_to='crops/%Y/%m/', null=True, blank=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -570,13 +583,14 @@ class CropType(models.Model):
 class CropSeason(models.Model):
     """Crop planted in a specific field"""
     
+    # Zimbabwe Agricultural Seasons
     SEASONS = [
-        ('main', 'Main Season'),
-        ('off', 'Off Season'),
-        ('dry', 'Dry Season'),
-        ('wet', 'Wet Season'),
-        ('long_rain', 'Long Rains'),
-        ('short_rain', 'Short Rains'),
+        ('main_rainy', 'Main Rainy Season (Nov-Mar)'),
+        ('early_planting', 'Early Planting (Sept-Oct)'),
+        ('late_planting', 'Late Planting (Dec-Jan)'),
+        ('winter', 'Winter Season (Apr-Aug)'),
+        ('irrigated', 'Irrigated/Off-Season'),
+        ('short_rain', 'Short Rain Season'),
     ]
     
     STATUS = [
@@ -598,6 +612,10 @@ class CropSeason(models.Model):
     expected_harvest_date = models.DateField()
     actual_harvest_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS, default='planned')
+    
+    # Area allocation for this crop season
+    area_allocated_hectares = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Area allocated for this crop (in hectares)")
+    
     estimated_yield_kg = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     actual_yield_kg = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     estimated_revenue = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -619,6 +637,68 @@ class CropSeason(models.Model):
     
     def __str__(self):
         return f"{self.crop_type.name} - {self.field.name} ({self.planting_date})"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        
+        # Validate seasonal suitability
+        if self.crop_type.suitable_seasons and self.season not in self.crop_type.suitable_seasons:
+            suitable_display = [dict(CropSeason.SEASONS).get(s, s) for s in self.crop_type.suitable_seasons]
+            current_display = dict(CropSeason.SEASONS).get(self.season, self.season)
+            raise ValidationError(
+                f"{self.crop_type.name} is not suitable for {current_display}. "
+                f"Recommended seasons: {', '.join(suitable_display)}"
+            )
+        
+        # Validate area allocation doesn't exceed field area
+        if self.area_allocated_hectares:
+            field_area = self.field.area_hectares if hasattr(self.field, 'area_hectares') else None
+            if field_area and self.area_allocated_hectares > field_area:
+                raise ValidationError(
+                    f"Allocated area ({self.area_allocated_hectares} ha) exceeds field area ({field_area} ha)"
+                )
+            
+            # Check total allocated area for this field (excluding current crop if editing)
+            from django.db.models import Sum
+            if self.pk:
+                total_allocated = CropSeason.objects.filter(
+                    field=self.field,
+                    status__in=['planned', 'planting', 'planted', 'growing']
+                ).exclude(pk=self.pk).aggregate(total=Sum('area_allocated_hectares'))['total'] or Decimal('0')
+            else:
+                total_allocated = CropSeason.objects.filter(
+                    field=self.field,
+                    status__in=['planned', 'planting', 'planted', 'growing']
+                ).aggregate(total=Sum('area_allocated_hectares'))['total'] or Decimal('0')
+            
+            new_total = total_allocated + self.area_allocated_hectares
+            if field_area and new_total > field_area:
+                raise ValidationError(
+                    f"Total allocated area ({new_total} ha) would exceed field area ({field_area} ha). "
+                    f"Currently allocated: {total_allocated} ha, Available: {field_area - total_allocated} ha"
+                )
+        
+        # Crop rotation validation - warn against consecutive same crop
+        if self.crop_type:
+            last_crop = CropSeason.objects.filter(
+                field=self.field,
+                crop_type=self.crop_type,
+                status='harvested'
+            ).order_by('-actual_harvest_date').first()
+            
+            if last_crop and last_crop.actual_harvest_date:
+                # Check if the same crop was harvested in the last 6 months
+                from datetime import timedelta
+                six_months_ago = timezone.now().date() - timedelta(days=180)
+                if last_crop.actual_harvest_date > six_months_ago:
+                    raise ValidationError(
+                        f"Warning: {self.crop_type.name} was recently harvested from this field on {last_crop.actual_harvest_date}. "
+                        f"Consider crop rotation to prevent soil depletion and pest buildup."
+                    )
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
     
     @property
     def days_to_harvest(self):
@@ -3222,3 +3302,400 @@ class ProjectMilestone(models.Model):
         indexes = [
             models.Index(fields=['project', 'achieved']),
         ]
+
+
+class Inventory(models.Model):
+    """Farm inventory tracking for seeds, fertilizers, pesticides, tools, etc."""
+    
+    CATEGORY_CHOICES = [
+        ('seeds', 'Seeds'),
+        ('fertilizers', 'Fertilizers'),
+        ('pesticides', 'Pesticides'),
+        ('tools', 'Tools & Equipment'),
+        ('feed', 'Animal Feed'),
+        ('medicine', 'Veterinary Medicine'),
+        ('fuel', 'Fuel & Lubricants'),
+        ('spare_parts', 'Spare Parts'),
+        ('packaging', 'Packaging Materials'),
+        ('other', 'Other'),
+    ]
+    
+    UNIT_CHOICES = [
+        ('kg', 'Kilograms'),
+        ('g', 'Grams'),
+        ('l', 'Liters'),
+        ('ml', 'Milliliters'),
+        ('pieces', 'Pieces'),
+        ('bags', 'Bags'),
+        ('boxes', 'Boxes'),
+        ('tons', 'Tons'),
+        ('units', 'Units'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('in_stock', 'In Stock'),
+        ('low_stock', 'Low Stock'),
+        ('out_of_stock', 'Out of Stock'),
+        ('expired', 'Expired'),
+    ]
+    
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='inventory_items')
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='inventory', null=True, blank=True)
+    
+    # Relationships to crops, livestock, and fish farming this inventory is used for
+    crop_seasons = models.ManyToManyField('CropSeason', blank=True, related_name='inventory_items', help_text="Crops this inventory is used for")
+    animals = models.ManyToManyField('Animal', blank=True, related_name='inventory_items', help_text="Animals this inventory is used for")
+    fish_cycles = models.ManyToManyField('FishCycle', blank=True, related_name='inventory_items', help_text="Fish farming cycles this inventory is used for")
+    
+    name = models.CharField(max_length=255)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    description = models.TextField(blank=True)
+    
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    unit = models.CharField(max_length=20, choices=UNIT_CHOICES)
+    
+    minimum_stock_level = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    
+    cost_per_unit = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    total_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    
+    supplier = models.CharField(max_length=255, blank=True)
+    supplier_contact = models.CharField(max_length=100, blank=True)
+    
+    location = models.CharField(max_length=255, blank=True, help_text="Storage location")
+    
+    purchase_date = models.DateField(null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_stock')
+    
+    notes = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'inventory'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['owner', 'category']),
+            models.Index(fields=['status']),
+            models.Index(fields=['expiry_date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} ({self.quantity} {self.unit})"
+    
+    def save(self, *args, **kwargs):
+        # Calculate total value
+        if self.cost_per_unit and self.quantity:
+            self.total_value = self.cost_per_unit * self.quantity
+        
+        # Auto-update status based on quantity
+        if self.quantity <= 0:
+            self.status = 'out_of_stock'
+        elif self.quantity <= self.minimum_stock_level:
+            self.status = 'low_stock'
+        else:
+            self.status = 'in_stock'
+        
+        # Check if expired
+        if self.expiry_date and self.expiry_date < timezone.now().date():
+            self.status = 'expired'
+        
+        super().save(*args, **kwargs)
+    
+    @property
+    def is_low_stock(self):
+        return self.quantity <= self.minimum_stock_level
+    
+    @property
+    def is_expired(self):
+        return self.expiry_date and self.expiry_date < timezone.now().date()
+
+
+# ============================================================
+# SECTION 14: FISH FARMING
+# ============================================================
+
+class FishSpecies(models.Model):
+    """Different fish species for aquaculture"""
+    
+    WATER_TYPE_CHOICES = [
+        ('freshwater', 'Freshwater'),
+        ('brackish', 'Brackish Water'),
+        ('marine', 'Marine/Saltwater'),
+    ]
+    
+    name = models.CharField(max_length=255)
+    scientific_name = models.CharField(max_length=255, blank=True)
+    water_type = models.CharField(max_length=20, choices=WATER_TYPE_CHOICES, default='freshwater')
+    description = models.TextField(blank=True)
+    
+    # Growth parameters
+    growth_period_days = models.IntegerField(help_text="Average days to reach market size")
+    ideal_temperature_min = models.DecimalField(max_digits=5, decimal_places=2, help_text="Min temperature in Celsius")
+    ideal_temperature_max = models.DecimalField(max_digits=5, decimal_places=2, help_text="Max temperature in Celsius")
+    
+    # Market info
+    market_price_per_kg = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'fish_species'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class FishPond(models.Model):
+    """Fish pond or tank for aquaculture"""
+    
+    POND_TYPE_CHOICES = [
+        ('earthen', 'Earthen Pond'),
+        ('concrete', 'Concrete Pond'),
+        ('plastic', 'Plastic Tank'),
+        ('fiber', 'Fiber Tank'),
+        ('cage', 'Floating Cage'),
+        ('raceway', 'Raceway'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('maintenance', 'Under Maintenance'),
+        ('inactive', 'Inactive'),
+        ('drained', 'Drained'),
+    ]
+    
+    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='fish_ponds')
+    name = models.CharField(max_length=255)
+    pond_type = models.CharField(max_length=20, choices=POND_TYPE_CHOICES)
+    
+    # Dimensions
+    length_m = models.DecimalField(max_digits=10, decimal_places=2, help_text="Length in meters")
+    width_m = models.DecimalField(max_digits=10, decimal_places=2, help_text="Width in meters")
+    depth_m = models.DecimalField(max_digits=10, decimal_places=2, help_text="Depth in meters")
+    
+    # Capacity
+    volume_cubic_meters = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Volume in cubic meters (auto-calculated)")
+    max_stocking_density = models.IntegerField(help_text="Max fish per cubic meter")
+    
+    # Location
+    location = models.CharField(max_length=255, blank=True, help_text="Physical location on farm")
+    
+    # Water source
+    water_source = models.CharField(max_length=255, blank=True, help_text="Source of water (borehole, river, etc.)")
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'fish_ponds'
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name} ({self.pond_type})"
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate volume from dimensions
+        if self.length_m and self.width_m and self.depth_m:
+            self.volume_cubic_meters = self.length_m * self.width_m * self.depth_m
+        super().save(*args, **kwargs)
+    
+    @property
+    def surface_area_sqm(self):
+        return self.length_m * self.width_m
+    
+    @property
+    def max_capacity(self):
+        if self.volume_cubic_meters and self.max_stocking_density:
+            return int(self.volume_cubic_meters * self.max_stocking_density)
+        return 0
+
+
+class FishCycle(models.Model):
+    """Fish farming cycle/season"""
+    
+    SEASON_CHOICES = [
+        ('spring', 'Spring Season'),
+        ('summer', 'Summer Season'),
+        ('autumn', 'Autumn Season'),
+        ('winter', 'Winter Season'),
+        ('rainy', 'Rainy Season'),
+        ('dry', 'Dry Season'),
+        ('custom', 'Custom Season'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('planned', 'Planned'),
+        ('stocking', 'Stocking'),
+        ('growing', 'Growing'),
+        ('feeding', 'Feeding'),
+        ('ready_for_harvest', 'Ready for Harvest'),
+        ('harvested', 'Harvested'),
+        ('failed', 'Failed'),
+        ('abandoned', 'Abandoned'),
+    ]
+    
+    pond = models.ForeignKey(FishPond, on_delete=models.CASCADE, related_name='cycles')
+    fish_species = models.ForeignKey(FishSpecies, on_delete=models.CASCADE, related_name='cycles')
+    
+    season = models.CharField(max_length=20, choices=SEASON_CHOICES)
+    cycle_name = models.CharField(max_length=255, blank=True, help_text="Optional name for this cycle")
+    
+    # Stocking
+    stocking_date = models.DateField()
+    stock_quantity = models.IntegerField(help_text="Number of fish stocked")
+    average_weight_at_stocking_g = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    
+    # Expected
+    expected_harvest_date = models.DateField()
+    expected_weight_per_fish_g = models.DecimalField(max_digits=8, decimal_places=2, help_text="Expected weight per fish in grams")
+    expected_survival_rate = models.DecimalField(max_digits=5, decimal_places=2, default=80, help_text="Expected survival rate percentage")
+    
+    # Actual
+    actual_harvest_date = models.DateField(null=True, blank=True)
+    actual_quantity = models.IntegerField(null=True, blank=True, help_text="Actual number harvested")
+    average_weight_at_harvest_g = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planned')
+    
+    # Financials
+    seed_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Fingerling/Startup Cost")
+    feed_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    other_costs = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    total_revenue = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, related_name='fish_cycles')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'fish_cycles'
+        ordering = ['-stocking_date']
+        indexes = [
+            models.Index(fields=['pond', 'status']),
+            models.Index(fields=['stocking_date']),
+            models.Index(fields=['expected_harvest_date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.fish_species.name} - {self.pond.name} ({self.stocking_date})"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from django.db.models import Sum
+        
+        # Validate stocking quantity doesn't exceed pond capacity
+        if self.stock_quantity and self.pond.max_capacity:
+            if self.stock_quantity > self.pond.max_capacity:
+                raise ValidationError(
+                    f"Stocking quantity ({self.stock_quantity}) exceeds pond maximum capacity ({self.pond.max_capacity} fish). "
+                    f"Pond volume: {self.pond.volume_cubic_meters} m³, Max density: {self.pond.max_stocking_density} fish/m³"
+                )
+        
+        # Check total stocked fish in pond (excluding current cycle if editing)
+        if self.stock_quantity:
+            if self.pk:
+                total_stocked = FishCycle.objects.filter(
+                    pond=self.pond,
+                    status__in=['planned', 'stocking', 'growing', 'feeding', 'ready_for_harvest']
+                ).exclude(pk=self.pk).aggregate(total=Sum('stock_quantity'))['total'] or 0
+            else:
+                total_stocked = FishCycle.objects.filter(
+                    pond=self.pond,
+                    status__in=['planned', 'stocking', 'growing', 'feeding', 'ready_for_harvest']
+                ).aggregate(total=Sum('stock_quantity'))['total'] or 0
+            
+            new_total = total_stocked + self.stock_quantity
+            if self.pond.max_capacity and new_total > self.pond.max_capacity:
+                raise ValidationError(
+                    f"Total stocked fish ({new_total}) would exceed pond capacity ({self.pond.max_capacity}). "
+                    f"Currently stocked: {total_stocked}, Available: {self.pond.max_capacity - total_stocked}"
+                )
+        
+        # Validate stocking density
+        if self.stock_quantity and self.pond.volume_cubic_meters:
+            current_density = self.stock_quantity / self.pond.volume_cubic_meters
+            if self.pond.max_stocking_density and current_density > self.pond.max_stocking_density:
+                raise ValidationError(
+                    f"Stocking density ({current_density:.1f} fish/m³) exceeds recommended maximum ({self.pond.max_stocking_density} fish/m³)"
+                )
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+    
+    @property
+    def expected_harvest_kg(self):
+        if self.stock_quantity and self.expected_weight_per_fish_g and self.expected_survival_rate:
+            expected_fish = self.stock_quantity * (self.expected_survival_rate / 100)
+            return (expected_fish * self.expected_weight_per_fish_g) / 1000  # Convert to kg
+        return None
+    
+    @property
+    def actual_harvest_kg(self):
+        if self.actual_quantity and self.average_weight_at_harvest_g:
+            return (self.actual_quantity * self.average_weight_at_harvest_g) / 1000  # Convert to kg
+        return None
+    
+    @property
+    def total_cost(self):
+        total = Decimal('0')
+        if self.seed_cost:
+            total += self.seed_cost
+        if self.feed_cost:
+            total += self.feed_cost
+        if self.other_costs:
+            total += self.other_costs
+        return total
+    
+    @property
+    def profit(self):
+        if self.total_revenue:
+            return self.total_revenue - self.total_cost
+        return None
+    
+    @property
+    def days_in_cycle(self):
+        if self.actual_harvest_date:
+            return (self.actual_harvest_date - self.stocking_date).days
+        return (timezone.now().date() - self.stocking_date).days
+
+
+class FishProduction(models.Model):
+    """Record of fish harvest/production"""
+    
+    cycle = models.ForeignKey(FishCycle, on_delete=models.CASCADE, related_name='production_records')
+    
+    harvest_date = models.DateField()
+    quantity = models.IntegerField(help_text="Number of fish harvested")
+    total_weight_kg = models.DecimalField(max_digits=10, decimal_places=2, help_text="Total weight in kg")
+    average_weight_g = models.DecimalField(max_digits=8, decimal_places=2, help_text="Average weight per fish in grams")
+    
+    # Quality assessment
+    grade = models.CharField(max_length=50, blank=True, help_text="Grade/quality of fish")
+    
+    # Sales
+    sold_quantity = models.IntegerField(null=True, blank=True, help_text="Number of fish sold")
+    sold_weight_kg = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    revenue = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    
+    # Remaining
+    remaining_quantity = models.IntegerField(null=True, blank=True, help_text="Fish kept for breeding or other purposes")
+    
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'fish_production'
+        ordering = ['-harvest_date']
+    
+    def __str__(self):
+        return f"Harvest - {self.cycle.fish_species.name} ({self.harvest_date})"

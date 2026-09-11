@@ -7,7 +7,12 @@ import json
 import joblib
 import warnings
 from pathlib import Path
-import numpy as np
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
 from PIL import Image
 
 try:
